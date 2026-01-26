@@ -1,0 +1,55 @@
+import { useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '@/lib/supabase'
+import { authService } from '@/services/auth.service'
+import { useAuthStore } from '@/store/authStore'
+
+export default function AuthCallback() {
+  const navigate = useNavigate()
+  const hasRun = useRef(false)
+
+  useEffect(() => {
+    if (hasRun.current) return
+    hasRun.current = true
+
+    const handleCallback = async () => {
+      try {
+        // Handle the OAuth callback
+        const { error } = await supabase.auth.getSession()
+
+        if (error) {
+          console.error('Auth callback error:', error)
+          navigate('/login', { replace: true })
+          return
+        }
+
+        // Refresh authentication status
+        await authService.refreshAuth()
+
+        // Get the updated user from the store
+        const { user } = useAuthStore.getState()
+
+        // Redirect based on admin status
+        if (user?.isAdmin) {
+          navigate('/admin/dashboard', { replace: true })
+        } else {
+          navigate('/', { replace: true })
+        }
+      } catch (error) {
+        console.error('Callback handling error:', error)
+        navigate('/login', { replace: true })
+      }
+    }
+
+    handleCallback()
+  }, [navigate])
+
+  return (
+    <div className="flex h-screen w-screen items-center justify-center">
+      <div className="text-center">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
+        <p className="mt-4 text-sm text-muted-foreground">Completing sign in...</p>
+      </div>
+    </div>
+  )
+}
