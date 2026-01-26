@@ -1,0 +1,682 @@
+import { useState, FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { DashboardHeader } from '../components'
+import { ArrowLeft, Plus, Trash2, CalendarIcon } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import type { Database } from '@/types/database.types'
+import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+type CompetitionInsert = Database['public']['Tables']['competitions']['Insert']
+
+interface TieredPrice {
+  minQty: number
+  maxQty: number
+  pricePerTicketPence: number
+}
+
+export default function CompetitionForm() {
+  const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Form state
+  const [formData, setFormData] = useState({
+    title: '',
+    slug: '',
+    description: '',
+    image_url: '',
+    category: 'Toys' as Database['public']['Enums']['competition_category'],
+    competition_type: 'standard' as Database['public']['Enums']['competition_type'],
+    start_datetime: '',
+    end_datetime: '',
+    draw_datetime: '',
+    max_tickets: 1000,
+    max_tickets_per_user: 100,
+    base_ticket_price_pence: 100,
+    total_value_gbp: 0,
+    retail_value_gbp: 0,
+    is_featured: false,
+    show_on_homepage: true,
+  })
+
+  const [tieredPricing, setTieredPricing] = useState<TieredPrice[]>([
+    { minQty: 1, maxQty: 9, pricePerTicketPence: 100 },
+  ])
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value, type } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]:
+        type === 'number'
+          ? parseFloat(value) || 0
+          : type === 'checkbox'
+          ? (e.target as HTMLInputElement).checked
+          : value,
+    }))
+  }
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const title = e.target.value
+    const slug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+
+    setFormData((prev) => ({ ...prev, title, slug }))
+  }
+
+  const addTieredPrice = () => {
+    const lastTier = tieredPricing[tieredPricing.length - 1]
+    setTieredPricing([
+      ...tieredPricing,
+      {
+        minQty: lastTier.maxQty + 1,
+        maxQty: lastTier.maxQty + 10,
+        pricePerTicketPence: lastTier.pricePerTicketPence - 10,
+      },
+    ])
+  }
+
+  const removeTieredPrice = (index: number) => {
+    setTieredPricing(tieredPricing.filter((_, i) => i !== index))
+  }
+
+  const updateTieredPrice = (index: number, field: keyof TieredPrice, value: number) => {
+    setTieredPricing(
+      tieredPricing.map((tier, i) => (i === index ? { ...tier, [field]: value } : tier))
+    )
+  }
+
+  const handleSubmit = async (e: FormEvent, isDraft: boolean = false) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    try {
+      // Prepare competition data
+      const competitionData: CompetitionInsert = {
+        ...formData,
+        status: isDraft ? 'draft' : 'scheduled',
+        tiered_pricing: tieredPricing as any, // JSONB field accepts object directly
+        base_ticket_price_pence: Math.round(formData.base_ticket_price_pence),
+        total_value_gbp: formData.total_value_gbp,
+        retail_value_gbp: formData.retail_value_gbp || null,
+        draw_datetime: formData.draw_datetime || null,
+      }
+
+      console.log('Submitting competition data:', competitionData)
+
+      const { data, error: insertError } = await supabase
+        .from('competitions')
+        .insert(competitionData)
+        .select()
+        .single()
+
+      if (insertError) {
+        console.error('Insert error:', insertError)
+        throw insertError
+      }
+
+      navigate(`/admin/dashboard/competitions/${data.id}`)
+    } catch (err) {
+      console.error('Error creating competition:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create competition'
+      setError(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <DashboardHeader
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/admin/dashboard' },
+          { label: 'Competitions', href: '/admin/dashboard/competitions' },
+          { label: 'Create Competition' },
+        ]}
+      />
+
+      <div className="flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+        <div className="p-6 space-y-6">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate('/admin/dashboard/competitions')}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="size-5" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-semibold">Create Competition</h1>
+              <p className="text-muted-foreground mt-1">Set up a new competition</p>
+            </div>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-800">{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
+            {/* Basic Information */}
+            <div className="bg-white border border-border rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4">Basic Information</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Title *</label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleTitleChange}
+                    required
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Baby Bundle Prize Competition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Slug (URL)</label>
+                  <input
+                    type="text"
+                    name="slug"
+                    value={formData.slug}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                    placeholder="baby-bundle-prize-competition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Description *</label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    required
+                    rows={4}
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter competition description..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Image URL *</label>
+                  <input
+                    type="url"
+                    name="image_url"
+                    value={formData.image_url}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Category *</label>
+                    <Select
+                      value={formData.category}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({ ...prev, category: value as any }))
+                      }
+                      required
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Toys">Toys</SelectItem>
+                        <SelectItem value="Baby & Nursery">Baby & Nursery</SelectItem>
+                        <SelectItem value="Cash">Cash</SelectItem>
+                        <SelectItem value="Instant Wins">Instant Wins</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Competition Type *</label>
+                    <Select
+                      value={formData.competition_type}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({ ...prev, competition_type: value as any }))
+                      }
+                      required
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="standard">Standard Draw</SelectItem>
+                        <SelectItem value="instant_win">Instant Win Only</SelectItem>
+                        <SelectItem value="instant_win_with_end_prize">
+                          Instant Win + End Prize
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Dates & Times */}
+            <div className="bg-white border border-border rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4">Dates & Times</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Start Date *</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'w-full justify-start text-left font-normal',
+                          !formData.start_datetime && 'text-muted-foreground'
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formData.start_datetime ? (
+                          format(new Date(formData.start_datetime), 'PPP p')
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          formData.start_datetime ? new Date(formData.start_datetime) : undefined
+                        }
+                        onSelect={(date) => {
+                          if (date) {
+                            const dateStr = format(date, "yyyy-MM-dd'T'HH:mm")
+                            setFormData((prev) => ({ ...prev, start_datetime: dateStr }))
+                          }
+                        }}
+                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                        initialFocus
+                      />
+                      <div className="p-3 border-t">
+                        <label className="block text-xs font-medium mb-1">Time</label>
+                        <input
+                          type="time"
+                          value={
+                            formData.start_datetime
+                              ? format(new Date(formData.start_datetime), 'HH:mm')
+                              : ''
+                          }
+                          onChange={(e) => {
+                            const currentDate = formData.start_datetime
+                              ? new Date(formData.start_datetime)
+                              : new Date()
+                            const [hours, minutes] = e.target.value.split(':')
+                            currentDate.setHours(parseInt(hours), parseInt(minutes))
+                            setFormData((prev) => ({
+                              ...prev,
+                              start_datetime: format(currentDate, "yyyy-MM-dd'T'HH:mm"),
+                            }))
+                          }}
+                          className="w-full px-2 py-1 text-sm border rounded"
+                        />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">End Date *</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'w-full justify-start text-left font-normal',
+                          !formData.end_datetime && 'text-muted-foreground'
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formData.end_datetime ? (
+                          format(new Date(formData.end_datetime), 'PPP p')
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          formData.end_datetime ? new Date(formData.end_datetime) : undefined
+                        }
+                        onSelect={(date) => {
+                          if (date) {
+                            const dateStr = format(date, "yyyy-MM-dd'T'HH:mm")
+                            setFormData((prev) => ({ ...prev, end_datetime: dateStr }))
+                          }
+                        }}
+                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                        initialFocus
+                      />
+                      <div className="p-3 border-t">
+                        <label className="block text-xs font-medium mb-1">Time</label>
+                        <input
+                          type="time"
+                          value={
+                            formData.end_datetime
+                              ? format(new Date(formData.end_datetime), 'HH:mm')
+                              : ''
+                          }
+                          onChange={(e) => {
+                            const currentDate = formData.end_datetime
+                              ? new Date(formData.end_datetime)
+                              : new Date()
+                            const [hours, minutes] = e.target.value.split(':')
+                            currentDate.setHours(parseInt(hours), parseInt(minutes))
+                            setFormData((prev) => ({
+                              ...prev,
+                              end_datetime: format(currentDate, "yyyy-MM-dd'T'HH:mm"),
+                            }))
+                          }}
+                          className="w-full px-2 py-1 text-sm border rounded"
+                        />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Draw Date</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'w-full justify-start text-left font-normal',
+                          !formData.draw_datetime && 'text-muted-foreground'
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formData.draw_datetime ? (
+                          format(new Date(formData.draw_datetime), 'PPP p')
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          formData.draw_datetime ? new Date(formData.draw_datetime) : undefined
+                        }
+                        onSelect={(date) => {
+                          if (date) {
+                            const dateStr = format(date, "yyyy-MM-dd'T'HH:mm")
+                            setFormData((prev) => ({ ...prev, draw_datetime: dateStr }))
+                          }
+                        }}
+                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                        initialFocus
+                      />
+                      <div className="p-3 border-t">
+                        <label className="block text-xs font-medium mb-1">Time</label>
+                        <input
+                          type="time"
+                          value={
+                            formData.draw_datetime
+                              ? format(new Date(formData.draw_datetime), 'HH:mm')
+                              : ''
+                          }
+                          onChange={(e) => {
+                            const currentDate = formData.draw_datetime
+                              ? new Date(formData.draw_datetime)
+                              : new Date()
+                            const [hours, minutes] = e.target.value.split(':')
+                            currentDate.setHours(parseInt(hours), parseInt(minutes))
+                            setFormData((prev) => ({
+                              ...prev,
+                              draw_datetime: format(currentDate, "yyyy-MM-dd'T'HH:mm"),
+                            }))
+                          }}
+                          className="w-full px-2 py-1 text-sm border rounded"
+                        />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            </div>
+
+            {/* Ticket Configuration */}
+            <div className="bg-white border border-border rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4">Ticket Configuration</h2>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Max Tickets *</label>
+                    <input
+                      type="number"
+                      name="max_tickets"
+                      value={formData.max_tickets}
+                      onChange={handleInputChange}
+                      required
+                      min="1"
+                      className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Max Per User *</label>
+                    <input
+                      type="number"
+                      name="max_tickets_per_user"
+                      value={formData.max_tickets_per_user}
+                      onChange={handleInputChange}
+                      required
+                      min="1"
+                      className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Base Ticket Price (pence) *
+                  </label>
+                  <input
+                    type="number"
+                    name="base_ticket_price_pence"
+                    value={formData.base_ticket_price_pence}
+                    onChange={handleInputChange}
+                    required
+                    min="1"
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    £{(formData.base_ticket_price_pence / 100).toFixed(2)} per ticket
+                  </p>
+                </div>
+
+                {/* Tiered Pricing */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-sm font-medium">Tiered Pricing</label>
+                    <button
+                      type="button"
+                      onClick={addTieredPrice}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                    >
+                      <Plus className="size-4" />
+                      Add Tier
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {tieredPricing.map((tier, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={tier.minQty}
+                          onChange={(e) =>
+                            updateTieredPrice(index, 'minQty', parseInt(e.target.value))
+                          }
+                          placeholder="Min"
+                          className="w-20 px-2 py-1 text-sm border border-border rounded"
+                        />
+                        <span className="text-sm">-</span>
+                        <input
+                          type="number"
+                          value={tier.maxQty}
+                          onChange={(e) =>
+                            updateTieredPrice(index, 'maxQty', parseInt(e.target.value))
+                          }
+                          placeholder="Max"
+                          className="w-20 px-2 py-1 text-sm border border-border rounded"
+                        />
+                        <span className="text-sm">@</span>
+                        <input
+                          type="number"
+                          value={tier.pricePerTicketPence}
+                          onChange={(e) =>
+                            updateTieredPrice(
+                              index,
+                              'pricePerTicketPence',
+                              parseInt(e.target.value)
+                            )
+                          }
+                          placeholder="Price (pence)"
+                          className="flex-1 px-2 py-1 text-sm border border-border rounded"
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          £{(tier.pricePerTicketPence / 100).toFixed(2)}
+                        </span>
+                        {tieredPricing.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeTieredPrice(index)}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Prize Information */}
+            <div className="bg-white border border-border rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4">Prize Information</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Total Value (£) *</label>
+                  <input
+                    type="number"
+                    name="total_value_gbp"
+                    value={formData.total_value_gbp}
+                    onChange={handleInputChange}
+                    required
+                    min="0"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Retail Value (£)</label>
+                  <input
+                    type="number"
+                    name="retail_value_gbp"
+                    value={formData.retail_value_gbp}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Settings */}
+            <div className="bg-white border border-border rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4">Settings</h2>
+              <div className="space-y-3">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="is_featured"
+                    checked={formData.is_featured}
+                    onChange={handleInputChange}
+                    className="rounded border-border"
+                  />
+                  <span className="text-sm">Featured Competition</span>
+                </label>
+
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="show_on_homepage"
+                    checked={formData.show_on_homepage}
+                    onChange={handleInputChange}
+                    className="rounded border-border"
+                  />
+                  <span className="text-sm">Show on Homepage</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/admin/dashboard/competitions')}
+                className="px-4 py-2 border border-border rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleSubmit(e, true)}
+                disabled={loading}
+                className="px-4 py-2 border border-border rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                {loading ? 'Saving...' : 'Save as Draft'}
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                {loading ? 'Publishing...' : 'Publish Competition'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
+  )
+}
