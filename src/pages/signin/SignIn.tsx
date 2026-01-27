@@ -1,16 +1,53 @@
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { authService } from '@/services/auth.service'
+import { useAuthStore } from '@/store/authStore'
 
 export default function SignIn() {
   const navigate = useNavigate()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleGoogleSignIn = async () => {
     try {
+      setError('')
       await authService.signInWithGoogle()
     } catch (error) {
       console.error('Sign-in failed:', error)
+      setError('Failed to sign in with Google')
+    }
+  }
+
+  const handleEmailSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!email || !password) {
+      setError('Please enter your email and password')
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError('')
+      await authService.signInWithEmail(email, password)
+
+      // Redirect based on user role
+      const user = useAuthStore.getState().user
+      if (user?.isAdmin) {
+        navigate('/admin/dashboard')
+      } else {
+        navigate('/')
+      }
+    } catch (error) {
+      console.error('Sign-in failed:', error)
+      setError('Invalid email or password')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -42,15 +79,102 @@ export default function SignIn() {
               </span>
             </div>
             <h1 className="text-lg font-semibold text-left">Sign in</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Welcome back! Please enter your details.
+            </p>
           </div>
+
+          {/* Error message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+              {error}
+            </div>
+          )}
 
           {/* Sign-in form */}
           <div className="space-y-4">
+            {/* Email/Password Form */}
+            <form onSubmit={handleEmailSignIn} className="space-y-3">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium mb-1.5">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="w-full h-9 px-3 border border-[#E2D9CE] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f25100] focus:border-transparent text-[14px]"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium mb-1.5">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="w-full h-9 px-3 pr-10 border border-[#E2D9CE] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f25100] focus:border-transparent text-[14px]"
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <Link
+                  to="/signup"
+                  className="text-[#f25100] hover:underline font-medium"
+                >
+                  Create account
+                </Link>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  Forgot password?
+                </button>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full h-9 bg-[#f25100] hover:bg-[#d94600] text-white text-[14px] cursor-pointer"
+                disabled={loading}
+              >
+                {loading ? 'Signing in...' : 'Sign in'}
+              </Button>
+            </form>
+
+            {/* Divider */}
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-[#E2D9CE]"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-[#FFFCF9] px-2 text-muted-foreground">Or continue with</span>
+              </div>
+            </div>
+
             {/* Google Sign-in button */}
             <Button
               variant="outline"
               className="w-full h-9 gap-2.5 border-[#E2D9CE] hover:bg-black/[0.02] text-[14px] cursor-pointer"
               onClick={handleGoogleSignIn}
+              disabled={loading}
             >
               <svg className="size-4" viewBox="0 0 24 24">
                 <path
@@ -70,12 +194,12 @@ export default function SignIn() {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-              <span className="font-medium">Continue with Google</span>
+              <span className="font-medium">Google</span>
             </Button>
 
             {/* Terms and Privacy */}
             <p className="text-[11px] text-muted-foreground text-center mt-4 max-w-[280px] mx-auto">
-              By clicking continue, you agree to our{' '}
+              By continuing, you agree to our{' '}
               <a href="/terms" className="underline hover:text-foreground transition-colors">
                 Terms of Service
               </a>{' '}

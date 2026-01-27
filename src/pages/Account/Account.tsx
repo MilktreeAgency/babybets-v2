@@ -268,13 +268,7 @@ function Account() {
                               No current competition entries to show. Only entries from the last 30 days
                               will be shown.
                             </p>
-                            <button
-                              onClick={() => navigate('/competitions')}
-                              className="mt-6 px-6 py-3 rounded-lg font-bold text-white transition-all duration-300"
-                              style={{ backgroundColor: '#335761' }}
-                            >
-                              Browse Competitions
-                            </button>
+                            {/* Removed "Browse Competitions" button - no redirect to /competitions */}
                           </>
                         ) : (
                           <div className="space-y-4">
