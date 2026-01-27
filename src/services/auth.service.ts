@@ -114,6 +114,78 @@ class AuthService {
     }
   }
 
+  async signInWithEmail(email: string, password: string): Promise<void> {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        console.error('Email sign-in error:', error)
+        throw error
+      }
+
+      if (data.session?.user) {
+        await this.refreshAuth()
+      }
+    } catch (error) {
+      console.error('Sign-in error:', error)
+      throw error
+    }
+  }
+
+  async signUpWithEmail(
+    email: string,
+    password: string,
+    firstName?: string,
+    lastName?: string
+  ): Promise<void> {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            full_name: firstName && lastName ? `${firstName} ${lastName}` : firstName || email.split('@')[0],
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (error) {
+        console.error('Email sign-up error:', error)
+        throw error
+      }
+
+      // If email confirmation is disabled, sign in immediately
+      if (data.session?.user) {
+        await this.refreshAuth()
+      }
+    } catch (error) {
+      console.error('Sign-up error:', error)
+      throw error
+    }
+  }
+
+  async resetPassword(email: string): Promise<void> {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      })
+
+      if (error) {
+        console.error('Password reset error:', error)
+        throw error
+      }
+    } catch (error) {
+      console.error('Password reset error:', error)
+      throw error
+    }
+  }
+
   async logout(): Promise<void> {
     try {
       await supabase.auth.signOut()

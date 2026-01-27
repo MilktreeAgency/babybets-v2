@@ -12,8 +12,84 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      competition_instant_win_prizes: {
+        Row: {
+          competition_id: string
+          created_at: string | null
+          id: string
+          prize_code: string
+          prize_template_id: string
+          remaining_quantity: number
+          tier: number | null
+          total_quantity: number
+          updated_at: string | null
+        }
+        Insert: {
+          competition_id: string
+          created_at?: string | null
+          id?: string
+          prize_code: string
+          prize_template_id: string
+          remaining_quantity: number
+          tier?: number | null
+          total_quantity: number
+          updated_at?: string | null
+        }
+        Update: {
+          competition_id?: string
+          created_at?: string | null
+          id?: string
+          prize_code?: string
+          prize_template_id?: string
+          remaining_quantity?: number
+          tier?: number | null
+          total_quantity?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_instant_win_prizes_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_instant_win_prizes_prize_template_id_fkey"
+            columns: ["prize_template_id"]
+            isOneToOne: false
+            referencedRelation: "prize_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competitions: {
         Row: {
           base_ticket_price_pence: number
@@ -260,13 +336,6 @@ export type Database = {
             foreignKeyName: "influencers_featured_competition_id_fkey"
             columns: ["featured_competition_id"]
             isOneToOne: false
-            referencedRelation: "active_competitions_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "influencers_featured_competition_id_fkey"
-            columns: ["featured_competition_id"]
-            isOneToOne: false
             referencedRelation: "competitions"
             referencedColumns: ["id"]
           },
@@ -275,78 +344,6 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      instant_win_prizes: {
-        Row: {
-          cash_alternative_gbp: number | null
-          competition_id: string
-          created_at: string | null
-          description: string | null
-          id: string
-          image_url: string | null
-          name: string
-          notes: string | null
-          prize_code: string
-          remaining_quantity: number
-          short_name: string | null
-          tier: number | null
-          total_quantity: number
-          type: Database["public"]["Enums"]["prize_type"]
-          updated_at: string | null
-          value_gbp: number
-        }
-        Insert: {
-          cash_alternative_gbp?: number | null
-          competition_id: string
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          image_url?: string | null
-          name: string
-          notes?: string | null
-          prize_code: string
-          remaining_quantity: number
-          short_name?: string | null
-          tier?: number | null
-          total_quantity: number
-          type: Database["public"]["Enums"]["prize_type"]
-          updated_at?: string | null
-          value_gbp: number
-        }
-        Update: {
-          cash_alternative_gbp?: number | null
-          competition_id?: string
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          image_url?: string | null
-          name?: string
-          notes?: string | null
-          prize_code?: string
-          remaining_quantity?: number
-          short_name?: string | null
-          tier?: number | null
-          total_quantity?: number
-          type?: Database["public"]["Enums"]["prize_type"]
-          updated_at?: string | null
-          value_gbp?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "instant_win_prizes_competition_id_fkey"
-            columns: ["competition_id"]
-            isOneToOne: false
-            referencedRelation: "active_competitions_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "instant_win_prizes_competition_id_fkey"
-            columns: ["competition_id"]
-            isOneToOne: false
-            referencedRelation: "competitions"
             referencedColumns: ["id"]
           },
         ]
@@ -380,13 +377,6 @@ export type Database = {
           total_pence?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "order_items_competition_id_fkey"
-            columns: ["competition_id"]
-            isOneToOne: false
-            referencedRelation: "active_competitions_view"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "order_items_competition_id_fkey"
             columns: ["competition_id"]
@@ -548,21 +538,7 @@ export type Database = {
             foreignKeyName: "prize_fulfillments_competition_id_fkey"
             columns: ["competition_id"]
             isOneToOne: false
-            referencedRelation: "active_competitions_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prize_fulfillments_competition_id_fkey"
-            columns: ["competition_id"]
-            isOneToOne: false
             referencedRelation: "competitions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prize_fulfillments_prize_id_fkey"
-            columns: ["prize_id"]
-            isOneToOne: false
-            referencedRelation: "instant_win_prizes"
             referencedColumns: ["id"]
           },
           {
@@ -580,6 +556,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      prize_templates: {
+        Row: {
+          cash_alternative_gbp: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          short_name: string | null
+          type: Database["public"]["Enums"]["prize_type"]
+          updated_at: string | null
+          value_gbp: number
+        }
+        Insert: {
+          cash_alternative_gbp?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          short_name?: string | null
+          type: Database["public"]["Enums"]["prize_type"]
+          updated_at?: string | null
+          value_gbp: number
+        }
+        Update: {
+          cash_alternative_gbp?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          short_name?: string | null
+          type?: Database["public"]["Enums"]["prize_type"]
+          updated_at?: string | null
+          value_gbp?: number
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -757,13 +775,6 @@ export type Database = {
             foreignKeyName: "ticket_allocations_competition_id_fkey"
             columns: ["competition_id"]
             isOneToOne: false
-            referencedRelation: "active_competitions_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ticket_allocations_competition_id_fkey"
-            columns: ["competition_id"]
-            isOneToOne: false
             referencedRelation: "competitions"
             referencedColumns: ["id"]
           },
@@ -771,7 +782,7 @@ export type Database = {
             foreignKeyName: "ticket_allocations_prize_id_fkey"
             columns: ["prize_id"]
             isOneToOne: false
-            referencedRelation: "instant_win_prizes"
+            referencedRelation: "competition_instant_win_prizes"
             referencedColumns: ["id"]
           },
           {
@@ -837,13 +848,6 @@ export type Database = {
             foreignKeyName: "wallet_credits_source_competition_id_fkey"
             columns: ["source_competition_id"]
             isOneToOne: false
-            referencedRelation: "active_competitions_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wallet_credits_source_competition_id_fkey"
-            columns: ["source_competition_id"]
-            isOneToOne: false
             referencedRelation: "competitions"
             referencedColumns: ["id"]
           },
@@ -852,13 +856,6 @@ export type Database = {
             columns: ["source_order_id"]
             isOneToOne: false
             referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wallet_credits_source_prize_id_fkey"
-            columns: ["source_prize_id"]
-            isOneToOne: false
-            referencedRelation: "instant_win_prizes"
             referencedColumns: ["id"]
           },
           {
@@ -998,13 +995,6 @@ export type Database = {
             foreignKeyName: "winners_competition_id_fkey"
             columns: ["competition_id"]
             isOneToOne: false
-            referencedRelation: "active_competitions_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "winners_competition_id_fkey"
-            columns: ["competition_id"]
-            isOneToOne: false
             referencedRelation: "competitions"
             referencedColumns: ["id"]
           },
@@ -1095,41 +1085,6 @@ export type Database = {
       }
     }
     Views: {
-      active_competitions_view: {
-        Row: {
-          base_ticket_price_pence: number | null
-          bundles: Json | null
-          category: Database["public"]["Enums"]["competition_category"] | null
-          competition_type:
-            | Database["public"]["Enums"]["competition_type"]
-            | null
-          created_at: string | null
-          description: string | null
-          draw_datetime: string | null
-          end_datetime: string | null
-          end_prize: Json | null
-          id: string | null
-          image_url: string | null
-          is_featured: boolean | null
-          max_tickets: number | null
-          max_tickets_per_user: number | null
-          remaining_instant_win_prizes: number | null
-          retail_value_gbp: number | null
-          show_on_homepage: boolean | null
-          slug: string | null
-          start_datetime: string | null
-          status: Database["public"]["Enums"]["competition_status"] | null
-          ticket_pool_generated_at: string | null
-          ticket_pool_locked: boolean | null
-          tickets_sold: number | null
-          tiered_pricing: Json | null
-          title: string | null
-          total_instant_win_prizes: number | null
-          total_value_gbp: number | null
-          updated_at: string | null
-        }
-        Relationships: []
-      }
       recent_winners_view: {
         Row: {
           display_name: string | null
@@ -1161,6 +1116,10 @@ export type Database = {
       }
     }
     Functions: {
+      get_competition_stats: { Args: { competition_id: string }; Returns: Json }
+      get_dashboard_stats: { Args: never; Returns: Json }
+      get_pending_tasks: { Args: never; Returns: Json }
+      get_recent_activities: { Args: { limit_count?: number }; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
       is_influencer: { Args: never; Returns: boolean }
     }
@@ -1331,6 +1290,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       competition_category: [
