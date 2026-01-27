@@ -76,12 +76,21 @@ export default function ActivityFeed({ activities, loading = false }: ActivityFe
                   src={activity.user.avatar}
                   alt={activity.user.name}
                   className="size-10 rounded-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                    const fallback = e.currentTarget.nextElementSibling
+                    if (fallback) {
+                      (fallback as HTMLElement).style.display = 'flex'
+                    }
+                  }}
                 />
-              ) : (
-                <div className="size-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600">
-                  {activity.user?.name?.charAt(0) || '?'}
-                </div>
-              )}
+              ) : null}
+              <div
+                className="size-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600"
+                style={{ display: activity.user?.avatar ? 'none' : 'flex' }}
+              >
+                {activity.user?.name?.charAt(0) || '?'}
+              </div>
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
