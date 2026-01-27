@@ -1,7 +1,7 @@
 import { useState, FormEvent, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { DashboardHeader } from '../components'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Package } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
 import {
@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useSidebar } from '@/contexts/SidebarContext'
+import { PrizeSelector, type SelectedPrize } from '@/components/PrizeSelector'
 
 type CompetitionInsert = Database['public']['Tables']['competitions']['Insert']
 
@@ -54,6 +55,14 @@ export default function CompetitionForm() {
   const [tieredPricing, setTieredPricing] = useState<TieredPrice[]>([
     { minQty: 1, maxQty: 9, pricePerTicketPence: 100 },
   ])
+
+  const [useCurrentStartDate, setUseCurrentStartDate] = useState(false)
+
+  // Prize selection state
+  const [selectedPrizes, setSelectedPrizes] = useState<SelectedPrize[]>([])
+  const [prizeSelectorOpen, setPrizeSelectorOpen] = useState(false)
+  const [endPrize, setEndPrize] = useState<SelectedPrize | null>(null)
+  const [endPrizeSelectorOpen, setEndPrizeSelectorOpen] = useState(false)
 
   // Load competition data when editing
   useEffect(() => {
@@ -103,6 +112,53 @@ export default function CompetitionForm() {
 
         if (data.tiered_pricing && Array.isArray(data.tiered_pricing)) {
           setTieredPricing(data.tiered_pricing as TieredPrice[])
+        }
+
+        // Load competition prizes
+        if (data.competition_type === 'instant_win' || data.competition_type === 'instant_win_with_end_prize') {
+          const { data: prizesData } = await supabase
+            .from('competition_instant_win_prizes')
+            .select(`
+              *,
+              prize_templates (
+                id,
+                name,
+                type,
+                value_gbp,
+                image_url
+              )
+            `)
+            .eq('competition_id', competitionId)
+            .order('tier', { ascending: true })
+
+          if (prizesData) {
+            const prizes: SelectedPrize[] = prizesData.map((p: Record<string, unknown>) => ({
+              prizeTemplateId: p.prize_template_id as string,
+              prizeName: (p.prize_templates as Record<string, unknown>)?.name as string,
+              prizeType: (p.prize_templates as Record<string, unknown>)?.type as string,
+              prizeValue: Number((p.prize_templates as Record<string, unknown>)?.value_gbp) || 0,
+              prizeImageUrl: ((p.prize_templates as Record<string, unknown>)?.image_url as string) || null,
+              prizeCode: p.prize_code as string,
+              quantity: p.total_quantity as number,
+              tier: p.tier as number,
+            }))
+            setSelectedPrizes(prizes)
+          }
+        }
+
+        // Load end prize if exists
+        if (data.end_prize && typeof data.end_prize === 'object') {
+          const endPrizeData = data.end_prize as Record<string, unknown>
+          setEndPrize({
+            prizeTemplateId: endPrizeData.prizeTemplateId as string,
+            prizeName: endPrizeData.prizeName as string,
+            prizeType: endPrizeData.prizeType as string,
+            prizeValue: Number(endPrizeData.prizeValue) || 0,
+            prizeImageUrl: (endPrizeData.prizeImageUrl as string) || null,
+            prizeCode: 'END-PRIZE',
+            quantity: 1,
+            tier: 999,
+          })
         }
       }
     } catch (err) {
@@ -160,6 +216,14 @@ export default function CompetitionForm() {
     )
   }
 
+  const handleUseCurrentStartDate = (checked: boolean) => {
+    setUseCurrentStartDate(checked)
+    if (checked) {
+      const now = new Date().toISOString().slice(0, 16)
+      setFormData((prev) => ({ ...prev, start_datetime: now }))
+    }
+  }
+
   // Check if all required fields are filled
   const isFormValid = () => {
     return (
@@ -184,18 +248,40 @@ export default function CompetitionForm() {
     setError(null)
 
     try {
+      // Determine status based on start date
+      let status = 'scheduled'
+      if (isDraft) {
+        status = 'draft'
+      } else if (formData.start_datetime) {
+        const startDate = new Date(formData.start_datetime)
+        const now = new Date()
+        // If start date is now or in the past, make it active
+        if (startDate <= now) {
+          status = 'active'
+        }
+      }
+
       // Prepare competition data
       const competitionData: any = {
         ...formData,
-        status: isDraft ? 'draft' : 'scheduled',
+        status,
         tiered_pricing: tieredPricing as any, // JSONB field accepts object directly
         base_ticket_price_pence: Math.round(formData.base_ticket_price_pence),
         total_value_gbp: formData.total_value_gbp,
         retail_value_gbp: formData.retail_value_gbp || null,
         draw_datetime: formData.draw_datetime || null,
+        end_prize: endPrize ? {
+          prizeTemplateId: endPrize.prizeTemplateId,
+          prizeName: endPrize.prizeName,
+          prizeType: endPrize.prizeType,
+          prizeValue: endPrize.prizeValue,
+          prizeImageUrl: endPrize.prizeImageUrl,
+        } : null,
       }
 
       console.log('Submitting competition data:', competitionData)
+
+      let competitionId: string
 
       if (isEditMode && id) {
         // Update existing competition
@@ -211,6 +297,38 @@ export default function CompetitionForm() {
           throw updateError
         }
 
+        competitionId = data.id
+
+        // Update prizes for instant win competitions
+        if (formData.competition_type === 'instant_win' || formData.competition_type === 'instant_win_with_end_prize') {
+          // Delete existing prizes
+          await supabase
+            .from('competition_instant_win_prizes')
+            .delete()
+            .eq('competition_id', competitionId)
+
+          // Insert new prizes
+          if (selectedPrizes.length > 0) {
+            const prizesToInsert = selectedPrizes.map(prize => ({
+              competition_id: competitionId,
+              prize_template_id: prize.prizeTemplateId,
+              prize_code: prize.prizeCode,
+              total_quantity: prize.quantity,
+              remaining_quantity: prize.quantity,
+              tier: prize.tier,
+            }))
+
+            const { error: prizeError } = await supabase
+              .from('competition_instant_win_prizes')
+              .insert(prizesToInsert)
+
+            if (prizeError) {
+              console.error('Error inserting prizes:', prizeError)
+              throw prizeError
+            }
+          }
+        }
+
         navigate(`/admin/dashboard/competitions/${data.id}`)
       } else {
         // Create new competition
@@ -223,6 +341,31 @@ export default function CompetitionForm() {
         if (insertError) {
           console.error('Insert error:', insertError)
           throw insertError
+        }
+
+        competitionId = data.id
+
+        // Insert prizes for instant win competitions
+        if (formData.competition_type === 'instant_win' || formData.competition_type === 'instant_win_with_end_prize') {
+          if (selectedPrizes.length > 0) {
+            const prizesToInsert = selectedPrizes.map(prize => ({
+              competition_id: competitionId,
+              prize_template_id: prize.prizeTemplateId,
+              prize_code: prize.prizeCode,
+              total_quantity: prize.quantity,
+              remaining_quantity: prize.quantity,
+              tier: prize.tier,
+            }))
+
+            const { error: prizeError } = await supabase
+              .from('competition_instant_win_prizes')
+              .insert(prizesToInsert)
+
+            if (prizeError) {
+              console.error('Error inserting prizes:', prizeError)
+              throw prizeError
+            }
+          }
         }
 
         navigate(`/admin/dashboard/competitions/${data.id}`)
@@ -399,15 +542,25 @@ export default function CompetitionForm() {
               <h2 className="text-lg font-semibold mb-4">Dates & Times</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Start Date <span className="text-red-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium">
+                      Start Date <span className="text-red-500">*</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useCurrentStartDate}
+                        onChange={(e) => handleUseCurrentStartDate(e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-xs text-muted-foreground">Use current date/time</span>
+                    </label>
+                  </div>
                   <input
                     type="datetime-local"
                     name="start_datetime"
                     value={formData.start_datetime}
                     onChange={handleInputChange}
-                    min={new Date().toISOString().slice(0, 16)}
                     required
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   />
@@ -422,7 +575,6 @@ export default function CompetitionForm() {
                     name="end_datetime"
                     value={formData.end_datetime}
                     onChange={handleInputChange}
-                    min={new Date().toISOString().slice(0, 16)}
                     required
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   />
@@ -435,7 +587,6 @@ export default function CompetitionForm() {
                     name="draw_datetime"
                     value={formData.draw_datetime}
                     onChange={handleInputChange}
-                    min={new Date().toISOString().slice(0, 16)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
@@ -605,6 +756,144 @@ export default function CompetitionForm() {
               </div>
             </div>
 
+            {/* Instant Win Prizes */}
+            {(formData.competition_type === 'instant_win' || formData.competition_type === 'instant_win_with_end_prize') && (
+              <div className="bg-white border border-border rounded-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-semibold">Instant Win Prizes</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Select prizes from your library that users can win instantly
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPrizeSelectorOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Plus className="size-4" />
+                    Select Prizes
+                  </button>
+                </div>
+
+                {selectedPrizes.length === 0 ? (
+                  <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
+                    <Package className="size-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-muted-foreground mb-3">No instant win prizes selected</p>
+                    <button
+                      type="button"
+                      onClick={() => setPrizeSelectorOpen(true)}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
+                      Select prizes from library
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {selectedPrizes.map((prize, index) => (
+                      <div key={index} className="flex items-center gap-4 p-4 border border-border rounded-lg">
+                        {prize.prizeImageUrl && (
+                          <img
+                            src={prize.prizeImageUrl}
+                            alt={prize.prizeName}
+                            className="size-16 rounded object-cover"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <h4 className="font-medium text-foreground">{prize.prizeName}</h4>
+                          <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                            <span>Code: {prize.prizeCode}</span>
+                            <span>Qty: {prize.quantity}</span>
+                            <span>Tier: {prize.tier}</span>
+                            <span className="font-semibold text-foreground">£{prize.prizeValue.toFixed(2)}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPrizes(selectedPrizes.filter((_, i) => i !== index))}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
+                      <span className="text-sm text-muted-foreground">
+                        {selectedPrizes.length} prize{selectedPrizes.length !== 1 ? 's' : ''} selected
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPrizeSelectorOpen(true)}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        Edit Selection
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* End Prize (only for instant_win_with_end_prize) */}
+            {formData.competition_type === 'instant_win_with_end_prize' && (
+              <div className="bg-white border border-border rounded-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-semibold">End Prize (Grand Prize)</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      The main prize drawn at the end of the competition
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEndPrizeSelectorOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <Plus className="size-4" />
+                    {endPrize ? 'Change Prize' : 'Select Prize'}
+                  </button>
+                </div>
+
+                {!endPrize ? (
+                  <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
+                    <Package className="size-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-muted-foreground mb-3">No end prize selected</p>
+                    <button
+                      type="button"
+                      onClick={() => setEndPrizeSelectorOpen(true)}
+                      className="text-purple-600 hover:text-purple-700 text-sm font-medium"
+                    >
+                      Select end prize
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4 p-4 border-2 border-purple-200 bg-purple-50 rounded-lg">
+                    {endPrize.prizeImageUrl && (
+                      <img
+                        src={endPrize.prizeImageUrl}
+                        alt={endPrize.prizeName}
+                        className="size-20 rounded object-cover"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <h4 className="font-medium text-foreground text-lg">{endPrize.prizeName}</h4>
+                      <div className="flex items-center gap-4 mt-1 text-sm">
+                        <span className="text-muted-foreground">{endPrize.prizeType}</span>
+                        <span className="font-semibold text-purple-700 text-lg">£{endPrize.prizeValue.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEndPrize(null)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Settings */}
             <div className="bg-white border border-border rounded-lg p-6">
               <h2 className="text-lg font-semibold mb-4">Settings</h2>
@@ -667,6 +956,25 @@ export default function CompetitionForm() {
           {loading ? (isEditMode ? 'Updating...' : 'Publishing...') : (isEditMode ? 'Update Competition' : 'Publish Competition')}
         </button>
       </div>
+
+      {/* Prize Selector Dialogs */}
+      <PrizeSelector
+        open={prizeSelectorOpen}
+        onOpenChange={setPrizeSelectorOpen}
+        onSelectPrizes={setSelectedPrizes}
+        existingSelections={selectedPrizes}
+        mode="multiple"
+        title="Select Instant Win Prizes"
+      />
+
+      <PrizeSelector
+        open={endPrizeSelectorOpen}
+        onOpenChange={setEndPrizeSelectorOpen}
+        onSelectPrizes={(prizes) => setEndPrize(prizes[0] || null)}
+        existingSelections={endPrize ? [endPrize] : []}
+        mode="single"
+        title="Select End Prize (Grand Prize)"
+      />
     </>
   )
 }

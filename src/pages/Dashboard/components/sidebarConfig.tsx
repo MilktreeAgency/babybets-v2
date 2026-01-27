@@ -7,7 +7,8 @@ import {
   Tag,
   Award,
   DollarSign,
-  BarChart3
+  BarChart3,
+  Package
 } from 'lucide-react'
 import { ReactNode } from 'react'
 
@@ -48,10 +49,14 @@ export const sidebarConfig: NavGroup[] = [
         icon: <Trophy className="size-4" />,
       },
       {
+        label: 'Prizes',
+        href: '/admin/dashboard/prizes',
+        icon: <Package className="size-4" />,
+      },
+      {
         label: 'Fulfillments',
         href: '/admin/dashboard/fulfillments',
         icon: <Gift className="size-4" />,
-        badge: '3', // Will be dynamic
       },
       {
         label: 'Users',
@@ -72,7 +77,6 @@ export const sidebarConfig: NavGroup[] = [
         label: 'Withdrawals',
         href: '/admin/dashboard/withdrawals',
         icon: <DollarSign className="size-4" />,
-        badge: '2', // Will be dynamic
       },
     ],
   },

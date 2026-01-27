@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext'
+import { ConfirmDialogProvider } from '@/contexts/ConfirmDialogContext'
 
 function DashboardLayoutContent() {
   const { isCollapsed } = useSidebar()
@@ -29,7 +30,9 @@ function DashboardLayoutContent() {
 export default function DashboardLayout() {
   return (
     <SidebarProvider>
-      <DashboardLayoutContent />
+      <ConfirmDialogProvider>
+        <DashboardLayoutContent />
+      </ConfirmDialogProvider>
     </SidebarProvider>
   )
 }

@@ -1,5 +1,9 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useSidebar } from '@/contexts/SidebarContext'
+import { useAuth } from '@/hooks/useAuth'
+import { useConfirm } from '@/contexts/ConfirmDialogContext'
+import { LogOut } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface BreadcrumbItem {
   label: string
@@ -12,6 +16,24 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ breadcrumbs }: DashboardHeaderProps) {
   const { toggleSidebar } = useSidebar()
+  const { logout } = useAuth()
+  const { confirm } = useConfirm()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    const confirmed = await confirm({
+      title: 'Are you sure you want to logout?',
+      description: 'You will be redirected to the login page and will need to sign in again to access your dashboard.',
+      confirmText: 'Logout',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+    })
+
+    if (confirmed) {
+      await logout()
+      navigate('/login')
+    }
+  }
 
   return (
     <div className="flex h-14 items-center gap-3 px-4 text-sm text-muted-foreground border-b border-border">
@@ -158,20 +180,16 @@ export function DashboardHeader({ breadcrumbs }: DashboardHeaderProps) {
 
       {/* Actions */}
       <div className="ml-auto flex items-center gap-2">
-        {/* Feedback Button */}
-        <button
-          type="button"
-          className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-muted/50 px-2.5 py-1.5 text-sm text-muted-foreground ring-1 ring-inset ring-border/50 transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
-          tabIndex={0}
+        {/* Logout Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-2"
+          onClick={handleLogout}
         >
-          <span>Feedback</span>
-          <kbd
-            data-slot="kbd"
-            className="pointer-events-none inline-flex h-5 min-w-5 items-center justify-center gap-1 rounded bg-muted px-1 font-sans text-xs font-medium text-muted-foreground select-none [&_svg:not([class*='size-'])]:size-3"
-          >
-            F
-          </kbd>
-        </button>
+          <LogOut className="size-4" />
+          <span className="hidden md:inline">Logout</span>
+        </Button>
       </div>
     </div>
   )

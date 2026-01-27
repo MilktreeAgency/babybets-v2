@@ -17,7 +17,21 @@ import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
 
 type Competition = Database['public']['Tables']['competitions']['Row']
-type InstantWinPrize = Database['public']['Tables']['instant_win_prizes']['Row']
+
+interface InstantWinPrize {
+  id: string
+  competition_id: string
+  prize_code: string
+  name: string
+  short_name: string | null
+  type: string
+  value_gbp: number
+  cash_alternative_gbp: number | null
+  total_quantity: number
+  remaining_quantity: number
+  image_url: string | null
+  tier: number
+}
 
 interface CompetitionStats {
   total_revenue: number
@@ -70,12 +84,42 @@ export default function CompetitionDetail() {
         compData.competition_type === 'instant_win_with_end_prize'
       ) {
         const { data: prizes, error: prizesError } = await supabase
-          .from('instant_win_prizes')
-          .select('*')
+          .from('competition_instant_win_prizes')
+          .select(`
+            *,
+            prize_templates (
+              id,
+              name,
+              short_name,
+              type,
+              value_gbp,
+              cash_alternative_gbp,
+              image_url
+            )
+          `)
           .eq('competition_id', id)
+          .order('tier', { ascending: true })
 
         if (!prizesError && prizes) {
-          setInstantWinPrizes(prizes)
+          // Map the joined data to the expected format
+          const mappedPrizes = prizes.map((p: Record<string, unknown>) => {
+            const template = p.prize_templates as Record<string, unknown>
+            return {
+              id: p.id,
+              competition_id: p.competition_id,
+              prize_code: p.prize_code,
+              name: template.name,
+              short_name: template.short_name,
+              type: template.type,
+              value_gbp: template.value_gbp,
+              cash_alternative_gbp: template.cash_alternative_gbp,
+              total_quantity: p.total_quantity,
+              remaining_quantity: p.remaining_quantity,
+              image_url: template.image_url,
+              tier: p.tier,
+            }
+          })
+          setInstantWinPrizes(mappedPrizes as InstantWinPrize[])
         }
       }
     } catch (error) {

@@ -19,12 +19,6 @@ export function SidebarFooter() {
             >
               Home
             </button>
-            <button
-              type="button"
-              className="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground/70 hover:text-foreground hover:bg-accent/50 transition-all duration-150 cursor-pointer"
-            >
-              Help
-            </button>
           </div>
         )}
         <button
