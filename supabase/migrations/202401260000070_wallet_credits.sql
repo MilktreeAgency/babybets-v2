@@ -1,7 +1,7 @@
 -- ============================================
 -- TABLE: wallet_credits
 -- Description: User wallet credits (site credit)
--- Dependencies: profiles, competitions, ticket_allocations, instant_win_prizes, orders
+-- Dependencies: profiles, competitions, ticket_allocations, competition_instant_win_prizes, orders
 -- ============================================
 
 CREATE TABLE public.wallet_credits (
@@ -18,7 +18,7 @@ CREATE TABLE public.wallet_credits (
   source_competition_id UUID REFERENCES public.competitions(id),
   source_ticket_id UUID REFERENCES public.ticket_allocations(id),
   source_order_id UUID REFERENCES public.orders(id),
-  source_prize_id UUID REFERENCES public.instant_win_prizes(id),
+  source_prize_id UUID,  -- FK added in migration 157
 
   -- Description
   description TEXT NOT NULL,

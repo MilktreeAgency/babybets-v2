@@ -6,7 +6,8 @@
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.competitions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.instant_win_prizes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.prize_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.competition_instant_win_prizes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ticket_allocations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
@@ -22,7 +23,8 @@ ALTER TABLE public.email_notifications ENABLE ROW LEVEL SECURITY;
 
 COMMENT ON TABLE public.profiles IS 'RLS enabled - Users can only see/edit their own profile, admins can see all';
 COMMENT ON TABLE public.competitions IS 'RLS enabled - Public can view active, admins can manage all';
-COMMENT ON TABLE public.instant_win_prizes IS 'RLS enabled - Public can view for active competitions, admins can manage all';
+COMMENT ON TABLE public.prize_templates IS 'RLS enabled - Public can view active prizes, admins can manage all';
+COMMENT ON TABLE public.competition_instant_win_prizes IS 'RLS enabled - Public can view for active competitions, admins can manage all';
 COMMENT ON TABLE public.ticket_allocations IS 'RLS enabled - Users can only see their own tickets, admins can see all';
 COMMENT ON TABLE public.orders IS 'RLS enabled - Users can only see their own orders, admins/influencers have special access';
 COMMENT ON TABLE public.order_items IS 'RLS enabled - Access follows parent order policies';

@@ -1,14 +1,14 @@
 -- ============================================
 -- TABLE: prize_fulfillments
 -- Description: Prize fulfillment tracking and delivery
--- Dependencies: profiles, ticket_allocations, instant_win_prizes, competitions
+-- Dependencies: profiles, ticket_allocations, competition_instant_win_prizes, competitions
 -- ============================================
 
 CREATE TABLE public.prize_fulfillments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.profiles(id),
   ticket_id UUID NOT NULL REFERENCES public.ticket_allocations(id),
-  prize_id UUID NOT NULL REFERENCES public.instant_win_prizes(id),
+  prize_id UUID NOT NULL,  -- FK added in migration 157
   competition_id UUID NOT NULL REFERENCES public.competitions(id),
 
   -- Status

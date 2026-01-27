@@ -1,7 +1,7 @@
 -- ============================================
 -- TABLE: ticket_allocations
 -- Description: Pre-generated ticket pool with prize allocations
--- Dependencies: competitions, instant_win_prizes, profiles
+-- Dependencies: competitions, competition_instant_win_prizes, profiles
 -- ============================================
 
 CREATE TABLE public.ticket_allocations (
@@ -10,7 +10,7 @@ CREATE TABLE public.ticket_allocations (
   ticket_number TEXT NOT NULL,
 
   -- Prize allocation (null = no instant win)
-  prize_id UUID REFERENCES public.instant_win_prizes(id),
+  prize_id UUID,  -- FK added in migration 157
 
   -- Claim tracking
   is_sold BOOLEAN DEFAULT false,
@@ -46,5 +46,5 @@ CREATE INDEX idx_ticket_allocations_unrevealed ON public.ticket_allocations(sold
 
 COMMENT ON TABLE public.ticket_allocations IS 'Pre-generated ticket pool with instant win prize allocations';
 COMMENT ON COLUMN public.ticket_allocations.ticket_number IS '7-digit unique ticket code';
-COMMENT ON COLUMN public.ticket_allocations.prize_id IS 'Reference to instant win prize (null = no instant win)';
+COMMENT ON COLUMN public.ticket_allocations.prize_id IS 'Reference to competition instant win prize (null = no instant win)';
 COMMENT ON COLUMN public.ticket_allocations.is_revealed IS 'True when user has revealed/scratched the ticket';

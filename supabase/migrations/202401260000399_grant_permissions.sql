@@ -9,7 +9,8 @@
 
 GRANT ALL ON public.profiles TO authenticated;
 GRANT ALL ON public.competitions TO authenticated;
-GRANT ALL ON public.instant_win_prizes TO authenticated;
+GRANT ALL ON public.prize_templates TO authenticated;
+GRANT ALL ON public.competition_instant_win_prizes TO authenticated;
 GRANT ALL ON public.ticket_allocations TO authenticated;
 GRANT ALL ON public.orders TO authenticated;
 GRANT ALL ON public.order_items TO authenticated;
