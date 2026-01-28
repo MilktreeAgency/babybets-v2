@@ -126,11 +126,30 @@ function Checkout() {
 
       if (itemsError) throw itemsError
 
-      // Trigger G2Pay payment with order ID as clientUniqueId
+      // If fully paid with wallet credit, complete order immediately
+      if (finalPrice === 0) {
+        // Complete order with wallet payment
+        const { error: completeError } = await supabase.rpc('complete_order_with_wallet', {
+          p_order_id: order.id,
+          p_user_id: user?.id,
+        })
+
+        if (completeError) {
+          console.error('Error completing wallet order:', completeError)
+          throw new Error('Failed to process wallet payment')
+        }
+
+        // Clear cart and redirect
+        clearCart()
+        navigate(`/payment/success?orderId=${order.id}`)
+        return
+      }
+
+      // Otherwise, trigger G2Pay payment with order ID as clientUniqueId
       ;(window as any).SafeCharge.payment({
         sessionToken,
         merchantId: G2PAY_CONFIG.merchantId,
-        amount: totalPrice.toFixed(2),
+        amount: finalPrice.toFixed(2),
         currency: 'GBP',
         clientUniqueId: order.id, // Use order ID for webhook matching
         userTokenId: user?.id,
@@ -141,6 +160,15 @@ function Checkout() {
         },
         callback: async (response: any) => {
           if (response.result === 'APPROVED') {
+            // Deduct wallet credits if any were applied
+            if (creditPence > 0) {
+              await supabase.rpc('debit_wallet_credits', {
+                p_user_id: user?.id,
+                p_amount_pence: creditPence,
+                p_description: `Order #${order.id.slice(0, 8)}`,
+              })
+            }
+
             // Clear cart immediately
             clearCart()
 
