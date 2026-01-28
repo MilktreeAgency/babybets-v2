@@ -271,8 +271,7 @@ export default function Withdrawals() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-semibold flex items-center gap-2">
-                <DollarSign className="size-6 text-green-600" />
+              <h1 className="text-2xl font-semibold">
                 Withdrawal Requests
               </h1>
               <p className="text-muted-foreground mt-1">
