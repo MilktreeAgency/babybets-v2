@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Heart, Sparkles } from 'lucide-react'
+import { ArrowRight, Heart } from 'lucide-react'
 
 export default function MeetPartnerSection() {
   return (
