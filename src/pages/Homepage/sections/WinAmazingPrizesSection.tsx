@@ -27,8 +27,8 @@ export default function WinAmazingPrizesSection() {
       <div className="max-w-[1300px] mx-auto">
         {/* Headline */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6" style={{ fontFamily: "'Baloo Chettan 2', sans-serif", color: '#000000' }}>
-            Win amazing prizes<br />
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 max-w-6xl mx-auto" style={{ fontFamily: "'Baloo Chettan 2', sans-serif", color: '#000000' }}>
+            Win amazing prizes
             at unbeatable odds
           </h2>
           <p className="text-lg max-w-2xl mx-auto" style={{ color: '#666666' }}>
