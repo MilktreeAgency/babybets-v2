@@ -17,7 +17,7 @@ type Winner = Database['public']['Tables']['winners']['Row']
 interface WinnerWithDetails extends Winner {
   competition_title?: string
   user_email?: string
-  fulfillment_status?: string
+  fulfillment_status?: string | null
 }
 
 export default function Winners() {
@@ -56,8 +56,7 @@ export default function Winners() {
         .select(`
           *,
           competition:competitions(title),
-          user:profiles(email),
-          fulfillment:prize_fulfillments(status)
+          user:profiles(email)
         `)
         .order('won_at', { ascending: false })
 
@@ -69,12 +68,34 @@ export default function Winners() {
 
       if (error) throw error
 
+      // Fetch prize fulfillments separately
+      const ticketIds = (data || [])
+        .map((winner) => winner.ticket_id)
+        .filter((id): id is string => !!id)
+
+      let fulfillments: Record<string, string | null | undefined> = {}
+      if (ticketIds.length > 0) {
+        const { data: fulfillmentData } = await supabase
+          .from('prize_fulfillments')
+          .select('ticket_id, status')
+          .in('ticket_id', ticketIds)
+
+        fulfillments =
+          fulfillmentData?.reduce(
+            (acc, f) => ({
+              ...acc,
+              [f.ticket_id]: f.status,
+            }),
+            {} as Record<string, string | null | undefined>
+          ) || {}
+      }
+
       // Transform data
       const transformedData = (data || []).map((winner) => ({
         ...winner,
         competition_title: (winner.competition as unknown as { title: string })?.title,
         user_email: (winner.user as unknown as { email: string })?.email,
-        fulfillment_status: (winner.fulfillment as unknown as { status: string })?.status,
+        fulfillment_status: winner.ticket_id ? fulfillments[winner.ticket_id] : undefined,
       }))
 
       // Apply status filter
@@ -111,7 +132,7 @@ export default function Winners() {
     )
   })
 
-  const getFulfillmentBadge = (status?: string) => {
+  const getFulfillmentBadge = (status?: string | null) => {
     const badges: Record<string, { label: string; color: string }> = {
       pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800' },
       prize_selected: { label: 'Prize Selected', color: 'bg-blue-100 text-blue-800' },

@@ -18,7 +18,7 @@ import CompetitionDetail from './pages/Dashboard/CompetitionDetail'
 import Prizes from './pages/Dashboard/Prizes/Prizes'
 import Users, { UserDetail } from './pages/Dashboard/Users'
 import PromoCodes from './pages/Dashboard/PromoCodes'
-import Winners from './pages/Dashboard/Winners'
+import Winners, { WinnerDetail } from './pages/Dashboard/Winners'
 import Fulfillments from './pages/Dashboard/Fulfillments'
 import Withdrawals from './pages/Dashboard/Withdrawals'
 import { DashboardLayout } from './pages/Dashboard/components'
@@ -59,6 +59,7 @@ function App() {
           <Route path="users/:id" element={<UserDetail />} />
           <Route path="promo-codes" element={<PromoCodes />} />
           <Route path="winners" element={<Winners />} />
+          <Route path="winners/:id" element={<WinnerDetail />} />
           <Route path="fulfillments" element={<Fulfillments />} />
           <Route path="withdrawals" element={<Withdrawals />} />
           <Route path="settings" element={<Settings />} />
