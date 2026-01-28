@@ -1,4 +1,4 @@
-import { Database } from './database.types'
+import type { Database } from './database.types'
 
 // Extend the database types with our custom RPC functions
 export interface CustomDatabase extends Database {

@@ -72,9 +72,9 @@ export default function Winners() {
       // Transform data
       const transformedData = (data || []).map((winner) => ({
         ...winner,
-        competition_title: winner.competition?.title,
-        user_email: winner.user?.email,
-        fulfillment_status: winner.fulfillment?.status,
+        competition_title: (winner.competition as unknown as { title: string })?.title,
+        user_email: (winner.user as unknown as { email: string })?.email,
+        fulfillment_status: (winner.fulfillment as unknown as { status: string })?.status,
       }))
 
       // Apply status filter

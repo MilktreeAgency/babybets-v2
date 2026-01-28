@@ -10,7 +10,7 @@ import {
   BarChart3,
   Package
 } from 'lucide-react'
-import { ReactNode } from 'react'
+import { type ReactNode } from 'react'
 
 export interface NavItem {
   label: string

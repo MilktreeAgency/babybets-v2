@@ -70,7 +70,7 @@ export function UserDetailDialog({ user, open, onOpenChange, onUserUpdated }: Us
         .limit(5)
 
       if (error) throw error
-      setRecentOrders(data || [])
+      setRecentOrders((data as Order[]) || [])
     } catch (error) {
       console.error('Error loading orders:', error)
     } finally {
@@ -90,7 +90,7 @@ export function UserDetailDialog({ user, open, onOpenChange, onUserUpdated }: Us
         .limit(5)
 
       if (error) throw error
-      setRecentTransactions(data || [])
+      setRecentTransactions((data as WalletTransaction[]) || [])
     } catch (error) {
       console.error('Error loading transactions:', error)
     } finally {
@@ -277,7 +277,7 @@ export function UserDetailDialog({ user, open, onOpenChange, onUserUpdated }: Us
                     <div>
                       <div className="font-medium">Order #{order.id.slice(0, 8)}</div>
                       <div className="text-xs text-muted-foreground">
-                        {new Date(order.created_at).toLocaleDateString('en-GB')}
+                        {new Date(order.created_at!).toLocaleDateString('en-GB')}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -323,7 +323,7 @@ export function UserDetailDialog({ user, open, onOpenChange, onUserUpdated }: Us
                         {Math.abs(transaction.amount_pence / 100).toFixed(2)}
                       </span>
                       <div className="text-xs text-muted-foreground w-20 text-right">
-                        {new Date(transaction.created_at).toLocaleDateString('en-GB')}
+                        {new Date(transaction.created_at!).toLocaleDateString('en-GB')}
                       </div>
                     </div>
                   </div>

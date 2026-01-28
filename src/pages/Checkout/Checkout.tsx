@@ -98,11 +98,14 @@ function Checkout() {
       const creditPence = Math.round(appliedCredit * 100)
       const finalPence = Math.round(finalPrice * 100)
 
+      // Ensure user is authenticated
+      if (!user?.id) throw new Error('User not authenticated')
+
       // Create order in database
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
-          user_id: user?.id,
+          user_id: user.id,
           subtotal_pence: totalPence,
           credit_applied_pence: creditPence,
           total_pence: finalPence,
@@ -131,7 +134,7 @@ function Checkout() {
         // Complete order with wallet payment
         const { error: completeError } = await supabase.rpc('complete_order_with_wallet', {
           p_order_id: order.id,
-          p_user_id: user?.id,
+          p_user_id: user.id,
         })
 
         if (completeError) {
@@ -152,10 +155,10 @@ function Checkout() {
         amount: finalPrice.toFixed(2),
         currency: 'GBP',
         clientUniqueId: order.id, // Use order ID for webhook matching
-        userTokenId: user?.id,
-        cardHolderName: `${user?.first_name || ''} ${user?.last_name || ''}`.trim(),
+        userTokenId: user.id,
+        cardHolderName: user.email || '',
         billingAddress: {
-          email: user?.email,
+          email: user.email,
           country: 'GB',
         },
         callback: async (response: any) => {
@@ -163,7 +166,7 @@ function Checkout() {
             // Deduct wallet credits if any were applied
             if (creditPence > 0) {
               await supabase.rpc('debit_wallet_credits', {
-                p_user_id: user?.id,
+                p_user_id: user.id,
                 p_amount_pence: creditPence,
                 p_description: `Order #${order.id.slice(0, 8)}`,
               })

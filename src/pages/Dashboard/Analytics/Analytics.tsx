@@ -126,7 +126,7 @@ export default function Analytics() {
 
       // Get revenue data for chart (grouped by day)
       const revenueByDay = (ordersData || []).reduce((acc: Record<string, number>, order) => {
-        const date = new Date(order.created_at).toLocaleDateString('en-GB')
+        const date = new Date(order.created_at!).toLocaleDateString('en-GB')
         acc[date] = (acc[date] || 0) + order.total_pence
         return acc
       }, {})

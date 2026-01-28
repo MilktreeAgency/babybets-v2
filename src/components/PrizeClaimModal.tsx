@@ -20,11 +20,15 @@ export function PrizeClaimModal({ isOpen, onClose, prize, ticketId, onClaimed }:
   const handleSubmit = async () => {
     setIsSubmitting(true)
     try {
+      // Get user ID
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user?.id) throw new Error('User not found')
+
       // Update prize fulfillment with user's choice
       const { error } = await supabase.from('prize_fulfillments').upsert({
         ticket_id: ticketId,
         prize_id: prize.id,
-        user_id: (await supabase.auth.getUser()).data.user?.id,
+        user_id: user.id,
         competition_id: prize.competition_id,
         choice: selectedChoice,
         value_pence: selectedChoice === 'cash'

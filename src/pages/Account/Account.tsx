@@ -283,7 +283,7 @@ function Account() {
                                 </p>
                                 <p className="text-sm mt-1" style={{ color: '#666' }}>
                                   Ticket #{ticket.ticket_number} • Purchased on{' '}
-                                  {ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : 'N/A'}
+                                  {ticket.created_at ? new Date(ticket.created_at!).toLocaleDateString() : 'N/A'}
                                 </p>
                               </div>
                             ))}
@@ -312,7 +312,7 @@ function Account() {
                                 </p>
                                 <p className="text-sm mt-1" style={{ color: '#666' }}>
                                   Ticket #{ticket.ticket_number} • Purchased on{' '}
-                                  {ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : 'N/A'}
+                                  {ticket.created_at ? new Date(ticket.created_at!).toLocaleDateString() : 'N/A'}
                                 </p>
                               </div>
                             ))}
@@ -455,7 +455,7 @@ function Account() {
                                 {transaction.description}
                               </p>
                               <p className="text-xs" style={{ color: '#666' }}>
-                                {new Date(transaction.created_at).toLocaleString()}
+                                {new Date(transaction.created_at!).toLocaleString()}
                               </p>
                             </div>
                             <div className="text-right">

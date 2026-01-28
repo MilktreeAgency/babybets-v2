@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import Header from '@/components/common/Header'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
-import { Trophy, Clock, Ticket, Plus, Minus, Share2, ArrowLeft } from 'lucide-react'
+import { Trophy, Clock, Plus, Minus, Share2, ArrowLeft } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 
 type Competition = Database['public']['Tables']['competitions']['Row']
@@ -31,6 +31,8 @@ function CompetitionEntry() {
   const loadCompetition = async () => {
     try {
       setLoading(true)
+      if (!slug) throw new Error('No competition slug provided')
+
       const { data, error } = await supabase
         .from('competitions')
         .select('*')
@@ -43,7 +45,7 @@ function CompetitionEntry() {
 
       // Load tiered pricing if available
       if (data.tiered_pricing && Array.isArray(data.tiered_pricing)) {
-        setTieredPricing(data.tiered_pricing as TieredPrice[])
+        setTieredPricing(data.tiered_pricing as unknown as TieredPrice[])
       }
     } catch (error) {
       console.error('Error loading competition:', error)
@@ -89,7 +91,7 @@ function CompetitionEntry() {
   }, [quantity, competition, tieredPricing])
 
   const getProgressPercentage = () => {
-    if (!competition || competition.max_tickets === 0) return 0
+    if (!competition || competition.max_tickets === 0 || competition.tickets_sold === null) return 0
     return Math.min((competition.tickets_sold / competition.max_tickets) * 100, 100)
   }
 
@@ -104,9 +106,11 @@ function CompetitionEntry() {
 
   const maxPurchase = useMemo(() => {
     if (!competition) return 100
+    const ticketsSold = competition.tickets_sold || 0
+    const maxPerUser = competition.max_tickets_per_user || competition.max_tickets
     return Math.min(
-      competition.max_tickets - competition.tickets_sold,
-      competition.max_tickets_per_user
+      competition.max_tickets - ticketsSold,
+      maxPerUser
     )
   }, [competition])
 
@@ -190,7 +194,7 @@ function CompetitionEntry() {
     )
   }
 
-  const ticketsRemaining = competition.max_tickets - competition.tickets_sold
+  const ticketsRemaining = competition.max_tickets - (competition.tickets_sold || 0)
 
   // Use first image from images array, or fallback to image_url
   const images = (competition.images as string[]) || []
@@ -296,7 +300,7 @@ function CompetitionEntry() {
                 <div className="flex justify-between text-sm font-bold mb-2">
                   <span>Tickets Sold</span>
                   <span>
-                    {competition.tickets_sold.toLocaleString()} / {competition.max_tickets.toLocaleString()}
+                    {(competition.tickets_sold || 0).toLocaleString()} / {competition.max_tickets.toLocaleString()}
                   </span>
                 </div>
                 <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">

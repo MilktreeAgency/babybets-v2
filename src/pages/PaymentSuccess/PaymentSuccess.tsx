@@ -46,7 +46,7 @@ function PaymentSuccess() {
           )
         `
         )
-        .eq('id', orderId)
+        .eq('id', orderId!)
         .single()
 
       if (error) throw error

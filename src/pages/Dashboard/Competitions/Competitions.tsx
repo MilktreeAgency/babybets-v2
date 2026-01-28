@@ -34,11 +34,11 @@ export default function Competitions() {
         .order('created_at', { ascending: false })
 
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter)
+        query = query.eq('status', statusFilter as Database['public']['Enums']['competition_status'])
       }
 
       if (categoryFilter !== 'all') {
-        query = query.eq('category', categoryFilter)
+        query = query.eq('category', categoryFilter as Database['public']['Enums']['competition_category'])
       }
 
       const { data, error } = await query
@@ -218,20 +218,20 @@ export default function Competitions() {
                         <td className="px-6 py-4">
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(
-                              competition.status
+                              competition.status || ''
                             )}`}
                           >
-                            {competition.status.replace(/_/g, ' ')}
+                            {(competition.status || '').replace(/_/g, ' ')}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-foreground">
-                          {competition.tickets_sold.toLocaleString()} /{' '}
+                          {(competition.tickets_sold || 0).toLocaleString()} /{' '}
                           {competition.max_tickets.toLocaleString()}
                           <div className="mt-1 w-24 bg-gray-200 rounded-full h-1.5">
                             <div
                               className="bg-blue-600 h-1.5 rounded-full"
                               style={{
-                                width: `${(competition.tickets_sold / competition.max_tickets) * 100}%`,
+                                width: `${((competition.tickets_sold || 0) / competition.max_tickets) * 100}%`,
                               }}
                             ></div>
                           </div>

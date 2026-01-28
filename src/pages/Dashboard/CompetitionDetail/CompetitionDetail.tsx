@@ -7,11 +7,9 @@ import {
   Play,
   Pause,
   Trophy,
-  TrendingUp,
   Users,
   DollarSign,
   Calendar,
-  Package,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
@@ -135,12 +133,12 @@ export default function CompetitionDetail() {
     try {
       const { error } = await supabase
         .from('competitions')
-        .update({ status: newStatus })
+        .update({ status: newStatus as Database['public']['Enums']['competition_status'] })
         .eq('id', competition.id)
 
       if (error) throw error
 
-      setCompetition({ ...competition, status: newStatus })
+      setCompetition({ ...competition, status: newStatus as Database['public']['Enums']['competition_status'] })
     } catch (error) {
       console.error('Error updating status:', error)
       alert('Failed to update competition status')
@@ -242,10 +240,10 @@ export default function CompetitionDetail() {
                 <h1 className="text-2xl font-semibold">{competition.title}</h1>
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(
-                    competition.status
+                    competition.status!
                   )}`}
                 >
-                  {competition.status.replace(/_/g, ' ')}
+                  {(competition.status || '').replace(/_/g, ' ')}
                 </span>
                 {competition.is_featured && (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -253,7 +251,7 @@ export default function CompetitionDetail() {
                   </span>
                 )}
               </div>
-              <p className="text-muted-foreground">{competition.category} • {competition.competition_type.replace(/_/g, ' ')}</p>
+              <p className="text-muted-foreground">{competition.category} • {(competition.competition_type || '').replace(/_/g, ' ')}</p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -302,7 +300,7 @@ export default function CompetitionDetail() {
                 <div>
                   <p className="text-sm text-muted-foreground">Tickets Sold</p>
                   <p className="text-xl font-semibold">
-                    {competition.tickets_sold.toLocaleString()} / {competition.max_tickets.toLocaleString()}
+                    {(competition.tickets_sold || 0).toLocaleString()} / {competition.max_tickets.toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -402,17 +400,17 @@ export default function CompetitionDetail() {
                         <div>
                           <p className="font-medium">{prize.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            £{(prize.value_pence / 100).toFixed(2)} • {prize.win_probability}% win chance
+                            £{prize.value_gbp.toFixed(2)} • Tier {prize.tier}
                           </p>
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium">
-                            {prize.claimed_count} / {prize.quantity} claimed
+                            {prize.total_quantity - prize.remaining_quantity} / {prize.total_quantity} claimed
                           </p>
                           <div className="mt-1 w-24 bg-gray-200 rounded-full h-1.5">
                             <div
                               className="bg-green-600 h-1.5 rounded-full"
-                              style={{ width: `${(prize.claimed_count / prize.quantity) * 100}%` }}
+                              style={{ width: `${((prize.total_quantity - prize.remaining_quantity) / prize.total_quantity) * 100}%` }}
                             ></div>
                           </div>
                         </div>
@@ -508,7 +506,7 @@ export default function CompetitionDetail() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Max per user</span>
-                    <span className="font-medium">{competition.max_tickets_per_user}</span>
+                    <span className="font-medium">{competition.max_tickets_per_user || 0}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Show on homepage</span>

@@ -54,7 +54,7 @@ export default function Users() {
         .order('created_at', { ascending: false })
 
       if (roleFilter !== 'all') {
-        query = query.eq('role', roleFilter)
+        query = query.eq('role', roleFilter as UserRole)
       }
 
       const { data, error } = await query

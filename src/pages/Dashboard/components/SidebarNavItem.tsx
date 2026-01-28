@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useSidebar } from '@/contexts/SidebarContext'
-import { ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 interface SidebarNavItemProps {

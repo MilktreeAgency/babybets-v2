@@ -11,7 +11,6 @@ import {
   MapPin,
   Calendar,
   User,
-  Eye,
   Download,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -71,7 +70,7 @@ export default function Fulfillments() {
         .order('created_at', { ascending: false })
 
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter)
+        query = query.eq('status', statusFilter as FulfillmentStatus)
       }
 
       if (choiceFilter !== 'all') {
@@ -86,7 +85,7 @@ export default function Fulfillments() {
       const transformedData = (data || []).map((fulfillment) => {
         const user = fulfillment.user as { first_name?: string; last_name?: string; email: string } | null
         const competition = fulfillment.competition as { title: string } | null
-        const winner = fulfillment.winner as { prize_name: string; prize_value_gbp?: number; win_type?: string } | null
+        const winner = fulfillment.winner as unknown as { prize_name: string; prize_value_gbp?: number; win_type?: string } | null
 
         return {
           ...fulfillment,

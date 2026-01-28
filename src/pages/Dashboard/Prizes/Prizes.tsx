@@ -44,7 +44,7 @@ export default function Prizes() {
       }
 
       if (typeFilter !== 'all') {
-        query = query.eq('type', typeFilter)
+        query = query.eq('type', typeFilter as PrizeType)
       }
 
       const { data, error } = await query

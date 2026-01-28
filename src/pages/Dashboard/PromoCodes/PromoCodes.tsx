@@ -44,7 +44,7 @@ export default function PromoCodes() {
       }
 
       if (typeFilter !== 'all') {
-        query = query.eq('type', typeFilter)
+        query = query.eq('type', typeFilter as PromoCodeType)
       }
 
       const { data, error } = await query

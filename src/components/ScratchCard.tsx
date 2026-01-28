@@ -11,7 +11,7 @@ interface ScratchCardProps {
 }
 
 export function ScratchCard({ ticket, onReveal, disabled }: ScratchCardProps) {
-  const [isScratching, setIsScratching] = useState(false)
+  const [, setIsScratching] = useState(false)
   const [scratchProgress, setScratchProgress] = useState(0)
   const [isRevealed, setIsRevealed] = useState(ticket.is_revealed || false)
   const [isRevealing, setIsRevealing] = useState(false)

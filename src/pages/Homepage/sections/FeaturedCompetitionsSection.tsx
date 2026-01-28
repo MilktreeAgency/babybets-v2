@@ -54,7 +54,10 @@ export default function FeaturedCompetitionsSection() {
             {/* Competitions Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {competitions.map((competition) => (
-                <CompetitionCard key={competition.id} competition={competition} />
+                <CompetitionCard key={competition.id} competition={{
+                  ...competition,
+                  images: (competition.images as string[]) || []
+                }} />
               ))}
             </div>
 

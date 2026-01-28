@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { Competition } from '@/types'
+import type { Competition, Database } from '@/types'
 
 interface UseCompetitionsOptions {
   category?: string
@@ -29,13 +29,13 @@ export function useCompetitions(options: UseCompetitionsOptions = {}): UseCompet
       let query = supabase
         .from('competitions')
         .select('*')
-        .eq('status', 'active')
+        .eq('status', 'active' as Database['public']['Enums']['competition_status'])
         .order('is_featured', { ascending: false })
         .order('end_datetime', { ascending: true })
 
       // Apply filters
       if (options.category) {
-        query = query.eq('category', options.category)
+        query = query.eq('category', options.category as Database['public']['Enums']['competition_category'])
       }
 
       if (options.featured !== undefined) {

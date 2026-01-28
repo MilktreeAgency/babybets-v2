@@ -69,6 +69,7 @@ export default function UserDetail() {
   }, [id])
 
   const loadUser = async () => {
+    if (!id) return
     try {
       setLoading(true)
       const { data, error } = await supabase
@@ -138,7 +139,7 @@ export default function UserDetail() {
         .limit(10)
 
       if (error) throw error
-      setRecentOrders(data || [])
+      setRecentOrders((data as Order[]) || [])
     } catch (error) {
       console.error('Error loading orders:', error)
     } finally {
@@ -158,7 +159,7 @@ export default function UserDetail() {
         .limit(10)
 
       if (error) throw error
-      setRecentTransactions(data || [])
+      setRecentTransactions((data as WalletTransaction[]) || [])
     } catch (error) {
       console.error('Error loading transactions:', error)
     } finally {
@@ -540,7 +541,7 @@ export default function UserDetail() {
                       <tr key={order.id} className="hover:bg-gray-50">
                         <td className="py-3 px-4 text-sm font-mono">#{order.id.slice(0, 8)}</td>
                         <td className="py-3 px-4 text-sm">
-                          {new Date(order.created_at).toLocaleDateString('en-GB')}
+                          {new Date(order.created_at!).toLocaleDateString('en-GB')}
                         </td>
                         <td className="py-3 px-4 text-sm text-right font-medium">
                           £{(order.total_pence / 100).toFixed(2)}
@@ -601,7 +602,7 @@ export default function UserDetail() {
                           {transaction.description}
                         </td>
                         <td className="py-3 px-4 text-sm">
-                          {new Date(transaction.created_at).toLocaleDateString('en-GB')}
+                          {new Date(transaction.created_at!).toLocaleDateString('en-GB')}
                         </td>
                         <td className="py-3 px-4 text-sm text-right">
                           <span className={`font-medium ${getTransactionColor(transaction.type)}`}>

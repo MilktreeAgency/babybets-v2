@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from 'react'
+import { useState, type FormEvent, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { DashboardHeader } from '../components'
 import { ArrowLeft, Plus, Trash2, Package } from 'lucide-react'
@@ -14,8 +14,6 @@ import {
 import { useSidebar } from '@/contexts/SidebarContext'
 import { PrizeSelector, type SelectedPrize } from '@/components/PrizeSelector'
 import { MultiImageUpload } from '@/components/MultiImageUpload'
-
-type CompetitionInsert = Database['public']['Tables']['competitions']['Insert']
 
 interface TieredPrice {
   minQty: number
@@ -105,7 +103,7 @@ export default function CompetitionForm() {
           end_datetime: formatDateTime(data.end_datetime),
           draw_datetime: formatDateTime(data.draw_datetime),
           max_tickets: data.max_tickets,
-          max_tickets_per_user: data.max_tickets_per_user,
+          max_tickets_per_user: data.max_tickets_per_user || 100,
           base_ticket_price_pence: data.base_ticket_price_pence,
           total_value_gbp: data.total_value_gbp,
           retail_value_gbp: data.retail_value_gbp || 0,
@@ -114,7 +112,7 @@ export default function CompetitionForm() {
         })
 
         if (data.tiered_pricing && Array.isArray(data.tiered_pricing)) {
-          setTieredPricing(data.tiered_pricing as TieredPrice[])
+          setTieredPricing(data.tiered_pricing as unknown as TieredPrice[])
         }
 
         // Load competition prizes
@@ -244,8 +242,6 @@ export default function CompetitionForm() {
       formData.slug.trim() !== '' &&
       formData.description.trim() !== '' &&
       (formData.images.length > 0 || formData.image_url.trim() !== '') &&
-      formData.category !== '' &&
-      formData.competition_type !== '' &&
       formData.start_datetime !== '' &&
       formData.end_datetime !== '' &&
       formData.max_tickets > 0 &&
