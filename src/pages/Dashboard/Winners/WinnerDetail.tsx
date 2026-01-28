@@ -37,8 +37,6 @@ import {
   Upload,
   Image as ImageIcon,
   Send,
-  Check,
-  X,
   Wallet,
 } from 'lucide-react'
 
@@ -129,8 +127,7 @@ export default function WinnerDetail() {
       // Fetch draw information if this is an end prize
       let drawData = null
       if (data.win_type === 'end_prize' && data.ticket_id) {
-        const { data: draw } = await supabase
-          .from('draws')
+        const { data: draw } = await (supabase.from as (table: string) => ReturnType<typeof supabase.from>)('draws')
           .select('id, winner_index, verification_hash, executed_at, random_source')
           .eq('winning_ticket_id', data.ticket_id)
           .single()
@@ -142,8 +139,8 @@ export default function WinnerDetail() {
         ...data,
         competition: data.competition as WinnerWithDetails['competition'],
         user: data.user as WinnerWithDetails['user'],
-        ticket: data.ticket as WinnerWithDetails['ticket'],
-        draw: drawData as WinnerWithDetails['draw'],
+        ticket: data.ticket as unknown as WinnerWithDetails['ticket'],
+        draw: drawData as unknown as WinnerWithDetails['draw'],
       })
 
       // Initialize visibility settings
