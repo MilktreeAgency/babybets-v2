@@ -148,7 +148,7 @@ export default function Prizes() {
             </div>
             <button
               onClick={handleCreateNew}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
             >
               <Plus className="size-4" />
               Create Prize
@@ -217,7 +217,7 @@ export default function Prizes() {
                 <p className="text-muted-foreground">No prizes found</p>
                 <button
                   onClick={handleCreateNew}
-                  className="mt-4 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  className="mt-4 text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer"
                 >
                   Create your first prize
                 </button>
@@ -299,7 +299,7 @@ export default function Prizes() {
                             <div className="flex items-center justify-end gap-3">
                               <button
                                 onClick={() => handleEdit(prize)}
-                                className="text-blue-600 hover:text-blue-700"
+                                className="text-blue-600 hover:text-blue-700 cursor-pointer"
                                 title="Edit"
                               >
                                 <Edit className="size-4" />
@@ -308,8 +308,8 @@ export default function Prizes() {
                                 onClick={() => handleToggleActive(prize)}
                                 className={
                                   prize.is_active
-                                    ? 'text-green-600 hover:text-green-700'
-                                    : 'text-gray-400 hover:text-gray-600'
+                                    ? 'text-green-600 hover:text-green-700 cursor-pointer'
+                                    : 'text-gray-400 hover:text-gray-600 cursor-pointer'
                                 }
                                 title={prize.is_active ? 'Deactivate' : 'Activate'}
                               >
@@ -321,7 +321,7 @@ export default function Prizes() {
                               </button>
                               <button
                                 onClick={() => handleDelete(prize)}
-                                className="text-red-600 hover:text-red-700"
+                                className="text-red-600 hover:text-red-700 cursor-pointer"
                                 title="Delete"
                               >
                                 <Trash2 className="size-4" />

@@ -250,7 +250,7 @@ export default function Fulfillments() {
             <button
               onClick={handleExport}
               disabled={filteredFulfillments.length === 0}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               <Download className="size-4" />
               Export CSV
@@ -514,6 +514,7 @@ export default function Fulfillments() {
                             }
                           }}
                           disabled={processingId === fulfillment.id}
+                          className="cursor-pointer"
                         >
                           <Truck className="size-4 mr-1" />
                           Mark Dispatched

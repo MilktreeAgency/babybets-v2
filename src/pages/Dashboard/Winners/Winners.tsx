@@ -173,7 +173,7 @@ export default function Winners() {
             <button
               onClick={handleExport}
               disabled={filteredWinners.length === 0}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               <Download className="size-4" />
               Export CSV
@@ -388,7 +388,7 @@ export default function Winners() {
                           <td className="px-6 py-4 text-right text-sm">
                             <Link
                               to={`/admin/dashboard/winners/${winner.id}`}
-                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium"
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
                             >
                               <Eye className="size-4" />
                               View

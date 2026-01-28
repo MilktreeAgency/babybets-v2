@@ -152,7 +152,7 @@ export default function PromoCodes() {
             </div>
             <button
               onClick={handleCreateNew}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
             >
               <Plus className="size-4" />
               Create Promo Code
@@ -321,7 +321,7 @@ export default function PromoCodes() {
                             <div className="flex items-center justify-end gap-3">
                               <button
                                 onClick={() => handleEdit(promoCode)}
-                                className="text-blue-600 hover:text-blue-700"
+                                className="text-blue-600 hover:text-blue-700 cursor-pointer"
                                 title="Edit"
                               >
                                 <Edit className="size-4" />
@@ -330,8 +330,8 @@ export default function PromoCodes() {
                                 onClick={() => handleToggleActive(promoCode)}
                                 className={
                                   promoCode.is_active
-                                    ? 'text-green-600 hover:text-green-700'
-                                    : 'text-gray-400 hover:text-gray-600'
+                                    ? 'text-green-600 hover:text-green-700 cursor-pointer'
+                                    : 'text-gray-400 hover:text-gray-600 cursor-pointer'
                                 }
                                 title={promoCode.is_active ? 'Deactivate' : 'Activate'}
                               >

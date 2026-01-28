@@ -238,7 +238,7 @@ function Account() {
                       <div className="flex gap-8">
                         <button
                           onClick={() => setActiveTab('current')}
-                          className={`pb-3 font-semibold border-b-2 transition-colors ${
+                          className={`pb-3 font-semibold border-b-2 transition-colors cursor-pointer ${
                             activeTab === 'current'
                               ? 'border-[#335761] text-[#335761]'
                               : 'border-transparent text-[#666]'
@@ -248,7 +248,7 @@ function Account() {
                         </button>
                         <button
                           onClick={() => setActiveTab('past')}
-                          className={`pb-3 font-semibold border-b-2 transition-colors ${
+                          className={`pb-3 font-semibold border-b-2 transition-colors cursor-pointer ${
                             activeTab === 'past'
                               ? 'border-[#335761] text-[#335761]'
                               : 'border-transparent text-[#666]'
@@ -492,7 +492,7 @@ function Account() {
                     {hasAddress && !isEditingAddress && (
                       <button
                         onClick={() => setIsEditingAddress(true)}
-                        className="px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90"
+                        className="px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90 cursor-pointer"
                         style={{ backgroundColor: '#335761' }}
                       >
                         Edit Address
@@ -615,7 +615,7 @@ function Account() {
                                 })
                               }
                             }}
-                            className="flex-1 py-3 rounded-lg font-semibold transition-all duration-300"
+                            className="flex-1 py-3 rounded-lg font-semibold transition-all duration-300 cursor-pointer"
                             style={{ backgroundColor: '#f3f4f6', color: '#1a1a1a' }}
                           >
                             Cancel
@@ -663,7 +663,7 @@ function Account() {
                     {!isEditingAccount && (
                       <button
                         onClick={() => setIsEditingAccount(true)}
-                        className="px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90"
+                        className="px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90 cursor-pointer"
                         style={{ backgroundColor: '#335761' }}
                       >
                         Edit Details
@@ -743,7 +743,7 @@ function Account() {
                               })
                             }
                           }}
-                          className="flex-1 py-3 rounded-lg font-semibold transition-all duration-300"
+                          className="flex-1 py-3 rounded-lg font-semibold transition-all duration-300 cursor-pointer"
                           style={{ backgroundColor: '#f3f4f6', color: '#1a1a1a' }}
                         >
                           Cancel
@@ -873,7 +873,7 @@ function Account() {
               </h2>
               <button
                 onClick={() => setShowLogoutModal(false)}
-                className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                className="p-1 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
               >
                 <X size={20} style={{ color: '#666' }} />
               </button>
@@ -884,14 +884,14 @@ function Account() {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowLogoutModal(false)}
-                className="flex-1 py-3 rounded-lg font-semibold transition-all duration-300"
+                className="flex-1 py-3 rounded-lg font-semibold transition-all duration-300 cursor-pointer"
                 style={{ backgroundColor: '#f3f4f6', color: '#1a1a1a' }}
               >
                 Cancel
               </button>
               <button
                 onClick={confirmLogout}
-                className="flex-1 py-3 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90"
+                className="flex-1 py-3 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90 cursor-pointer"
                 style={{ backgroundColor: '#dc2626' }}
               >
                 Logout
