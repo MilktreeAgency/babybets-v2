@@ -49,7 +49,7 @@ export default function FAQSection() {
   }
 
   return (
-    <section className="py-16 px-6 mb-20">
+    <section className="py-16 px-6">
       <div className="max-w-[1300px] mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
