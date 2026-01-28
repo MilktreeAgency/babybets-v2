@@ -10,9 +10,9 @@ import { usePrizeFulfillments } from '@/hooks/usePrizeFulfillments'
 import { UserPrizeClaimModal } from '@/components/UserPrizeClaimModal'
 import { ScratchCard } from '@/components/ScratchCard'
 import { authService } from '@/services/auth.service'
+import type { PrizeTemplate } from '@/types'
 
 type Section = 'dashboard' | 'tickets' | 'prizes' | 'wallet' | 'addresses' | 'account-details' | 'communication' | 'logout'
-type Tab = 'current' | 'past'
 
 function Account() {
   const navigate = useNavigate()
@@ -29,7 +29,6 @@ function Account() {
     ? tabParam
     : 'dashboard'
   const [activeSection, setActiveSection] = useState<Section>(initialSection)
-  const [activeTab, setActiveTab] = useState<Tab>('current')
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [showClaimModal, setShowClaimModal] = useState(false)
   const [selectedFulfillment, setSelectedFulfillment] = useState<typeof fulfillments[0] | null>(null)
@@ -173,18 +172,6 @@ function Account() {
       setIsBulkRevealing(false)
     }
   }
-
-  // Filter tickets from last 30 days
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-  const currentEntries = tickets.filter((ticket) => {
-    if (!ticket.created_at) return false
-    const ticketDate = new Date(ticket.created_at)
-    return ticketDate >= thirtyDaysAgo
-  })
-
-  const pastEntries: typeof tickets = []
 
   // Filter tickets based on search query
   const filteredTickets = tickets.filter((ticket) => {
@@ -1416,7 +1403,7 @@ function Account() {
             setShowClaimModal(false)
             setSelectedFulfillment(null)
           }}
-          prize={selectedFulfillment.prize}
+          prize={selectedFulfillment.prize as PrizeTemplate}
           fulfillmentId={selectedFulfillment.id}
           onClaimed={() => {
             setShowClaimModal(false)
