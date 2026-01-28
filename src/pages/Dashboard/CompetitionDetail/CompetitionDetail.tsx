@@ -10,10 +10,21 @@ import {
   Users,
   DollarSign,
   Calendar,
+  AlertCircle,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
 import { DrawExecutionPanel } from '@/components/admin/DrawExecutionPanel'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 
 type Competition = Database['public']['Tables']['competitions']['Row']
 
@@ -46,6 +57,10 @@ export default function CompetitionDetail() {
   const [stats, setStats] = useState<CompetitionStats | null>(null)
   const [instantWinPrizes, setInstantWinPrizes] = useState<InstantWinPrize[]>([])
   const [loading, setLoading] = useState(true)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -137,27 +152,66 @@ export default function CompetitionDetail() {
         .update({ status: newStatus as Database['public']['Enums']['competition_status'] })
         .eq('id', competition.id)
 
-      if (error) throw error
+      if (error) {
+        console.error('Status update error:', error)
+        setErrorMessage(error.message || 'Failed to update competition status')
+        setErrorDialogOpen(true)
+        return
+      }
 
       setCompetition({ ...competition, status: newStatus as Database['public']['Enums']['competition_status'] })
     } catch (error) {
       console.error('Error updating status:', error)
-      alert('Failed to update competition status')
+      const errorMsg = error instanceof Error ? error.message : 'An unexpected error occurred'
+      setErrorMessage(errorMsg)
+      setErrorDialogOpen(true)
     }
   }
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
     if (!competition) return
-    if (!confirm('Are you sure you want to delete this competition? This action cannot be undone.')) return
+
+    console.log('Starting delete for competition:', competition.id, competition.title)
+    setIsDeleting(true)
 
     try {
-      const { error } = await supabase.from('competitions').delete().eq('id', competition.id)
+      console.log('Calling Supabase delete...')
+      const { error, data } = await supabase.from('competitions').delete().eq('id', competition.id)
 
-      if (error) throw error
+      console.log('Delete response:', { error, data })
+
+      if (error) {
+        console.error('Delete error:', error)
+        let errorMsg = error.message
+
+        // Add helpful hints based on error codes
+        if (error.code === '42501') {
+          errorMsg += '\n\nHint: You may not have permission to delete this competition. Make sure you are an admin and the RLS policy allows deletion.'
+        } else if (error.code === '23503') {
+          errorMsg += '\n\nHint: This competition has related records that must be deleted first, or CASCADE DELETE must be set up.'
+        }
+
+        setErrorMessage(errorMsg)
+        setErrorDialogOpen(true)
+        setDeleteDialogOpen(false)
+        return
+      }
+
+      console.log('Delete successful, navigating...')
+      setDeleteDialogOpen(false)
       navigate('/admin/dashboard/competitions')
     } catch (error) {
       console.error('Error deleting competition:', error)
-      alert('Failed to delete competition')
+      const errorMsg = error instanceof Error ? error.message : 'An unexpected error occurred'
+      setErrorMessage(errorMsg)
+      setErrorDialogOpen(true)
+      setDeleteDialogOpen(false)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -258,7 +312,7 @@ export default function CompetitionDetail() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate(`/admin/dashboard/competitions/${competition.id}/edit`)}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-gray-50 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <Edit className="size-4" />
                 Edit
@@ -266,7 +320,7 @@ export default function CompetitionDetail() {
               {competition.status === 'draft' && (
                 <button
                   onClick={() => handleStatusChange('scheduled')}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
                 >
                   <Play className="size-4" />
                   Publish
@@ -275,15 +329,15 @@ export default function CompetitionDetail() {
               {competition.status === 'active' && (
                 <button
                   onClick={() => handleStatusChange('closed')}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors cursor-pointer"
                 >
                   <Pause className="size-4" />
                   Close
                 </button>
               )}
               <button
-                onClick={handleDelete}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                onClick={handleDeleteClick}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
               >
                 <Trash2 className="size-4" />
                 Delete
@@ -529,6 +583,69 @@ export default function CompetitionDetail() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Competition?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{competition?.title}</strong>?
+              <br />
+              <br />
+              This will permanently delete:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>All competition data</li>
+                <li>Associated orders and tickets</li>
+                <li>Winner records</li>
+                <li>Prize fulfillments</li>
+              </ul>
+              <br />
+              <strong className="text-red-600">This action cannot be undone.</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting} className="cursor-pointer">
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 cursor-pointer"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Competition'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Error Dialog */}
+      <AlertDialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="size-5" />
+              Operation Failed
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-2">
+                <p>An error occurred:</p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800 font-mono wrap-break-word whitespace-pre-wrap">
+                  {errorMessage}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Check the browser console for more details.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button onClick={() => setErrorDialogOpen(false)} className="cursor-pointer">
+              Close
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
