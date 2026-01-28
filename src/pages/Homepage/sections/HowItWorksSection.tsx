@@ -19,7 +19,7 @@ export default function HowItWorksSection() {
             <div className="space-y-8">
               {/* Step 01 */}
               <div className="flex gap-6">
-                <div className="shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl" style={{ backgroundColor: '#fc7f3e' }}>
+                <div className="shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl" style={{ backgroundColor: '#335761' }}>
                   01
                 </div>
                 <div>
@@ -34,7 +34,7 @@ export default function HowItWorksSection() {
 
               {/* Step 02 */}
               <div className="flex gap-6">
-                <div className="shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl" style={{ backgroundColor: '#9d41fa' }}>
+                <div className="shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl" style={{ backgroundColor: '#4a6c76' }}>
                   02
                 </div>
                 <div>
@@ -49,7 +49,7 @@ export default function HowItWorksSection() {
 
               {/* Step 03 */}
               <div className="flex gap-6">
-                <div className="shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl" style={{ backgroundColor: '#a0de6f' }}>
+                <div className="shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl" style={{ backgroundColor: '#5f8189' }}>
                   03
                 </div>
                 <div>
@@ -64,7 +64,7 @@ export default function HowItWorksSection() {
 
               {/* Step 04 */}
               <div className="flex gap-6">
-                <div className="shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl" style={{ backgroundColor: '#ffd93d' }}>
+                <div className="shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl" style={{ backgroundColor: '#74969d' }}>
                   04
                 </div>
                 <div>
