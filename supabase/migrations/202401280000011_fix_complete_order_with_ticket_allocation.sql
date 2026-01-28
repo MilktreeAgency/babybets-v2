@@ -1,7 +1,7 @@
 -- ============================================
--- MIGRATION: Add complete_order function
--- Description: Function to complete an order paid with wallet credits
--- Dependencies: orders, wallet_credits, wallet_transactions
+-- MIGRATION: Fix complete_order function to allocate tickets
+-- Description: Add ticket allocation logic to wallet payment flow
+-- Dependencies: orders, wallet_credits, ticket_allocations, order_items
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.complete_order_with_wallet(
@@ -93,5 +93,3 @@ $$;
 
 COMMENT ON FUNCTION public.complete_order_with_wallet(UUID, UUID) IS
   'Completes an order paid with wallet credits. Deducts wallet balance, marks order as paid, and allocates tickets.';
-
-GRANT EXECUTE ON FUNCTION public.complete_order_with_wallet(UUID, UUID) TO authenticated;
