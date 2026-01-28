@@ -74,11 +74,11 @@ export default function Users() {
           // Get total spent
           const { data: orders } = await supabase
             .from('orders')
-            .select('total_pence')
+            .select('subtotal_pence')
             .eq('user_id', user.id)
             .eq('status', 'paid')
 
-          const totalSpent = orders?.reduce((sum, order) => sum + order.total_pence, 0) || 0
+          const totalSpent = orders?.reduce((sum, order) => sum + order.subtotal_pence, 0) || 0
 
           // Get wallet balance
           const { data: walletData } = await supabase

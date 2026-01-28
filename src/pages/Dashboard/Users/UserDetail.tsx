@@ -28,6 +28,7 @@ interface Order {
   id: string
   created_at: string
   total_pence: number
+  subtotal_pence: number
   status: string
 }
 
@@ -101,11 +102,11 @@ export default function UserDetail() {
       // Get total spent
       const { data: orders } = await supabase
         .from('orders')
-        .select('total_pence')
+        .select('subtotal_pence')
         .eq('user_id', id)
         .eq('status', 'paid')
 
-      const totalSpent = orders?.reduce((sum, order) => sum + order.total_pence, 0) || 0
+      const totalSpent = orders?.reduce((sum, order) => sum + order.subtotal_pence, 0) || 0
 
       // Get wallet balance
       const { data: walletData } = await supabase
@@ -133,7 +134,7 @@ export default function UserDetail() {
       setLoadingOrders(true)
       const { data, error } = await supabase
         .from('orders')
-        .select('id, created_at, total_pence, status')
+        .select('id, created_at, total_pence, subtotal_pence, status')
         .eq('user_id', id)
         .order('created_at', { ascending: false })
         .limit(10)
@@ -528,7 +529,7 @@ export default function UserDetail() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="border-b">
+                  <thead className="border-b border-gray-200">
                     <tr>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Order ID</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
@@ -536,7 +537,7 @@ export default function UserDetail() {
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
+                  <tbody className="divide-y divide-gray-200">
                     {recentOrders.map((order) => (
                       <tr key={order.id} className="hover:bg-gray-50">
                         <td className="py-3 px-4 text-sm font-mono">#{order.id.slice(0, 8)}</td>
@@ -544,7 +545,7 @@ export default function UserDetail() {
                           {new Date(order.created_at!).toLocaleDateString('en-GB')}
                         </td>
                         <td className="py-3 px-4 text-sm text-right font-medium">
-                          £{(order.total_pence / 100).toFixed(2)}
+                          £{(order.subtotal_pence / 100).toFixed(2)}
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span
@@ -586,7 +587,7 @@ export default function UserDetail() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="border-b">
+                  <thead className="border-b border-gray-200">
                     <tr>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Type</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Description</th>
@@ -594,7 +595,7 @@ export default function UserDetail() {
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Amount</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
+                  <tbody className="divide-y divide-gray-200">
                     {recentTransactions.map((transaction) => (
                       <tr key={transaction.id} className="hover:bg-gray-50">
                         <td className="py-3 px-4 text-sm capitalize font-medium">{transaction.type}</td>

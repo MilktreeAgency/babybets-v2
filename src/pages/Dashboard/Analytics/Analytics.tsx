@@ -87,12 +87,12 @@ export default function Analytics() {
       // Get total revenue
       const { data: ordersData } = await supabase
         .from('orders')
-        .select('total_pence, created_at')
+        .select('subtotal_pence, created_at')
         .eq('status', 'paid')
         .gte('created_at', startDate)
 
       const totalRevenue = (ordersData || []).reduce(
-        (sum, order) => sum + order.total_pence,
+        (sum, order) => sum + order.subtotal_pence,
         0
       )
 
@@ -127,7 +127,7 @@ export default function Analytics() {
       // Get revenue data for chart (grouped by day)
       const revenueByDay = (ordersData || []).reduce((acc: Record<string, number>, order) => {
         const date = new Date(order.created_at!).toLocaleDateString('en-GB')
-        acc[date] = (acc[date] || 0) + order.total_pence
+        acc[date] = (acc[date] || 0) + order.subtotal_pence
         return acc
       }, {})
 

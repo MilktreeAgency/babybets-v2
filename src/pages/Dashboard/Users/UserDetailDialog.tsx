@@ -24,6 +24,7 @@ interface Order {
   id: string
   created_at: string
   total_pence: number
+  subtotal_pence: number
   status: string
 }
 
@@ -64,7 +65,7 @@ export function UserDetailDialog({ user, open, onOpenChange, onUserUpdated }: Us
       setLoadingOrders(true)
       const { data, error } = await supabase
         .from('orders')
-        .select('id, created_at, total_pence, status')
+        .select('id, created_at, total_pence, subtotal_pence, status')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(5)
@@ -281,7 +282,7 @@ export function UserDetailDialog({ user, open, onOpenChange, onUserUpdated }: Us
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-medium">£{(order.total_pence / 100).toFixed(2)}</span>
+                      <span className="font-medium">£{(order.subtotal_pence / 100).toFixed(2)}</span>
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(
                           order.status

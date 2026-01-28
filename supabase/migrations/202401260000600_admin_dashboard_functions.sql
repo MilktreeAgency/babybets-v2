@@ -26,13 +26,13 @@ BEGIN
   SELECT json_build_object(
     'revenue', json_build_object(
       'current', COALESCE((
-        SELECT SUM(total_pence)
+        SELECT SUM(subtotal_pence)
         FROM orders
         WHERE status = 'paid'
         AND paid_at >= current_month_start
       ), 0),
       'previous', COALESCE((
-        SELECT SUM(total_pence)
+        SELECT SUM(subtotal_pence)
         FROM orders
         WHERE status = 'paid'
         AND paid_at >= last_month_start
@@ -54,15 +54,19 @@ BEGIN
     ),
     'tickets_sold', json_build_object(
       'current', COALESCE((
-        SELECT COUNT(*)
-        FROM order_items
-        WHERE created_at >= current_month_start
+        SELECT SUM(oi.ticket_count)
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        WHERE o.status = 'paid'
+        AND o.paid_at >= current_month_start
       ), 0),
       'previous', COALESCE((
-        SELECT COUNT(*)
-        FROM order_items
-        WHERE created_at >= last_month_start
-        AND created_at <= last_month_end
+        SELECT SUM(oi.ticket_count)
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        WHERE o.status = 'paid'
+        AND o.paid_at >= last_month_start
+        AND o.paid_at <= last_month_end
       ), 0)
     ),
     'total_users', json_build_object(
@@ -105,7 +109,7 @@ BEGIN
       'order-' || o.id AS id,
       'order' AS type,
       'New order placed' AS title,
-      'Order total: £' || ROUND(o.total_pence::NUMERIC / 100, 2) AS description,
+      'Order total: £' || ROUND(o.subtotal_pence::NUMERIC / 100, 2) AS description,
       o.created_at AS timestamp,
       json_build_object(
         'name', COALESCE(p.first_name || ' ' || p.last_name, 'Anonymous'),
@@ -262,31 +266,31 @@ DECLARE
 BEGIN
   SELECT json_build_object(
     'total_revenue', COALESCE((
-      SELECT SUM(oi.unit_price_pence * oi.quantity)
+      SELECT SUM(oi.total_pence)
       FROM order_items oi
       JOIN orders o ON o.id = oi.order_id
-      WHERE oi.competition_id = competition_stats.competition_id
+      WHERE oi.competition_id = get_competition_stats.competition_id
       AND o.status = 'paid'
     ), 0),
     'total_orders', COALESCE((
       SELECT COUNT(DISTINCT o.id)
       FROM orders o
       JOIN order_items oi ON oi.order_id = o.id
-      WHERE oi.competition_id = competition_stats.competition_id
+      WHERE oi.competition_id = get_competition_stats.competition_id
       AND o.status = 'paid'
     ), 0),
     'tickets_sold', COALESCE((
-      SELECT SUM(oi.quantity)
+      SELECT SUM(oi.ticket_count)
       FROM order_items oi
       JOIN orders o ON o.id = oi.order_id
-      WHERE oi.competition_id = competition_stats.competition_id
+      WHERE oi.competition_id = get_competition_stats.competition_id
       AND o.status = 'paid'
     ), 0),
     'unique_participants', COALESCE((
       SELECT COUNT(DISTINCT o.user_id)
       FROM orders o
       JOIN order_items oi ON oi.order_id = o.id
-      WHERE oi.competition_id = competition_stats.competition_id
+      WHERE oi.competition_id = get_competition_stats.competition_id
       AND o.status = 'paid'
     ), 0)
   ) INTO result;
