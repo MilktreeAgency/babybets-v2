@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import Header from '@/components/common/Header'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
-import { Trophy, Clock, Plus, Minus, Share2, ArrowLeft } from 'lucide-react'
+import { Trophy, Clock, Plus, Minus, Share2, ArrowLeft, Gift, Sparkles, Calendar } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 
 type Competition = Database['public']['Tables']['competitions']['Row']
@@ -14,6 +14,25 @@ interface TieredPrice {
   pricePerTicketPence: number
 }
 
+interface InstantWinPrize {
+  id: string
+  competition_id: string
+  prize_code: string
+  total_quantity: number
+  remaining_quantity: number
+  tier: number
+  prize_template: {
+    id: string
+    name: string
+    short_name: string | null
+    type: string
+    value_gbp: number
+    cash_alternative_gbp: number | null
+    description: string | null
+    image_url: string | null
+  }
+}
+
 function CompetitionEntry() {
   const { slug } = useParams()
   const { addItem, setCartOpen } = useCartStore()
@@ -21,6 +40,7 @@ function CompetitionEntry() {
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(10)
   const [tieredPricing, setTieredPricing] = useState<TieredPrice[]>([])
+  const [instantWinPrizes, setInstantWinPrizes] = useState<InstantWinPrize[]>([])
 
   useEffect(() => {
     if (slug) {
@@ -47,6 +67,49 @@ function CompetitionEntry() {
       if (data.tiered_pricing && Array.isArray(data.tiered_pricing)) {
         setTieredPricing(data.tiered_pricing as unknown as TieredPrice[])
       }
+
+      // Load instant win prizes if applicable
+      if (
+        data.competition_type === 'instant_win' ||
+        data.competition_type === 'instant_win_with_end_prize'
+      ) {
+        const { data: prizes, error: prizesError } = await supabase
+          .from('competition_instant_win_prizes')
+          .select(`
+            id,
+            competition_id,
+            prize_code,
+            total_quantity,
+            remaining_quantity,
+            tier,
+            prize_templates (
+              id,
+              name,
+              short_name,
+              type,
+              value_gbp,
+              cash_alternative_gbp,
+              description,
+              image_url
+            )
+          `)
+          .eq('competition_id', data.id)
+          .order('tier', { ascending: true })
+
+        if (!prizesError && prizes) {
+          const mappedPrizes = prizes.map((p: Record<string, unknown>) => ({
+            id: p.id,
+            competition_id: p.competition_id,
+            prize_code: p.prize_code,
+            total_quantity: p.total_quantity,
+            remaining_quantity: p.remaining_quantity,
+            tier: p.tier,
+            prize_template: p.prize_templates
+          })) as InstantWinPrize[]
+
+          setInstantWinPrizes(mappedPrizes)
+        }
+      }
     } catch (error) {
       console.error('Error loading competition:', error)
     } finally {
@@ -55,7 +118,21 @@ function CompetitionEntry() {
   }
 
   const calculatePrice = (qty: number) => {
-    if (!competition) return 0
+    if (!competition) {
+      console.error('calculatePrice called without competition loaded')
+      return 0
+    }
+
+    if (qty <= 0) {
+      console.warn('calculatePrice called with invalid quantity:', qty)
+      return 0
+    }
+
+    // Validate base ticket price exists
+    if (!competition.base_ticket_price_pence || competition.base_ticket_price_pence <= 0) {
+      console.error('Competition has invalid base_ticket_price_pence:', competition.base_ticket_price_pence)
+      return 0
+    }
 
     if (tieredPricing.length === 0) {
       return (qty * competition.base_ticket_price_pence) / 100
@@ -83,9 +160,14 @@ function CompetitionEntry() {
     if (!competition) return { total: 0, perTicket: 0, savings: 0 }
 
     const total = calculatePrice(quantity)
-    const perTicket = total / quantity
+    const perTicket = quantity > 0 ? total / quantity : 0
     const baseTotal = (quantity * competition.base_ticket_price_pence) / 100
     const savings = Math.max(0, baseTotal - total)
+
+    // Log warning if prices are invalid
+    if (total <= 0 || perTicket <= 0) {
+      console.warn('Invalid pricing calculated:', { total, perTicket, quantity, competition })
+    }
 
     return { total, perTicket, savings }
   }, [quantity, competition, tieredPricing])
@@ -141,6 +223,24 @@ function CompetitionEntry() {
 
   const handleAddToCart = () => {
     if (!competition) return
+
+    // Validate pricing before adding to cart
+    if (!pricingDetails.total || pricingDetails.total <= 0) {
+      alert('Unable to add to cart: Invalid price. Please refresh the page and try again.')
+      console.error('Invalid pricing details:', { pricingDetails, competition })
+      return
+    }
+
+    if (!pricingDetails.perTicket || pricingDetails.perTicket <= 0) {
+      alert('Unable to add to cart: Invalid price per ticket. Please refresh the page and try again.')
+      console.error('Invalid per ticket price:', { pricingDetails, competition })
+      return
+    }
+
+    if (quantity <= 0) {
+      alert('Please select at least 1 ticket')
+      return
+    }
 
     // Use first image from images array, or fallback to image_url
     const images = (competition.images as string[]) || []
@@ -260,6 +360,163 @@ function CompetitionEntry() {
                   </div>
                 </div>
               </div>
+
+              {/* Competition Type Info */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <Sparkles className="size-5 text-orange-500" />
+                  How It Works
+                </h2>
+                <div className="space-y-3">
+                  {(competition.competition_type === 'instant_win' ||
+                    competition.competition_type === 'instant_win_with_end_prize') && (
+                    <div className="flex items-start gap-3">
+                      <div className="size-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                        <Gift className="size-4 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">Instant Win Prizes</p>
+                        <p className="text-xs text-gray-600">
+                          Scratch your tickets immediately after purchase to reveal instant prizes!
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {(competition.competition_type === 'standard' ||
+                    competition.competition_type === 'instant_win_with_end_prize') && (
+                    <div className="flex items-start gap-3">
+                      <div className="size-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                        <Trophy className="size-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">Main Prize Draw</p>
+                        <p className="text-xs text-gray-600">
+                          {competition.draw_datetime
+                            ? `Draw on ${formatDate(competition.draw_datetime)}`
+                            : `Draw on ${formatDate(competition.end_datetime)}`}
+                        </p>
+                        {competition.end_prize && (competition.end_prize as Record<string, unknown>).name && (
+                          <p className="text-xs text-gray-700 font-medium mt-1">
+                            Win: {(competition.end_prize as Record<string, unknown>).name as string}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Instant Win Prizes Section */}
+              {instantWinPrizes.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                  <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                    <Gift className="size-5 text-orange-500" />
+                    Instant Win Prizes
+                  </h2>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Scratch your tickets to win these amazing prizes instantly!
+                  </p>
+                  <div className="space-y-3">
+                    {instantWinPrizes.map((prize) => {
+                      const claimed = prize.total_quantity - prize.remaining_quantity
+                      const percentClaimed = (claimed / prize.total_quantity) * 100
+
+                      return (
+                        <div
+                          key={prize.id}
+                          className="p-4 border border-gray-200 rounded-lg hover:border-orange-200 transition-colors"
+                        >
+                          <div className="flex items-start gap-4">
+                            {/* Prize Image */}
+                            {prize.prize_template.image_url ? (
+                              <img
+                                src={prize.prize_template.image_url}
+                                alt={prize.prize_template.name}
+                                className="size-16 rounded-lg object-cover"
+                              />
+                            ) : (
+                              <div className="size-16 rounded-lg bg-linear-to-br from-orange-100 to-orange-200 flex items-center justify-center">
+                                <Gift className="size-8 text-orange-600" />
+                              </div>
+                            )}
+
+                            {/* Prize Details */}
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <h3 className="font-bold text-sm">{prize.prize_template.name}</h3>
+                                  {prize.prize_template.short_name && (
+                                    <p className="text-xs text-gray-500">{prize.prize_template.short_name}</p>
+                                  )}
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <div className="font-bold text-green-600">
+                                    £{prize.prize_template.value_gbp.toFixed(2)}
+                                  </div>
+                                  {prize.prize_template.cash_alternative_gbp && (
+                                    <div className="text-xs text-gray-500">
+                                      or £{prize.prize_template.cash_alternative_gbp.toFixed(2)} cash
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {prize.prize_template.description && (
+                                <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                  {prize.prize_template.description}
+                                </p>
+                              )}
+
+                              {/* Prize Availability */}
+                              <div className="mt-3">
+                                <div className="flex items-center justify-between text-xs mb-1">
+                                  <span className="text-gray-600">
+                                    {prize.remaining_quantity} of {prize.total_quantity} remaining
+                                  </span>
+                                  <span className="font-semibold text-gray-700">
+                                    {claimed}/{prize.total_quantity} claimed
+                                  </span>
+                                </div>
+                                <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-linear-to-r from-orange-400 to-orange-600 transition-all duration-300"
+                                    style={{ width: `${percentClaimed}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Prize Type Badge */}
+                              <div className="mt-2">
+                                <span className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded">
+                                  {prize.prize_template.type}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Total Prize Pool */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-gray-700">
+                        Total Instant Win Prizes
+                      </span>
+                      <span className="text-lg font-bold text-orange-600">
+                        {instantWinPrizes.reduce((sum, p) => sum + p.total_quantity, 0)} prizes
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-xs text-gray-600">Total Value</span>
+                      <span className="text-sm font-bold text-green-600">
+                        £{instantWinPrizes.reduce((sum, p) => sum + (p.prize_template.value_gbp * p.total_quantity), 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right: Entry Form */}
