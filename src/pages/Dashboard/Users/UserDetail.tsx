@@ -11,7 +11,15 @@ import {
 } from '@/components/ui/select'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
-import { Mail, Phone, MapPin, Calendar, CreditCard, ShoppingBag, Gift, UserCheck, ArrowLeft } from 'lucide-react'
+import { Mail, Phone, MapPin, Calendar, CreditCard, ShoppingBag, Gift, UserCheck, ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { AddBalanceDialog } from './AddBalanceDialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type UserRole = Database['public']['Enums']['user_role']
@@ -47,6 +55,9 @@ export default function UserDetail() {
     totalSpent: 0,
     walletBalance: 0,
   })
+  const [showAddBalanceDialog, setShowAddBalanceDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -192,6 +203,28 @@ export default function UserDetail() {
     return type === 'credit' ? 'text-green-600' : 'text-red-600'
   }
 
+  const handleDeleteUser = async () => {
+    if (!user) return
+
+    try {
+      setDeleting(true)
+
+      // Delete user using RPC function (this will cascade delete from profiles and all related data)
+      const { error } = await supabase.rpc('delete_user', {
+        user_id_to_delete: user.id
+      })
+
+      if (error) throw error
+
+      // Navigate immediately on success
+      navigate('/admin/dashboard/users')
+    } catch (error) {
+      console.error('Error deleting user:', error)
+      setDeleting(false)
+      // Keep dialog open to show error
+    }
+  }
+
   if (loading) {
     return (
       <>
@@ -250,7 +283,7 @@ export default function UserDetail() {
 
       <div className="flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
         <div className="p-6 space-y-6">
-          {/* Header with Back Button */}
+          {/* Header with Back Button and Actions */}
           <div className="flex items-center justify-between">
             <Link
               to="/admin/dashboard/users"
@@ -259,6 +292,14 @@ export default function UserDetail() {
               <ArrowLeft className="size-4" />
               Back to Users
             </Link>
+            <Button
+              onClick={() => setShowDeleteDialog(true)}
+              variant="outline"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+            >
+              <Trash2 className="size-4 mr-2" />
+              Delete User
+            </Button>
           </div>
 
           {/* User Profile Card */}
@@ -332,14 +373,24 @@ export default function UserDetail() {
               </div>
             </div>
             <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <Gift className="size-6 text-purple-600" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-purple-100 rounded-lg">
+                    <Gift className="size-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Wallet Balance</div>
+                    <div className="text-2xl font-semibold">£{(stats.walletBalance / 100).toFixed(2)}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Wallet Balance</div>
-                  <div className="text-2xl font-semibold">£{(stats.walletBalance / 100).toFixed(2)}</div>
-                </div>
+                <Button
+                  onClick={() => setShowAddBalanceDialog(true)}
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="size-4 mr-1" />
+                  Add Balance
+                </Button>
               </div>
             </div>
           </div>
@@ -513,10 +564,20 @@ export default function UserDetail() {
 
           {/* Recent Wallet Transactions */}
           <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <CreditCard className="size-5" />
-              Recent Wallet Transactions
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <CreditCard className="size-5" />
+                Recent Wallet Transactions
+              </h3>
+              <Button
+                onClick={() => setShowAddBalanceDialog(true)}
+                size="sm"
+                variant="outline"
+              >
+                <Plus className="size-4 mr-1" />
+                Add Balance
+              </Button>
+            </div>
             {loadingTransactions ? (
               <div className="text-sm text-muted-foreground">Loading transactions...</div>
             ) : recentTransactions.length === 0 ? (
@@ -570,6 +631,85 @@ export default function UserDetail() {
           </div>
         </div>
       </div>
+
+      {/* Add Balance Dialog */}
+      <AddBalanceDialog
+        user={user}
+        open={showAddBalanceDialog}
+        onOpenChange={setShowAddBalanceDialog}
+        onSuccess={() => {
+          loadStats()
+          loadRecentTransactions()
+        }}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this user? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* User Info */}
+            <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+              {user.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={user.first_name || user.email}
+                  className="size-12 rounded-full object-cover"
+                />
+              ) : (
+                <div className="size-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-medium">
+                  {(user.first_name?.[0] || user.email[0]).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <div className="font-medium">
+                  {user.first_name || user.last_name
+                    ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
+                    : 'No name'}
+                </div>
+                <div className="text-sm text-muted-foreground">{user.email}</div>
+              </div>
+            </div>
+
+            {/* Warning */}
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>Warning:</strong> Deleting this user will also delete:
+              </p>
+              <ul className="mt-2 text-sm text-yellow-800 list-disc list-inside space-y-1">
+                <li>All orders and order items</li>
+                <li>All wallet credits and transactions</li>
+                <li>All competition entries and tickets</li>
+                <li>All related data</li>
+              </ul>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteDialog(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDeleteUser}
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deleting ? 'Deleting...' : 'Delete User'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

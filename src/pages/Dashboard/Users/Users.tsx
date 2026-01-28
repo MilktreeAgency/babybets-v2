@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { DashboardHeader } from '../components'
-import { Search, Eye, Wallet } from 'lucide-react'
+import { Search, Eye, Wallet, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
 import {
@@ -13,6 +13,13 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { AddBalanceDialog } from './AddBalanceDialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type UserRole = Database['public']['Enums']['user_role']
@@ -30,6 +37,9 @@ export default function Users() {
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null)
   const [addBalanceDialogOpen, setAddBalanceDialogOpen] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [userToDelete, setUserToDelete] = useState<Profile | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     loadUsers()
@@ -112,6 +122,31 @@ export default function Users() {
       super_admin: 'bg-red-100 text-red-800',
     }
     return role ? colors[role] : 'bg-gray-100 text-gray-800'
+  }
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return
+
+    try {
+      setDeleting(true)
+
+      // Delete user using RPC function (this will cascade delete from profiles and all related data)
+      const { error } = await supabase.rpc('delete_user', {
+        user_id_to_delete: userToDelete.id
+      })
+
+      if (error) throw error
+
+      // Reload users and close dialog on success
+      setShowDeleteDialog(false)
+      setUserToDelete(null)
+      loadUsers()
+    } catch (error) {
+      console.error('Error deleting user:', error)
+      // Keep dialog open to show error
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -286,11 +321,22 @@ export default function Users() {
                             </Button>
                             <Link
                               to={`/admin/dashboard/users/${user.id}`}
-                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
                             >
                               <Eye className="size-4" />
                               View
                             </Link>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setUserToDelete(user)
+                                setShowDeleteDialog(true)
+                              }}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -309,6 +355,79 @@ export default function Users() {
         onOpenChange={setAddBalanceDialogOpen}
         onSuccess={loadUsers}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this user? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* User Info */}
+            {userToDelete && (
+              <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                {userToDelete.avatar_url ? (
+                  <img
+                    src={userToDelete.avatar_url}
+                    alt={userToDelete.first_name || userToDelete.email}
+                    className="size-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="size-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-medium">
+                    {(userToDelete.first_name?.[0] || userToDelete.email[0]).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <div className="font-medium">
+                    {userToDelete.first_name || userToDelete.last_name
+                      ? `${userToDelete.first_name || ''} ${userToDelete.last_name || ''}`.trim()
+                      : 'No name'}
+                  </div>
+                  <div className="text-sm text-muted-foreground">{userToDelete.email}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Warning */}
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>Warning:</strong> Deleting this user will also delete:
+              </p>
+              <ul className="mt-2 text-sm text-yellow-800 list-disc list-inside space-y-1">
+                <li>All orders and order items</li>
+                <li>All wallet credits and transactions</li>
+                <li>All competition entries and tickets</li>
+                <li>All related data</li>
+              </ul>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDeleteDialog(false)
+                  setUserToDelete(null)
+                }}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDeleteUser}
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deleting ? 'Deleting...' : 'Delete User'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

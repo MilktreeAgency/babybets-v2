@@ -58,6 +58,16 @@ export function AddBalanceDialog({
       const expiresAt = new Date()
       expiresAt.setDate(expiresAt.getDate() + parseInt(expiryDays))
 
+      // Get current wallet balance
+      const { data: balanceData } = await supabase
+        .from('wallet_balance_view')
+        .select('available_balance_pence')
+        .eq('user_id', user.id)
+        .single()
+
+      const currentBalance = balanceData?.available_balance_pence || 0
+      const balanceAfter = currentBalance + amountPence
+
       // Insert wallet credit
       const { error: creditError } = await supabase.from('wallet_credits').insert({
         user_id: user.id,
@@ -76,18 +86,17 @@ export function AddBalanceDialog({
         user_id: user.id,
         type: 'credit',
         amount_pence: amountPence,
+        balance_after_pence: balanceAfter,
         description: description.trim(),
-        source_type: 'admin_credit',
       })
 
       if (transactionError) throw transactionError
 
-      alert(`Successfully added £${amount} to ${user.first_name || user.email}'s wallet`)
+      // Success - close dialog and refresh
       onSuccess()
       onOpenChange(false)
     } catch (error) {
       console.error('Error adding wallet balance:', error)
-      alert('Failed to add wallet balance. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -100,30 +109,28 @@ export function AddBalanceDialog({
           <DialogTitle>Add Wallet Balance</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-6">
           {/* User Info */}
           {user && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                {user.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt={user.first_name || user.email}
-                    className="size-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="size-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium">
-                    {(user.first_name?.[0] || user.email[0]).toUpperCase()}
-                  </div>
-                )}
-                <div>
-                  <div className="font-medium text-foreground">
-                    {user.first_name || user.last_name
-                      ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
-                      : 'No name'}
-                  </div>
-                  <div className="text-sm text-muted-foreground">{user.email}</div>
+            <div className="flex items-center gap-3 pb-6 -mx-6 px-6 border-b border-gray-200">
+              {user.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={user.first_name || user.email}
+                  className="size-12 rounded-full object-cover"
+                />
+              ) : (
+                <div className="size-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-medium">
+                  {(user.first_name?.[0] || user.email[0]).toUpperCase()}
                 </div>
+              )}
+              <div>
+                <div className="font-medium text-foreground">
+                  {user.first_name || user.last_name
+                    ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
+                    : 'No name'}
+                </div>
+                <div className="text-sm text-muted-foreground">{user.email}</div>
               </div>
             </div>
           )}
@@ -142,10 +149,10 @@ export function AddBalanceDialog({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-8 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1.5">
               Enter the amount to add to the user's wallet
             </p>
           </div>
@@ -160,9 +167,9 @@ export function AddBalanceDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g., Admin credit added, Compensation, etc."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1.5">
               This will be visible to the user in their transaction history
             </p>
           </div>
@@ -178,26 +185,26 @@ export function AddBalanceDialog({
               value={expiryDays}
               onChange={(e) => setExpiryDays(e.target.value)}
               placeholder="30"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1.5">
               Number of days until this credit expires
             </p>
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={saving || !amount || !description.trim() || !expiryDays}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            {saving ? 'Adding...' : 'Add Balance'}
-          </Button>
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end gap-3 pt-6 -mx-6 px-6 border-t border-gray-200">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={saving || !amount || !description.trim() || !expiryDays}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {saving ? 'Adding...' : 'Add Balance'}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
