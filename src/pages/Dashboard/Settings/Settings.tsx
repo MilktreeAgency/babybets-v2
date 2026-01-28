@@ -13,10 +13,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
-type Tab = 'account' | 'preferences'
-
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<Tab>('account')
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -56,44 +53,13 @@ export default function Settings() {
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
           <p className="text-muted-foreground">
-            Manage your account settings and preferences
+            Manage your account settings
           </p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-8">
-        <button
-          onClick={() => setActiveTab('account')}
-          className={`
-            px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer
-            ${
-              activeTab === 'account'
-                ? 'bg-accent text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-            }
-          `}
-        >
-          Account
-        </button>
-        <button
-          onClick={() => setActiveTab('preferences')}
-          className={`
-            px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer
-            ${
-              activeTab === 'preferences'
-                ? 'bg-accent text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-            }
-          `}
-        >
-          Preferences
-        </button>
-      </div>
-
       {/* Content */}
       <div className="space-y-6">
-        {activeTab === 'account' && (
           <div className="space-y-8">
             {/* Profile Section */}
             <div className="flex flex-col gap-3">
@@ -298,18 +264,7 @@ export default function Settings() {
               </section>
             </div>
           </div>
-        )}
-
-        {activeTab === 'preferences' && (
-          <div className="space-y-8">
-            <div className="flex flex-col items-center justify-center py-12">
-              <p className="text-muted-foreground">Preferences coming soon...</p>
-            </div>
-          </div>
-        )}
-
-        
-      </div>
+        </div>
       </div>
       </div>
     </>
