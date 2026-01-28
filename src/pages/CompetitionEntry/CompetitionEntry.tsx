@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import Header from '@/components/common/Header'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
-import { Trophy, Clock, Plus, Minus, Share2, ArrowLeft, Gift, Sparkles, Calendar } from 'lucide-react'
+import { Trophy, Clock, Plus, Minus, Share2, ArrowLeft, Gift, Sparkles } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 
 type Competition = Database['public']['Tables']['competitions']['Row']
@@ -395,11 +395,11 @@ function CompetitionEntry() {
                             ? `Draw on ${formatDate(competition.draw_datetime)}`
                             : `Draw on ${formatDate(competition.end_datetime)}`}
                         </p>
-                        {competition.end_prize && (competition.end_prize as Record<string, unknown>).name && (
+                        {competition.end_prize && (competition.end_prize as Record<string, unknown>).name ? (
                           <p className="text-xs text-gray-700 font-medium mt-1">
                             Win: {(competition.end_prize as Record<string, unknown>).name as string}
                           </p>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   )}
