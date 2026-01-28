@@ -44,7 +44,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
 
     // Generate random ticket numbers for animation
     const ticketNumbers = Array.from({ length: 20 }, () =>
-      Math.floor(Math.random() * competition.tickets_sold) + 1
+      Math.floor(Math.random() * (competition.tickets_sold ?? 0)) + 1
     )
     setScanningTickets(ticketNumbers)
 
@@ -104,7 +104,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
   // Check if competition is eligible for draw
   const isEligibleForDraw = () => {
     if (existingDraw) return false // Already drawn
-    if (!['closed', 'active'].includes(competition.status)) return false
+    if (!competition.status || !['closed', 'active'].includes(competition.status)) return false
     if (competition.tickets_sold === 0) return false
     return true
   }
@@ -396,7 +396,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
                   </motion.div>
                   <h2 className="text-3xl font-bold text-white mb-4">Scanning Tickets...</h2>
                   <p className="text-white/80 text-lg mb-8">
-                    Analyzing {competition.tickets_sold.toLocaleString()} entries
+                    Analyzing {(competition.tickets_sold ?? 0).toLocaleString()} entries
                   </p>
 
                   {/* Animated ticket numbers */}
