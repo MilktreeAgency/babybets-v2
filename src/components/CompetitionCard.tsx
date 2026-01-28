@@ -7,6 +7,7 @@ interface CompetitionCardProps {
     slug: string
     title: string
     image_url: string
+    images?: string[]
     total_value_gbp: number
     base_ticket_price_pence: number
     max_tickets: number
@@ -38,9 +39,14 @@ export default function CompetitionCard({ competition }: CompetitionCardProps) {
   const ticketsRemaining = getTicketsRemaining(competition.tickets_sold, competition.max_tickets)
   const percentageSold = ((competition.tickets_sold || 0) / competition.max_tickets) * 100
 
+  // Use first image from images array, or fallback to image_url
+  const displayImage = competition.images && competition.images.length > 0
+    ? competition.images[0]
+    : competition.image_url
+
   return (
     <Link
-      to={`/competition/${competition.slug}`}
+      to={`/competitions/${competition.slug}`}
       className="block"
     >
       <div
@@ -52,7 +58,7 @@ export default function CompetitionCard({ competition }: CompetitionCardProps) {
         {/* Image Container */}
         <div className="relative w-full overflow-hidden" style={{ aspectRatio: '1/1' }}>
           <img
-            src={competition.image_url}
+            src={displayImage}
             alt={competition.title}
             className="w-full h-full object-cover"
           />

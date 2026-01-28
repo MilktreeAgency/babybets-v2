@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select'
 import { useSidebar } from '@/contexts/SidebarContext'
 import { PrizeSelector, type SelectedPrize } from '@/components/PrizeSelector'
+import { MultiImageUpload } from '@/components/MultiImageUpload'
 
 type CompetitionInsert = Database['public']['Tables']['competitions']['Insert']
 
@@ -38,6 +39,7 @@ export default function CompetitionForm() {
     slug: '',
     description: '',
     image_url: '',
+    images: [] as string[],
     category: 'Toys' as Database['public']['Enums']['competition_category'],
     competition_type: 'standard' as Database['public']['Enums']['competition_type'],
     start_datetime: '',
@@ -96,6 +98,7 @@ export default function CompetitionForm() {
           slug: data.slug,
           description: data.description || '',
           image_url: data.image_url,
+          images: (data.images as string[]) || [],
           category: data.category,
           competition_type: data.competition_type,
           start_datetime: formatDateTime(data.start_datetime),
@@ -173,6 +176,16 @@ export default function CompetitionForm() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target
+
+    // Sanitize slug to ensure it's URL-safe
+    let processedValue = value
+    if (name === 'slug' && typeof value === 'string') {
+      processedValue = value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '')
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]:
@@ -180,7 +193,7 @@ export default function CompetitionForm() {
           ? parseFloat(value) || 0
           : type === 'checkbox'
           ? (e.target as HTMLInputElement).checked
-          : value,
+          : processedValue,
     }))
   }
 
@@ -230,7 +243,7 @@ export default function CompetitionForm() {
       formData.title.trim() !== '' &&
       formData.slug.trim() !== '' &&
       formData.description.trim() !== '' &&
-      formData.image_url.trim() !== '' &&
+      (formData.images.length > 0 || formData.image_url.trim() !== '') &&
       formData.category !== '' &&
       formData.competition_type !== '' &&
       formData.start_datetime !== '' &&
@@ -265,6 +278,7 @@ export default function CompetitionForm() {
       const competitionData: any = {
         ...formData,
         status,
+        images: formData.images, // Array of image URLs
         tiered_pricing: tieredPricing as any, // JSONB field accepts object directly
         base_ticket_price_pence: Math.round(formData.base_ticket_price_pence),
         total_value_gbp: formData.total_value_gbp,
@@ -472,16 +486,15 @@ export default function CompetitionForm() {
 
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Image URL <span className="text-red-500">*</span>
+                    Competition Images <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="url"
-                    name="image_url"
-                    value={formData.image_url}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://example.com/image.jpg"
+                  <MultiImageUpload
+                    value={formData.images}
+                    onChange={(urls) => setFormData((prev) => ({ ...prev, images: urls }))}
+                    maxImages={5}
+                    maxSizeMB={10}
+                    bucket="competition-images"
+                    folder="competitions"
                   />
                 </div>
 

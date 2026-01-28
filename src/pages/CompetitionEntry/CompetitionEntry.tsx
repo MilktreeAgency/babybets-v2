@@ -138,11 +138,15 @@ function CompetitionEntry() {
   const handleAddToCart = () => {
     if (!competition) return
 
+    // Use first image from images array, or fallback to image_url
+    const images = (competition.images as string[]) || []
+    const displayImage = images.length > 0 ? images[0] : competition.image_url
+
     addItem({
       competitionId: competition.id,
       competitionTitle: competition.title,
       competitionSlug: competition.slug,
-      imageUrl: competition.image_url,
+      imageUrl: displayImage,
       quantity,
       pricePerTicket: pricingDetails.perTicket,
       totalPrice: pricingDetails.total,
@@ -188,6 +192,10 @@ function CompetitionEntry() {
 
   const ticketsRemaining = competition.max_tickets - competition.tickets_sold
 
+  // Use first image from images array, or fallback to image_url
+  const images = (competition.images as string[]) || []
+  const displayImage = images.length > 0 ? images[0] : competition.image_url
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FFFCF9', color: '#2D251E' }}>
       <Header />
@@ -210,7 +218,7 @@ function CompetitionEntry() {
               {/* Competition Image */}
               <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 shadow-lg">
                 <img
-                  src={competition.image_url}
+                  src={displayImage}
                   alt={competition.title}
                   className="w-full h-full object-cover"
                 />

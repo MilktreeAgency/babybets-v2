@@ -359,11 +359,36 @@ export default function CompetitionDetail() {
               {/* Image & Description */}
               <div className="bg-white border border-border rounded-lg p-6">
                 <h3 className="text-lg font-semibold mb-4">Competition Details</h3>
-                <img
-                  src={competition.image_url}
-                  alt={competition.title}
-                  className="w-full h-64 object-cover rounded-lg mb-4"
-                />
+                {(() => {
+                  const images = (competition.images as string[]) || []
+                  const displayImage = images.length > 0 ? images[0] : competition.image_url
+
+                  return (
+                    <>
+                      {displayImage && (
+                        <div className="mb-4">
+                          <img
+                            src={displayImage}
+                            alt={competition.title}
+                            className="w-full h-64 object-cover rounded-lg"
+                          />
+                          {images.length > 1 && (
+                            <div className="grid grid-cols-4 gap-2 mt-3">
+                              {images.slice(1).map((img, idx) => (
+                                <img
+                                  key={idx}
+                                  src={img}
+                                  alt={`${competition.title} ${idx + 2}`}
+                                  className="h-20 w-full object-cover rounded-lg"
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
                 <p className="text-foreground whitespace-pre-wrap">{competition.description}</p>
               </div>
 
