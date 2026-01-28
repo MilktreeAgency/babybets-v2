@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
+import { useAuthStore } from '@/store/authStore'
 import {
   Trophy,
   ArrowLeft,
@@ -38,6 +39,7 @@ import {
   Send,
   Check,
   X,
+  Wallet,
 } from 'lucide-react'
 
 type Winner = Database['public']['Tables']['winners']['Row']
@@ -79,6 +81,7 @@ interface WinnerWithDetails extends Winner {
 export default function WinnerDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuthStore()
   const [winner, setWinner] = useState<WinnerWithDetails | null>(null)
   const [fulfillment, setFulfillment] = useState<PrizeFulfillment | null>(null)
   const [loading, setLoading] = useState(true)
@@ -88,6 +91,7 @@ export default function WinnerDetail() {
   const [notes, setNotes] = useState('')
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [approvingCash, setApprovingCash] = useState(false)
 
   // Visibility settings
   const [isPublic, setIsPublic] = useState(false)
@@ -211,6 +215,36 @@ export default function WinnerDetail() {
       alert('Failed to update fulfillment')
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const handleApproveCashAlternative = async () => {
+    if (!fulfillment || !user?.id) return
+
+    try {
+      setApprovingCash(true)
+
+      const { data, error } = await supabase.rpc('approve_cash_alternative' as any, {
+        p_fulfillment_id: fulfillment.id,
+        p_admin_id: user.id,
+      }) as { data: { amount_gbp: number; expires_at: string } | null; error: any }
+
+      if (error) throw error
+
+      if (data) {
+        alert(
+          `Cash alternative approved!\n\n£${data.amount_gbp.toLocaleString()} added to user's wallet.\nExpires: ${new Date(
+            data.expires_at
+          ).toLocaleDateString()}`
+        )
+      }
+
+      await loadWinner()
+    } catch (error) {
+      console.error('Error approving cash alternative:', error)
+      alert('Failed to approve cash alternative. Please try again.')
+    } finally {
+      setApprovingCash(false)
     }
   }
 
@@ -412,7 +446,7 @@ export default function WinnerDetail() {
         />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="inline-block size-8 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+            <div className="inline-block size-8 border-4 border-border border-t-blue-600 rounded-full animate-spin"></div>
             <p className="mt-2 text-muted-foreground">Loading winner details...</p>
           </div>
         </div>
@@ -481,7 +515,7 @@ export default function WinnerDetail() {
           </div>
 
           {/* Winner Profile Card */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="bg-white border border-border rounded-lg p-6">
             <div className="flex items-start gap-6">
               {winner.prize_image_url || winner.winner_photo_url ? (
                 <img
@@ -508,7 +542,7 @@ export default function WinnerDetail() {
                     </span>
                   )}
                   {winner.featured && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       Featured
                     </span>
                   )}
@@ -542,14 +576,14 @@ export default function WinnerDetail() {
             </div>
 
             {winner.testimonial && (
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-border">
                 <p className="text-sm italic text-muted-foreground">"{winner.testimonial}"</p>
               </div>
             )}
           </div>
 
           {/* Visibility Settings */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="bg-white border border-border rounded-lg p-6">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <Eye className="size-5" />
               Visibility Settings
@@ -584,8 +618,8 @@ export default function WinnerDetail() {
 
               <label className="flex items-center justify-between cursor-pointer">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <Star className={`size-4 ${featured ? 'text-yellow-600' : 'text-gray-600'}`} />
+                  <div className={`p-2 rounded-lg ${featured ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                    <Star className={`size-4 ${featured ? 'text-blue-600' : 'text-gray-600'}`} />
                   </div>
                   <div>
                     <div className="font-medium">Featured Winner</div>
@@ -601,7 +635,7 @@ export default function WinnerDetail() {
                     onChange={(e) => handleToggleVisibility('featured', e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-600 cursor-pointer"></div>
+                  <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 cursor-pointer"></div>
                 </div>
               </label>
 
@@ -631,7 +665,7 @@ export default function WinnerDetail() {
           </div>
 
           {/* Social Proof Management */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="bg-white border border-border rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold flex items-center gap-2">
                 <ImageIcon className="size-5" />
@@ -660,7 +694,7 @@ export default function WinnerDetail() {
                     <img
                       src={winner.winner_photo_url}
                       alt={winner.display_name}
-                      className="w-32 h-32 rounded-lg object-cover border-2 border-gray-200"
+                      className="w-32 h-32 rounded-lg object-cover border-2 border-border"
                     />
                   </div>
                 )}
@@ -721,7 +755,7 @@ export default function WinnerDetail() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Prize Information */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="bg-white border border-border rounded-lg p-6">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <Gift className="size-5" />
                 Prize Details
@@ -756,7 +790,7 @@ export default function WinnerDetail() {
             </div>
 
             {/* Competition Information */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="bg-white border border-border rounded-lg p-6">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <Trophy className="size-5" />
                 Competition Details
@@ -789,7 +823,7 @@ export default function WinnerDetail() {
 
           {/* Draw Information (for end prizes) */}
           {winner.draw && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="bg-white border border-border rounded-lg p-6">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <ShieldCheck className="size-5" />
                 Draw Verification
@@ -821,7 +855,7 @@ export default function WinnerDetail() {
 
           {/* User Information */}
           {winner.user && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="bg-white border border-border rounded-lg p-6">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <Mail className="size-5" />
                 Winner Contact Information
@@ -872,11 +906,15 @@ export default function WinnerDetail() {
 
           {/* Prize Fulfillment */}
           {fulfillment && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="bg-white border border-border rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold flex items-center gap-2">
-                  <Package className="size-5" />
-                  Prize Fulfillment
+                  {fulfillment.choice === 'cash' ? (
+                    <Wallet className="size-5" />
+                  ) : (
+                    <Package className="size-5" />
+                  )}
+                  {fulfillment.choice === 'cash' ? 'Cash Alternative' : 'Prize Fulfillment'}
                 </h3>
                 <span
                   className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${badge.color}`}
@@ -886,61 +924,126 @@ export default function WinnerDetail() {
               </div>
 
               <div className="space-y-4">
-                {/* Status Update */}
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground block mb-2">
-                    Fulfillment Status
-                  </label>
-                  <Select
-                    value={selectedStatus || 'pending'}
-                    onValueChange={(value) => setSelectedStatus(value as FulfillmentStatus)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="prize_selected">Prize Selected</SelectItem>
-                      <SelectItem value="cash_selected">Cash Selected</SelectItem>
-                      <SelectItem value="processing">Processing</SelectItem>
-                      <SelectItem value="dispatched">Dispatched</SelectItem>
-                      <SelectItem value="delivered">Delivered</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="expired">Expired</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Cash Alternative Workflow */}
+                {fulfillment.choice === 'cash' ? (
+                  <>
+                    {/* Cash Alternative Amount */}
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Wallet Credit Amount:</span>
+                        <p className="text-2xl font-bold text-foreground mt-1">
+                          £{(fulfillment.value_pence / 100).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Expiry:</span>
+                        <p className="font-medium mt-1">90 days from approval</p>
+                      </div>
+                    </div>
 
-                {/* Tracking Number */}
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground block mb-2">
-                    Tracking Number (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={trackingNumber}
-                    onChange={(e) => setTrackingNumber(e.target.value)}
-                    placeholder="Enter tracking number"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                    {/* Approval Section */}
+                    {(fulfillment.status === 'cash_selected' || fulfillment.status === 'processing') && (
+                      <div className="p-4 bg-gray-50 border border-border rounded-lg">
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Winner selected cash alternative. Click below to approve and add funds to their wallet balance.
+                        </p>
+                        <Button
+                          onClick={handleApproveCashAlternative}
+                          disabled={approvingCash}
+                          className="bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                        >
+                          <Wallet className="size-4 mr-2" />
+                          {approvingCash ? 'Approving...' : 'Approve & Add to Wallet'}
+                        </Button>
+                      </div>
+                    )}
 
-                {/* Notes */}
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground block mb-2">
-                    Admin Notes (optional)
-                  </label>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Add any notes about this fulfillment..."
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                    {/* Completed Cash Alternative */}
+                    {fulfillment.status === 'completed' && (
+                      <div className="p-4 bg-gray-50 border border-border rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle className="size-5 text-green-600" />
+                          <span className="font-medium text-foreground">Wallet Credit Added</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Funds have been added to the winner's wallet. Credit expires in 90 days.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Admin Notes for Cash */}
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground block mb-2">
+                        Admin Notes
+                      </label>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Add any notes about this cash alternative..."
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Physical Prize Workflow */}
+                    {/* Status Update */}
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground block mb-2">
+                        Fulfillment Status
+                      </label>
+                      <Select
+                        value={selectedStatus || 'pending'}
+                        onValueChange={(value) => setSelectedStatus(value as FulfillmentStatus)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="prize_selected">Prize Selected</SelectItem>
+                          <SelectItem value="processing">Processing</SelectItem>
+                          <SelectItem value="dispatched">Dispatched</SelectItem>
+                          <SelectItem value="delivered">Delivered</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="expired">Expired</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Tracking Number */}
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground block mb-2">
+                        Tracking Number (optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={trackingNumber}
+                        onChange={(e) => setTrackingNumber(e.target.value)}
+                        placeholder="Enter tracking number"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    {/* Notes */}
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground block mb-2">
+                        Admin Notes (optional)
+                      </label>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Add any notes about this fulfillment..."
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </>
+                )}
 
                 {/* Fulfillment Timeline */}
-                <div className="border-t pt-4">
+                <div className="border-t border-border pt-4">
                   <h4 className="text-sm font-medium text-muted-foreground mb-3">Timeline</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2">
@@ -962,31 +1065,33 @@ export default function WinnerDetail() {
                         <span>{new Date(fulfillment.responded_at).toLocaleString('en-GB')}</span>
                       </div>
                     )}
-                    {fulfillment.dispatched_at && (
+                    {fulfillment.choice !== 'cash' && fulfillment.dispatched_at && (
                       <div className="flex items-center gap-2">
                         <Package className="size-4 text-indigo-500" />
                         <span className="text-muted-foreground">Dispatched:</span>
                         <span>{new Date(fulfillment.dispatched_at).toLocaleString('en-GB')}</span>
                       </div>
                     )}
-                    {fulfillment.delivered_at && (
+                    {fulfillment.choice !== 'cash' && fulfillment.delivered_at && (
                       <div className="flex items-center gap-2">
                         <CheckCircle className="size-4 text-green-600" />
                         <span className="text-muted-foreground">Delivered:</span>
                         <span>{new Date(fulfillment.delivered_at).toLocaleString('en-GB')}</span>
                       </div>
                     )}
-                    <div className="flex items-center gap-2">
-                      <Clock className="size-4 text-orange-500" />
-                      <span className="text-muted-foreground">Claim Deadline:</span>
-                      <span>{new Date(fulfillment.claim_deadline).toLocaleString('en-GB')}</span>
-                    </div>
+                    {fulfillment.choice !== 'cash' && (
+                      <div className="flex items-center gap-2">
+                        <Clock className="size-4 text-orange-500" />
+                        <span className="text-muted-foreground">Claim Deadline:</span>
+                        <span>{new Date(fulfillment.claim_deadline).toLocaleString('en-GB')}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Winner Choice */}
                 {fulfillment.choice && (
-                  <div className="border-t pt-4">
+                  <div className="border-t border-border pt-4">
                     <div className="text-sm">
                       <span className="text-muted-foreground">Winner's Choice:</span>
                       <span className="ml-2 font-medium capitalize">{fulfillment.choice}</span>
@@ -994,9 +1099,9 @@ export default function WinnerDetail() {
                   </div>
                 )}
 
-                {/* Delivery Address */}
-                {fulfillment.delivery_address && (
-                  <div className="border-t pt-4">
+                {/* Delivery Address - Only for physical prizes */}
+                {fulfillment.choice !== 'cash' && fulfillment.delivery_address && (
+                  <div className="border-t border-border pt-4">
                     <h4 className="text-sm font-medium text-muted-foreground mb-2">
                       Delivery Address
                     </h4>
@@ -1016,22 +1121,37 @@ export default function WinnerDetail() {
                   </div>
                 )}
 
-                {/* Update Button */}
-                <div className="flex justify-end pt-4">
-                  <Button
-                    onClick={handleUpdateFulfillment}
-                    disabled={updating || selectedStatus === fulfillment.status}
-                    className="bg-blue-600 hover:bg-blue-700 cursor-pointer"
-                  >
-                    {updating ? 'Updating...' : 'Update Fulfillment'}
-                  </Button>
-                </div>
+                {/* Update Button - Only for physical prizes */}
+                {fulfillment.choice !== 'cash' && (
+                  <div className="flex justify-end pt-4">
+                    <Button
+                      onClick={handleUpdateFulfillment}
+                      disabled={updating || selectedStatus === fulfillment.status}
+                      className="bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                    >
+                      {updating ? 'Updating...' : 'Update Fulfillment'}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Notes update for cash - Show save button */}
+                {fulfillment.choice === 'cash' && notes !== (fulfillment.notes || '') && (
+                  <div className="flex justify-end pt-4">
+                    <Button
+                      onClick={handleUpdateFulfillment}
+                      disabled={updating}
+                      className="bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                    >
+                      {updating ? 'Saving...' : 'Save Notes'}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {/* Metadata */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs text-muted-foreground space-y-1">
+          <div className="bg-white border border-border rounded-lg p-4 text-xs text-muted-foreground space-y-1">
             <div>
               Winner ID: <span className="font-mono">{winner.id}</span>
             </div>
@@ -1059,7 +1179,7 @@ export default function WinnerDetail() {
 
           <div className="space-y-4">
             {/* Winner Info */}
-            <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center gap-3 p-4 bg-gray-50 border border-border rounded-lg">
               {winner.prize_image_url ? (
                 <img
                   src={winner.prize_image_url}
@@ -1078,8 +1198,8 @@ export default function WinnerDetail() {
             </div>
 
             {/* Warning */}
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
+            <div className="p-4 bg-gray-50 border border-border rounded-lg">
+              <p className="text-sm text-muted-foreground">
                 <strong>Warning:</strong> This will only delete the winner display record. The
                 underlying ticket and fulfillment data will remain.
               </p>

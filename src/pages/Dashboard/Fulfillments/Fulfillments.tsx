@@ -7,13 +7,14 @@ import {
   Truck,
   CheckCircle,
   Clock,
-  Banknote,
   MapPin,
-  Calendar,
-  User,
   Download,
+  Wallet,
+  Eye,
+  User,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/store/authStore'
 import type { Database } from '@/types/database.types'
 import {
   Select,
@@ -22,6 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
 type PrizeFulfillment = Database['public']['Tables']['prize_fulfillments']['Row']
@@ -37,12 +44,15 @@ interface FulfillmentWithDetails extends PrizeFulfillment {
 }
 
 export default function Fulfillments() {
+  const { user } = useAuthStore()
   const [fulfillments, setFulfillments] = useState<FulfillmentWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [choiceFilter, setChoiceFilter] = useState<string>('all')
   const [processingId, setProcessingId] = useState<string | null>(null)
+  const [selectedFulfillment, setSelectedFulfillment] = useState<FulfillmentWithDetails | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   useEffect(() => {
     loadFulfillments()
@@ -60,12 +70,7 @@ export default function Fulfillments() {
             last_name,
             email
           ),
-          competition:competitions!competition_id(title),
-          winner:winners!inner(
-            prize_name,
-            prize_value_gbp,
-            win_type
-          )
+          competition:competitions!competition_id(title)
         `)
         .order('created_at', { ascending: false })
 
@@ -81,11 +86,36 @@ export default function Fulfillments() {
 
       if (error) throw error
 
+      // Fetch winners separately by ticket_id
+      const ticketIds = (data || [])
+        .map((f) => f.ticket_id)
+        .filter((id): id is string => !!id)
+
+      let winnersMap: Record<string, { prize_name: string; prize_value_gbp?: number; win_type?: string }> = {}
+
+      if (ticketIds.length > 0) {
+        const { data: winnersData } = await supabase
+          .from('winners')
+          .select('ticket_id, prize_name, prize_value_gbp, win_type')
+          .in('ticket_id', ticketIds)
+
+        winnersMap = (winnersData || []).reduce((acc, winner) => {
+          if (winner.ticket_id) {
+            acc[winner.ticket_id] = {
+              prize_name: winner.prize_name,
+              prize_value_gbp: winner.prize_value_gbp ?? undefined,
+              win_type: winner.win_type ?? undefined,
+            }
+          }
+          return acc
+        }, {} as Record<string, { prize_name: string; prize_value_gbp?: number; win_type?: string }>)
+      }
+
       // Transform data
       const transformedData = (data || []).map((fulfillment) => {
         const user = fulfillment.user as { first_name?: string; last_name?: string; email: string } | null
         const competition = fulfillment.competition as { title: string } | null
-        const winner = fulfillment.winner as unknown as { prize_name: string; prize_value_gbp?: number; win_type?: string } | null
+        const winner = winnersMap[fulfillment.ticket_id]
 
         return {
           ...fulfillment,
@@ -119,28 +149,47 @@ export default function Fulfillments() {
   })
 
   const getStatusBadge = (status: FulfillmentStatus | null) => {
-    const badges: Record<FulfillmentStatus, { label: string; color: string; icon: typeof Clock }> = {
-      pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-      prize_selected: {
-        label: 'Prize Selected',
-        color: 'bg-blue-100 text-blue-800',
-        icon: Package,
-      },
-      cash_selected: {
-        label: 'Cash Selected',
-        color: 'bg-purple-100 text-purple-800',
-        icon: Banknote,
-      },
-      processing: { label: 'Processing', color: 'bg-orange-100 text-orange-800', icon: Package },
-      dispatched: { label: 'Dispatched', color: 'bg-indigo-100 text-indigo-800', icon: Truck },
-      delivered: { label: 'Delivered', color: 'bg-teal-100 text-teal-800', icon: CheckCircle },
-      completed: { label: 'Completed', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-      expired: { label: 'Expired', color: 'bg-red-100 text-red-800', icon: Clock },
+    const badges: Record<FulfillmentStatus, { label: string; color: string }> = {
+      pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800' },
+      prize_selected: { label: 'Prize Selected', color: 'bg-blue-100 text-blue-800' },
+      cash_selected: { label: 'Cash Selected', color: 'bg-purple-100 text-purple-800' },
+      processing: { label: 'Processing', color: 'bg-orange-100 text-orange-800' },
+      dispatched: { label: 'Dispatched', color: 'bg-indigo-100 text-indigo-800' },
+      delivered: { label: 'Delivered', color: 'bg-teal-100 text-teal-800' },
+      completed: { label: 'Completed', color: 'bg-green-100 text-green-800' },
+      expired: { label: 'Expired', color: 'bg-red-100 text-red-800' },
     }
 
-    const badge = status ? badges[status] : { label: 'Pending', color: 'bg-gray-100 text-gray-800', icon: Clock }
-    const Icon = badge.icon
-    return { ...badge, icon: <Icon className="size-3" /> }
+    return status ? badges[status] : { label: 'Pending', color: 'bg-gray-100 text-gray-800' }
+  }
+
+  const handleApproveCashAlternative = async (fulfillmentId: string, userId: string) => {
+    try {
+      setProcessingId(fulfillmentId)
+
+      const { data, error } = await supabase.rpc('approve_cash_alternative' as any, {
+        p_fulfillment_id: fulfillmentId,
+        p_admin_id: userId,
+      }) as { data: { amount_gbp: number; expires_at: string } | null; error: any }
+
+      if (error) throw error
+
+      if (data) {
+        alert(
+          `Cash alternative approved! £${data.amount_gbp} added to user's wallet. Expires: ${new Date(
+            data.expires_at
+          ).toLocaleDateString()}`
+        )
+      }
+
+      await loadFulfillments()
+      setDetailsOpen(false)
+    } catch (error) {
+      console.error('Error approving cash alternative:', error)
+      alert('Failed to approve cash alternative. Please try again.')
+    } finally {
+      setProcessingId(null)
+    }
   }
 
   const handleUpdateStatus = async (
@@ -173,8 +222,11 @@ export default function Fulfillments() {
 
       if (error) throw error
 
-      // Reload data
       await loadFulfillments()
+      if (selectedFulfillment?.id === id) {
+        const updated = fulfillments.find(f => f.id === id)
+        if (updated) setSelectedFulfillment(updated)
+      }
     } catch (error) {
       console.error('Error updating fulfillment status:', error)
     } finally {
@@ -224,6 +276,11 @@ export default function Fulfillments() {
     a.click()
   }
 
+  const openDetails = (fulfillment: FulfillmentWithDetails) => {
+    setSelectedFulfillment(fulfillment)
+    setDetailsOpen(true)
+  }
+
   return (
     <>
       <DashboardHeader
@@ -239,7 +296,7 @@ export default function Fulfillments() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold flex items-center gap-2">
-                <Gift className="size-6 text-teal-600" />
+                <Gift className="size-6" />
                 Prize Fulfillments
               </h1>
               <p className="text-muted-foreground mt-1">
@@ -257,8 +314,8 @@ export default function Fulfillments() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white border border-border rounded-lg p-6">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-yellow-100 rounded-lg">
                   <Clock className="size-6 text-yellow-600" />
@@ -269,7 +326,7 @@ export default function Fulfillments() {
                 </div>
               </div>
             </div>
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="bg-white border border-border rounded-lg p-6">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-orange-100 rounded-lg">
                   <Package className="size-6 text-orange-600" />
@@ -280,7 +337,7 @@ export default function Fulfillments() {
                 </div>
               </div>
             </div>
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="bg-white border border-border rounded-lg p-6">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-indigo-100 rounded-lg">
                   <Truck className="size-6 text-indigo-600" />
@@ -294,7 +351,7 @@ export default function Fulfillments() {
           </div>
 
           {/* Filters */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="bg-white border border-border rounded-lg p-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Search */}
               <div className="md:col-span-2">
@@ -346,210 +403,369 @@ export default function Fulfillments() {
             </div>
           </div>
 
-          {/* Fulfillments Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Fulfillments Table */}
+          <div className="bg-white border border-border rounded-lg overflow-hidden">
             {loading ? (
-              <div className="col-span-full p-8 text-center bg-white rounded-lg border border-gray-200">
-                <div className="inline-block size-8 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+              <div className="p-8 text-center">
+                <div className="inline-block size-8 border-4 border-border border-t-blue-600 rounded-full animate-spin"></div>
                 <p className="mt-2 text-muted-foreground">Loading fulfillments...</p>
               </div>
             ) : filteredFulfillments.length === 0 ? (
-              <div className="col-span-full p-16 text-center bg-white rounded-lg border border-gray-200">
+              <div className="p-8 text-center">
                 <Gift className="size-12 text-gray-300 mx-auto mb-4" />
                 <p className="text-muted-foreground">No fulfillments found</p>
               </div>
             ) : (
-              filteredFulfillments.map((fulfillment) => {
-                const badge = getStatusBadge(fulfillment.status)
-                const isPhysical = fulfillment.choice === 'physical'
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-border">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        User
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Prize
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Value
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Claimed
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-border">
+                    {filteredFulfillments.map((fulfillment) => {
+                      const badge = getStatusBadge(fulfillment.status)
+                      const isPhysical = fulfillment.choice === 'physical' || fulfillment.choice === 'prize'
 
-                return (
-                  <div
-                    key={fulfillment.id}
-                    className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow"
-                  >
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`size-12 rounded-lg flex items-center justify-center ${
-                            isPhysical
-                              ? 'bg-teal-100 text-teal-600'
-                              : 'bg-purple-100 text-purple-600'
-                          }`}
-                        >
-                          {isPhysical ? <Gift className="size-6" /> : <Banknote className="size-6" />}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-foreground">
-                            {fulfillment.prize_name}
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            {fulfillment.competition_title}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg ${badge.color}`}
-                      >
-                        {badge.icon}
-                        {badge.label}
-                      </span>
-                    </div>
-
-                    {/* User Info */}
-                    <div className="flex items-center gap-2 mb-4 text-sm">
-                      <User className="size-4 text-muted-foreground" />
-                      <span className="text-foreground font-medium">
-                        {fulfillment.user_name}
-                      </span>
-                      <span className="text-muted-foreground">•</span>
-                      <span className="text-muted-foreground">{fulfillment.user_email}</span>
-                    </div>
-
-                    {/* Prize Value */}
-                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground uppercase font-medium mb-1">
-                            {isPhysical ? 'Physical Prize' : 'Cash Alternative'}
-                          </p>
-                          <p className="text-lg font-semibold text-foreground">
+                      return (
+                        <tr key={fulfillment.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-foreground">
+                              {fulfillment.user_name}
+                            </div>
+                            <div className="text-sm text-muted-foreground">{fulfillment.user_email}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-foreground">
+                              {fulfillment.prize_name}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {fulfillment.competition_title}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-foreground">
                             {fulfillment.prize_value_gbp
                               ? `£${fulfillment.prize_value_gbp.toFixed(2)}`
                               : 'N/A'}
-                          </p>
-                        </div>
-                        <div className="text-right text-sm text-muted-foreground">
-                          <Calendar className="size-4 inline mr-1" />
-                          {fulfillment.created_at
-                            ? new Date(fulfillment.created_at).toLocaleDateString('en-GB', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                              })
-                            : 'N/A'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Delivery Address */}
-                    {isPhysical && fulfillment.delivery_address && (
-                      <div className="mb-4">
-                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase mb-2">
-                          <MapPin className="size-3" />
-                          Delivery Address
-                        </div>
-                        <div className="text-sm bg-gray-50 p-3 rounded-lg text-foreground">
-                          {typeof fulfillment.delivery_address === 'object' ? (
-                            <>
-                              <p className="font-medium">
-                                {(fulfillment.delivery_address as { fullName?: string }).fullName}
-                              </p>
-                              <p>
-                                {(fulfillment.delivery_address as { line1?: string }).line1}
-                              </p>
-                              {(fulfillment.delivery_address as { line2?: string }).line2 && (
-                                <p>
-                                  {(fulfillment.delivery_address as { line2?: string }).line2}
-                                </p>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              {isPhysical ? (
+                                <>
+                                  <Gift className="size-3" />
+                                  Physical
+                                </>
+                              ) : (
+                                <>
+                                  <Wallet className="size-3" />
+                                  Cash
+                                </>
                               )}
-                              <p>
-                                {(fulfillment.delivery_address as { city?: string }).city},{' '}
-                                {(fulfillment.delivery_address as { postcode?: string }).postcode}
-                              </p>
-                              <p className="text-muted-foreground mt-1">
-                                {(fulfillment.delivery_address as { phone?: string }).phone}
-                              </p>
-                            </>
-                          ) : (
-                            <p>{String(fulfillment.delivery_address)}</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Tracking Number */}
-                    {fulfillment.tracking_number && (
-                      <div className="mb-4 bg-indigo-50 border border-indigo-200 rounded-lg p-3">
-                        <p className="text-xs text-indigo-600 font-medium uppercase mb-1">
-                          Tracking Number
-                        </p>
-                        <p className="font-mono text-indigo-800 text-sm">
-                          {fulfillment.tracking_number}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Notes */}
-                    {fulfillment.notes && (
-                      <div className="mb-4 text-sm">
-                        <p className="text-xs text-muted-foreground font-medium uppercase mb-1">
-                          Notes
-                        </p>
-                        <p className="text-foreground">{fulfillment.notes}</p>
-                      </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex gap-2">
-                      {(fulfillment.status === 'prize_selected' ||
-                        fulfillment.status === 'cash_selected') && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleUpdateStatus(fulfillment.id, 'processing')}
-                          disabled={processingId === fulfillment.id}
-                        >
-                          Mark Processing
-                        </Button>
-                      )}
-                      {fulfillment.status === 'processing' && isPhysical && (
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            const tracking = prompt('Enter tracking number:')
-                            if (tracking) {
-                              handleUpdateStatus(fulfillment.id, 'dispatched', tracking)
-                            }
-                          }}
-                          disabled={processingId === fulfillment.id}
-                          className="cursor-pointer"
-                        >
-                          <Truck className="size-4 mr-1" />
-                          Mark Dispatched
-                        </Button>
-                      )}
-                      {fulfillment.status === 'dispatched' && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => handleUpdateStatus(fulfillment.id, 'delivered')}
-                          disabled={processingId === fulfillment.id}
-                        >
-                          <CheckCircle className="size-4 mr-1" />
-                          Mark Delivered
-                        </Button>
-                      )}
-                      {(fulfillment.status === 'delivered' ||
-                        (fulfillment.status === 'processing' && !isPhysical)) && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => handleUpdateStatus(fulfillment.id, 'completed')}
-                          disabled={processingId === fulfillment.id}
-                        >
-                          <CheckCircle className="size-4 mr-1" />
-                          Mark Completed
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )
-              })
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.color}`}
+                            >
+                              {badge.label}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-muted-foreground">
+                            {fulfillment.created_at
+                              ? new Date(fulfillment.created_at).toLocaleDateString('en-GB')
+                              : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => openDetails(fulfillment)}
+                              className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-medium text-sm cursor-pointer"
+                            >
+                              <Eye className="size-4" />
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Details Dialog */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-0">
+          {selectedFulfillment && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Fulfillment Details</DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-6">
+                {/* User Information */}
+                <div>
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <User className="size-4" />
+                    User Information
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Name:</span>
+                      <p className="font-medium">{selectedFulfillment.user_name}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Email:</span>
+                      <p className="font-medium">{selectedFulfillment.user_email}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Prize Information */}
+                <div>
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <Gift className="size-4" />
+                    Prize Information
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Prize:</span>
+                      <p className="font-medium">{selectedFulfillment.prize_name}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Competition:</span>
+                      <p className="font-medium">{selectedFulfillment.competition_title}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Value:</span>
+                      <p className="font-medium">£{selectedFulfillment.prize_value_gbp?.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Type:</span>
+                      <p className="font-medium">
+                        {selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize'
+                          ? 'Physical Prize'
+                          : 'Cash Alternative'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Status:</span>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          getStatusBadge(selectedFulfillment.status).color
+                        }`}
+                      >
+                        {getStatusBadge(selectedFulfillment.status).label}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Claimed:</span>
+                      <p className="font-medium">
+                        {selectedFulfillment.created_at
+                          ? new Date(selectedFulfillment.created_at).toLocaleDateString('en-GB')
+                          : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Delivery Address */}
+                {(selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize') &&
+                  selectedFulfillment.delivery_address && (
+                    <div>
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <MapPin className="size-4" />
+                        Delivery Address
+                      </h4>
+                      <div className="text-sm space-y-1">
+                        {typeof selectedFulfillment.delivery_address === 'object' ? (
+                          <>
+                            <p className="font-medium">
+                              {(selectedFulfillment.delivery_address as { fullName?: string }).fullName}
+                            </p>
+                            <p>{(selectedFulfillment.delivery_address as { line1?: string }).line1}</p>
+                            {(selectedFulfillment.delivery_address as { line2?: string }).line2 && (
+                              <p>{(selectedFulfillment.delivery_address as { line2?: string }).line2}</p>
+                            )}
+                            <p>
+                              {(selectedFulfillment.delivery_address as { city?: string }).city},{' '}
+                              {(selectedFulfillment.delivery_address as { postcode?: string }).postcode}
+                            </p>
+                            <p className="text-muted-foreground pt-2">
+                              {(selectedFulfillment.delivery_address as { phone?: string }).phone}
+                            </p>
+                          </>
+                        ) : (
+                          <p>{String(selectedFulfillment.delivery_address)}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Tracking Number */}
+                {selectedFulfillment.tracking_number && (
+                  <div>
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <Truck className="size-4" />
+                      Tracking Information
+                    </h4>
+                    <p className="font-mono text-sm">{selectedFulfillment.tracking_number}</p>
+                  </div>
+                )}
+
+                {/* Cash Alternative Info */}
+                {selectedFulfillment.choice === 'cash' &&
+                  (selectedFulfillment.status === 'cash_selected' ||
+                    selectedFulfillment.status === 'processing') && (
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                      <h4 className="font-semibold mb-2 flex items-center gap-2">
+                        <Wallet className="size-4" />
+                        Cash Alternative
+                      </h4>
+                      <p className="text-sm">
+                        Winner selected cash alternative. Approve to add £
+                        {selectedFulfillment.prize_value_gbp?.toFixed(2)} to their wallet balance.
+                      </p>
+                    </div>
+                  )}
+
+                {/* Completed Wallet Credit */}
+                {selectedFulfillment.choice === 'cash' && selectedFulfillment.status === 'completed' && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <CheckCircle className="size-4" />
+                      Wallet Credit Added
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Amount:</span>
+                        <p className="font-semibold text-green-700">
+                          £{selectedFulfillment.prize_value_gbp?.toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Expires:</span>
+                        <p className="font-medium">90 days</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {selectedFulfillment.notes && (
+                  <div>
+                    <h4 className="font-semibold mb-3">Admin Notes</h4>
+                    <p className="text-sm bg-amber-50 border border-amber-200 rounded-lg p-4">
+                      {selectedFulfillment.notes}
+                    </p>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-2 flex-wrap pt-4 border-t border-border">
+                  {selectedFulfillment.status === 'prize_selected' &&
+                    (selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize') && (
+                      <Button
+                        onClick={() => handleUpdateStatus(selectedFulfillment.id, 'processing')}
+                        disabled={processingId === selectedFulfillment.id}
+                        className="bg-orange-600 hover:bg-orange-700 cursor-pointer"
+                      >
+                        <Package className="size-4 mr-2" />
+                        Start Processing
+                      </Button>
+                    )}
+
+                  {selectedFulfillment.status === 'processing' &&
+                    (selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize') && (
+                      <Button
+                        onClick={() => {
+                          const tracking = prompt('Enter tracking number:')
+                          if (tracking) {
+                            handleUpdateStatus(selectedFulfillment.id, 'dispatched', tracking)
+                          }
+                        }}
+                        disabled={processingId === selectedFulfillment.id}
+                        className="bg-indigo-600 hover:bg-indigo-700 cursor-pointer"
+                      >
+                        <Truck className="size-4 mr-2" />
+                        Mark Dispatched
+                      </Button>
+                    )}
+
+                  {(selectedFulfillment.status === 'cash_selected' ||
+                    selectedFulfillment.status === 'processing') &&
+                    selectedFulfillment.choice === 'cash' &&
+                    user?.id && (
+                      <Button
+                        onClick={() => {
+                          if (
+                            confirm(
+                              `Add £${selectedFulfillment.prize_value_gbp?.toFixed(2)} to ${
+                                selectedFulfillment.user_email
+                              }'s wallet?`
+                            )
+                          ) {
+                            handleApproveCashAlternative(selectedFulfillment.id, user.id)
+                          }
+                        }}
+                        disabled={processingId === selectedFulfillment.id}
+                        className="bg-purple-600 hover:bg-purple-700 cursor-pointer"
+                      >
+                        <Wallet className="size-4 mr-2" />
+                        Approve Wallet Credit
+                      </Button>
+                    )}
+
+                  {selectedFulfillment.status === 'dispatched' && (
+                    <Button
+                      onClick={() => handleUpdateStatus(selectedFulfillment.id, 'delivered')}
+                      disabled={processingId === selectedFulfillment.id}
+                      className="bg-teal-600 hover:bg-teal-700 cursor-pointer"
+                    >
+                      <CheckCircle className="size-4 mr-2" />
+                      Mark Delivered
+                    </Button>
+                  )}
+
+                  {selectedFulfillment.status === 'delivered' && (
+                    <Button
+                      onClick={() => handleUpdateStatus(selectedFulfillment.id, 'completed')}
+                      disabled={processingId === selectedFulfillment.id}
+                      className="bg-green-600 hover:bg-green-700 cursor-pointer"
+                    >
+                      <CheckCircle className="size-4 mr-2" />
+                      Complete
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
