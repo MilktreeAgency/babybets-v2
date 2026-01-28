@@ -35,9 +35,6 @@ export default function MeetPartnerSection() {
 
             <div className="rounded-2xl p-6 mb-6" style={{ backgroundColor: '#f5f5f5', border: '1px solid #e0e0e0' }}>
               <div className="flex items-start gap-3 mb-4">
-                <div className="p-2 rounded-lg" style={{ backgroundColor: '#ffca24' }}>
-                  <Sparkles size={20} style={{ color: '#2D251E' }} />
-                </div>
                 <div className="flex-1">
                   <p className="italic leading-relaxed" style={{ color: '#333333' }}>
                     "BabyBets is genuinely one of the best competition sites we have come across. Transparent draws, amazing prizes, and real winners!"

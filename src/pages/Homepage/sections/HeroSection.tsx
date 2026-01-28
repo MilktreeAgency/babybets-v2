@@ -6,7 +6,7 @@ export default function HeroSection() {
     <section
       className="pt-48 pb-24 px-6 relative"
       style={{
-        backgroundImage: 'url(/heroframe.png)',
+        backgroundImage: 'url(/heroframe-two.png)',
         backgroundSize: '100%',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
