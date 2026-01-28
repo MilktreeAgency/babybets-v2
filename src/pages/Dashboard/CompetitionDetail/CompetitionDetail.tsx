@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
+import { DrawExecutionPanel } from '@/components/admin/DrawExecutionPanel'
 
 type Competition = Database['public']['Tables']['competitions']['Row']
 
@@ -518,6 +519,12 @@ export default function CompetitionDetail() {
                   </div>
                 </div>
               </div>
+
+              {/* Main Prize Draw */}
+              {(competition.competition_type === 'standard' ||
+                competition.competition_type === 'instant_win_with_end_prize') && (
+                <DrawExecutionPanel competition={competition} onDrawExecuted={loadCompetitionDetails} />
+              )}
             </div>
           </div>
         </div>
