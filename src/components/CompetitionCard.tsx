@@ -31,12 +31,6 @@ export default function CompetitionCard({ competition }: CompetitionCardProps) {
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
   }
 
-  const getTicketsRemaining = (ticketsSold: number | null, maxTickets: number) => {
-    const sold = ticketsSold || 0
-    return maxTickets - sold
-  }
-
-  const ticketsRemaining = getTicketsRemaining(competition.tickets_sold, competition.max_tickets)
   const percentageSold = ((competition.tickets_sold || 0) / competition.max_tickets) * 100
 
   // Use first image from images array, or fallback to image_url
