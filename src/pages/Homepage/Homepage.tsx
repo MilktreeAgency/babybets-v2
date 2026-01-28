@@ -7,6 +7,7 @@ import MeetPartnerSection from './sections/MeetPartnerSection'
 import ScrollingTextSection from './sections/ScrollingTextSection'
 import FeaturedCompetitionsSection from './sections/FeaturedCompetitionsSection'
 import WinAmazingPrizesSection from './sections/WinAmazingPrizesSection'
+import FAQSection from './sections/FAQSection'
 import FinalCTASection from './sections/FinalCTASection'
 
 function Homepage() {
@@ -25,6 +26,7 @@ function Homepage() {
       <ScrollingTextSection />
       <FeaturedCompetitionsSection />
       <WinAmazingPrizesSection />
+      <FAQSection />
       <FinalCTASection />
       <Footer />
     </div>
