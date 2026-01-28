@@ -12,10 +12,10 @@ export default function FeaturedCompetitionsSection() {
         {/* Header */}
         <div className="text-center mb-12">
           <p className="text-sm font-bold uppercase tracking-wide mb-4" style={{ color: '#666666' }}>
-            Explore Trendy Kids'
+            Ready to Win?
           </p>
           <h2 className="text-4xl md:text-5xl font-bold mb-5" style={{ fontFamily: "'Baloo Chettan 2', sans-serif", color: '#000000' }}>
-            Best Selling Competitions
+            Ongoing Competitions
           </h2>
         </div>
 
