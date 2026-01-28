@@ -93,10 +93,30 @@ function Checkout() {
       setLoading(true)
       setError(null)
 
+      // Validate cart is not empty
+      if (items.length === 0) {
+        throw new Error('Your cart is empty')
+      }
+
       // Convert GBP to pence
       const totalPence = Math.round(totalPrice * 100)
       const creditPence = Math.round(appliedCredit * 100)
       const finalPence = Math.round(finalPrice * 100)
+
+      // Validate order total is greater than 0
+      if (totalPence <= 0) {
+        throw new Error('Order total must be greater than £0.00. Please check your cart items.')
+      }
+
+      // Validate all items have valid prices
+      const invalidItems = items.filter(
+        (item) => !item.pricePerTicket || item.pricePerTicket <= 0 || !item.totalPrice || item.totalPrice <= 0
+      )
+      if (invalidItems.length > 0) {
+        throw new Error(
+          `Some items in your cart have invalid prices. Please remove and re-add: ${invalidItems.map((i) => i.competitionTitle).join(', ')}`
+        )
+      }
 
       // Ensure user is authenticated
       if (!user?.id) throw new Error('User not authenticated')

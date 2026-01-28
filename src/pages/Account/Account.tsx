@@ -1,32 +1,39 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { LogOut, MapPin, User, Bell, LayoutDashboard, X, Save, Wallet, Clock, TrendingUp } from 'lucide-react'
+import { LogOut, MapPin, User, Bell, LayoutDashboard, X, Save, Wallet, Clock, TrendingUp, Gift, Ticket, Search } from 'lucide-react'
 import Header from '@/components/common/Header'
 import { useAuthStore } from '@/store/authStore'
 import { useTickets } from '@/hooks/useTickets'
 import { useProfile } from '@/hooks/useProfile'
 import { useWallet } from '@/hooks/useWallet'
+import { usePrizeFulfillments } from '@/hooks/usePrizeFulfillments'
+import { UserPrizeClaimModal } from '@/components/UserPrizeClaimModal'
+import { ScratchCard } from '@/components/ScratchCard'
 import { authService } from '@/services/auth.service'
 
-type Section = 'dashboard' | 'wallet' | 'addresses' | 'account-details' | 'communication' | 'logout'
+type Section = 'dashboard' | 'tickets' | 'prizes' | 'wallet' | 'addresses' | 'account-details' | 'communication' | 'logout'
 type Tab = 'current' | 'past'
 
 function Account() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { isAuthenticated, user, isLoading, isInitialized } = useAuthStore()
-  const { tickets } = useTickets()
+  const { tickets, revealTicket, isRevealing, unrevealedCount } = useTickets()
   const { profile, updateAddress, isUpdatingAddress, updateProfile, isUpdating } = useProfile()
   const { credits, transactions, summary, isLoading: isLoadingWallet } = useWallet()
+  const { fulfillments, pendingFulfillments, activeFulfillments, completedFulfillments, expiringSoon } = usePrizeFulfillments()
 
   // Initialize activeSection from URL or default to 'dashboard'
   const tabParam = searchParams.get('tab') as Section | null
-  const initialSection = tabParam && ['dashboard', 'wallet', 'addresses', 'account-details', 'communication', 'logout'].includes(tabParam)
+  const initialSection = tabParam && ['dashboard', 'tickets', 'prizes', 'wallet', 'addresses', 'account-details', 'communication', 'logout'].includes(tabParam)
     ? tabParam
     : 'dashboard'
   const [activeSection, setActiveSection] = useState<Section>(initialSection)
   const [activeTab, setActiveTab] = useState<Tab>('current')
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [showClaimModal, setShowClaimModal] = useState(false)
+  const [selectedFulfillment, setSelectedFulfillment] = useState<typeof fulfillments[0] | null>(null)
+  const [isBulkRevealing, setIsBulkRevealing] = useState(false)
   const [isEditingAddress, setIsEditingAddress] = useState(false)
   const [isEditingAccount, setIsEditingAccount] = useState(false)
   const [addressForm, setAddressForm] = useState({
@@ -46,6 +53,7 @@ function Account() {
     marketing_email: false,
     marketing_sms: false,
   })
+  const [ticketSearchQuery, setTicketSearchQuery] = useState('')
 
   useEffect(() => {
     if (!isLoading && isInitialized && !isAuthenticated) {
@@ -56,7 +64,7 @@ function Account() {
   // Sync activeSection with URL tab parameter
   useEffect(() => {
     const tabParam = searchParams.get('tab') as Section | null
-    if (tabParam && ['dashboard', 'wallet', 'addresses', 'account-details', 'communication'].includes(tabParam)) {
+    if (tabParam && ['dashboard', 'tickets', 'prizes', 'wallet', 'addresses', 'account-details', 'communication'].includes(tabParam)) {
       setActiveSection(tabParam)
     }
   }, [searchParams])
@@ -145,6 +153,27 @@ function Account() {
 
   const hasAddress = profile && profile.address_line1 && profile.city && profile.postcode
 
+  // Bulk reveal all tickets
+  const handleRevealAll = async () => {
+    if (isBulkRevealing || isRevealing) return
+
+    const unrevealedTickets = tickets.filter(t => !t.is_revealed)
+    if (unrevealedTickets.length === 0) return
+
+    setIsBulkRevealing(true)
+    try {
+      // Reveal all tickets sequentially
+      for (const ticket of unrevealedTickets) {
+        await revealTicket(ticket.id)
+      }
+    } catch (error) {
+      console.error('Error revealing tickets:', error)
+      alert('Failed to reveal some tickets. Please try again.')
+    } finally {
+      setIsBulkRevealing(false)
+    }
+  }
+
   // Filter tickets from last 30 days
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
@@ -157,8 +186,30 @@ function Account() {
 
   const pastEntries: typeof tickets = []
 
+  // Filter tickets based on search query
+  const filteredTickets = tickets.filter((ticket) => {
+    if (!ticketSearchQuery) return true
+
+    const query = ticketSearchQuery.toLowerCase()
+    const competitionTitle = ticket.competition?.title?.toLowerCase() || ''
+    const ticketNumber = ticket.ticket_number?.toString() || ''
+    const prizeName = ticket.prize?.name?.toLowerCase() || ''
+    const status = ticket.is_revealed ? 'revealed' : 'unrevealed'
+    const winnerStatus = ticket.prize_id ? 'winner' : 'no prize'
+
+    return (
+      competitionTitle.includes(query) ||
+      ticketNumber.includes(query) ||
+      prizeName.includes(query) ||
+      status.includes(query) ||
+      winnerStatus.includes(query)
+    )
+  })
+
   const navigationItems = [
     { id: 'dashboard' as Section, label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'tickets' as Section, label: 'My Tickets', icon: Ticket, badge: unrevealedCount > 0 ? unrevealedCount : undefined },
+    { id: 'prizes' as Section, label: 'My Prizes', icon: Gift },
     { id: 'wallet' as Section, label: 'Wallet', icon: Wallet },
     { id: 'addresses' as Section, label: 'Addresses', icon: MapPin },
     { id: 'account-details' as Section, label: 'Account Details', icon: User },
@@ -198,7 +249,12 @@ function Account() {
                         style={isActive && item.id !== 'logout' ? { backgroundColor: '#335761' } : {}}
                       >
                         <Icon size={18} className="shrink-0" />
-                        <span className="text-sm leading-tight">{item.label}</span>
+                        <span className="text-sm leading-tight flex-1">{item.label}</span>
+                        {'badge' in item && item.badge && (
+                          <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold rounded-full" style={{ backgroundColor: '#f25100', color: 'white' }}>
+                            {item.badge}
+                          </span>
+                        )}
                       </button>
                     )
                   })}
@@ -211,116 +267,567 @@ function Account() {
               {activeSection === 'dashboard' && (
                 <div className="space-y-8">
                   {/* Welcome Message */}
-                  <div>
+                  <div className="bg-white rounded-xl p-6">
                     <h1 className="text-3xl font-bold mb-3" style={{ color: '#1a1a1a' }}>
                       Hello {user?.name || 'User'}
                     </h1>
                     <p className="text-base" style={{ color: '#666' }}>
-                      From your account dashboard you can view your recent orders, manage your shipping
-                      and billing addresses, and edit your password and account details.
+                      From your account dashboard you can view your tickets, manage your prizes, check your wallet balance, and edit your account details.
                     </p>
                   </div>
 
-                  {/* Competition Entries Section */}
-                  <div className="bg-white rounded-xl p-6">
-                    <h2 className="text-2xl font-bold mb-2" style={{ color: '#1a1a1a' }}>
-                      Your Competition Entries
-                    </h2>
-                    <p className="text-sm mb-1" style={{ color: '#666' }}>
-                      Showing entries from the last 30 days.
-                    </p>
-                    <p className="text-sm mb-6" style={{ color: '#666' }}>
-                      Once you enter a competition your tickets will appear here. Good luck!
-                    </p>
+                  {/* Quick Stats */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Tickets Card */}
+                    <button
+                      onClick={() => {
+                        setActiveSection('tickets')
+                        setSearchParams({ tab: 'tickets' })
+                      }}
+                      className="bg-white rounded-xl p-6 text-left hover:shadow-lg transition-shadow cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-3 rounded-lg" style={{ backgroundColor: '#f0f9ff' }}>
+                          <Ticket size={24} style={{ color: '#335761' }} />
+                        </div>
+                        <h3 className="text-xl font-bold" style={{ color: '#1a1a1a' }}>
+                          My Tickets
+                        </h3>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span style={{ color: '#666' }}>Total</span>
+                          <span className="font-bold" style={{ color: '#1a1a1a' }}>{tickets.length}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span style={{ color: '#666' }}>Unrevealed</span>
+                          <span className="font-bold text-orange-600">{unrevealedCount}</span>
+                        </div>
+                      </div>
+                    </button>
 
-                    {/* Tabs */}
-                    <div className="border-b mb-6" style={{ borderColor: '#e5e7eb' }}>
-                      <div className="flex gap-8">
-                        <button
-                          onClick={() => setActiveTab('current')}
-                          className={`pb-3 font-semibold border-b-2 transition-colors cursor-pointer ${
-                            activeTab === 'current'
-                              ? 'border-[#335761] text-[#335761]'
-                              : 'border-transparent text-[#666]'
-                          }`}
-                        >
-                          Current
-                        </button>
-                        <button
-                          onClick={() => setActiveTab('past')}
-                          className={`pb-3 font-semibold border-b-2 transition-colors cursor-pointer ${
-                            activeTab === 'past'
-                              ? 'border-[#335761] text-[#335761]'
-                              : 'border-transparent text-[#666]'
-                          }`}
-                        >
-                          Past Competitions
-                        </button>
+                    {/* Prizes Card */}
+                    <button
+                      onClick={() => {
+                        setActiveSection('prizes')
+                        setSearchParams({ tab: 'prizes' })
+                      }}
+                      className="bg-white rounded-xl p-6 text-left hover:shadow-lg transition-shadow cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-3 rounded-lg" style={{ backgroundColor: '#fef3c7' }}>
+                          <Gift size={24} style={{ color: '#f59e0b' }} />
+                        </div>
+                        <h3 className="text-xl font-bold" style={{ color: '#1a1a1a' }}>
+                          My Prizes
+                        </h3>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span style={{ color: '#666' }}>Pending</span>
+                          <span className="font-bold text-orange-600">{pendingFulfillments.length}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span style={{ color: '#666' }}>Completed</span>
+                          <span className="font-bold text-green-600">{completedFulfillments.length}</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Wallet Card */}
+                    <button
+                      onClick={() => {
+                        setActiveSection('wallet')
+                        setSearchParams({ tab: 'wallet' })
+                      }}
+                      className="bg-white rounded-xl p-6 text-left hover:shadow-lg transition-shadow cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-3 rounded-lg" style={{ backgroundColor: '#dcfce7' }}>
+                          <Wallet size={24} style={{ color: '#22c55e' }} />
+                        </div>
+                        <h3 className="text-xl font-bold" style={{ color: '#1a1a1a' }}>
+                          My Wallet
+                        </h3>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span style={{ color: '#666' }}>Balance</span>
+                          <span className="font-bold" style={{ color: '#1a1a1a' }}>
+                            £{(summary.availableBalance / 100).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span style={{ color: '#666' }}>Active Credits</span>
+                          <span className="font-bold" style={{ color: '#1a1a1a' }}>{credits.length}</span>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {activeSection === 'tickets' && (
+                <div className="space-y-6">
+                  {/* Tickets Header */}
+                  <div className="bg-white rounded-xl p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                      <Ticket size={24} style={{ color: '#335761' }} />
+                      <h2 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                        My Tickets
+                      </h2>
+                    </div>
+
+                    {/* Summary Stats */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="p-4 border rounded-lg" style={{ borderColor: '#e5e7eb' }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Ticket size={18} style={{ color: '#335761' }} />
+                          <span className="text-sm font-semibold" style={{ color: '#666' }}>
+                            Total Tickets
+                          </span>
+                        </div>
+                        <p className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                          {tickets.length}
+                        </p>
+                      </div>
+
+                      <div className="p-4 border rounded-lg" style={{ borderColor: '#e5e7eb' }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Gift size={18} style={{ color: '#f59e0b' }} />
+                          <span className="text-sm font-semibold" style={{ color: '#666' }}>
+                            Unrevealed
+                          </span>
+                        </div>
+                        <p className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                          {unrevealedCount}
+                        </p>
+                      </div>
+
+                      <div className="p-4 border rounded-lg" style={{ borderColor: '#e5e7eb' }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Gift size={18} style={{ color: '#22c55e' }} />
+                          <span className="text-sm font-semibold" style={{ color: '#666' }}>
+                            Revealed
+                          </span>
+                        </div>
+                        <p className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                          {tickets.filter(t => t.is_revealed).length}
+                        </p>
                       </div>
                     </div>
 
-                    {/* Tab Content */}
-                    {activeTab === 'current' && (
-                      <div className="text-center py-12">
-                        {currentEntries.length === 0 ? (
-                          <>
-                            <p style={{ color: '#666' }}>
-                              No current competition entries to show. Only entries from the last 30 days
-                              will be shown.
-                            </p>
-                            {/* Removed "Browse Competitions" button - no redirect to /competitions */}
-                          </>
-                        ) : (
-                          <div className="space-y-4">
-                            {currentEntries.map((ticket) => (
-                              <div
-                                key={ticket.id}
-                                className="p-4 border rounded-lg text-left"
-                                style={{ borderColor: '#e5e7eb' }}
-                              >
-                                <p className="font-semibold" style={{ color: '#1a1a1a' }}>
-                                  {ticket.competition?.title}
-                                </p>
-                                <p className="text-sm mt-1" style={{ color: '#666' }}>
-                                  Ticket #{ticket.ticket_number} • Purchased on{' '}
-                                  {ticket.created_at ? new Date(ticket.created_at!).toLocaleDateString() : 'N/A'}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                    {/* Unrevealed Alert */}
+                    {unrevealedCount > 0 && (
+                      <div className="p-4 rounded-lg mb-6" style={{ backgroundColor: '#fef3c7', borderLeft: '4px solid #f59e0b' }}>
+                        <p className="font-semibold" style={{ color: '#92400e' }}>
+                          🎉 You have {unrevealedCount} unrevealed ticket{unrevealedCount > 1 ? 's' : ''}!
+                        </p>
+                        <p className="text-sm mt-1" style={{ color: '#92400e' }}>
+                          Scratch them below to see if you've won a prize!
+                        </p>
                       </div>
                     )}
 
-                    {activeTab === 'past' && (
-                      <div className="text-center py-12">
-                        {pastEntries.length === 0 ? (
-                          <p style={{ color: '#666' }}>
-                            No past competition entries to show. Only entries from the last 30 days will
-                            be shown.
-                          </p>
-                        ) : (
-                          <div className="space-y-4">
-                            {pastEntries.map((ticket) => (
-                              <div
-                                key={ticket.id}
-                                className="p-4 border rounded-lg text-left"
-                                style={{ borderColor: '#e5e7eb' }}
-                              >
-                                <p className="font-semibold" style={{ color: '#1a1a1a' }}>
-                                  {ticket.competition?.title}
-                                </p>
-                                <p className="text-sm mt-1" style={{ color: '#666' }}>
-                                  Ticket #{ticket.ticket_number} • Purchased on{' '}
-                                  {ticket.created_at ? new Date(ticket.created_at!).toLocaleDateString() : 'N/A'}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
+                    {/* Search Bar */}
+                    {tickets.length > 0 && (
+                      <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5" style={{ color: '#666' }} />
+                        <input
+                          type="text"
+                          value={ticketSearchQuery}
+                          onChange={(e) => setTicketSearchQuery(e.target.value)}
+                          placeholder="Search by competition, ticket number, prize, or status..."
+                          className="w-full pl-12 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-0 transition-all"
+                          style={{ borderColor: '#e5e7eb', backgroundColor: '#fff' }}
+                        />
+                        {ticketSearchQuery && (
+                          <button
+                            onClick={() => setTicketSearchQuery('')}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                          >
+                            <X className="size-4" style={{ color: '#666' }} />
+                          </button>
                         )}
                       </div>
                     )}
                   </div>
+
+                  {/* Unrevealed Tickets */}
+                  {filteredTickets.filter(t => !t.is_revealed).length > 0 && (
+                    <div className="bg-white rounded-xl p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-xl font-bold" style={{ color: '#1a1a1a' }}>
+                          Scratch to Reveal
+                          {ticketSearchQuery && (
+                            <span className="text-sm font-normal ml-2" style={{ color: '#666' }}>
+                              ({filteredTickets.filter(t => !t.is_revealed).length} found)
+                            </span>
+                          )}
+                        </h3>
+                        {!ticketSearchQuery && (
+                          <button
+                            onClick={handleRevealAll}
+                            disabled={isBulkRevealing || isRevealing}
+                            className="px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                            style={{ backgroundColor: '#335761' }}
+                          >
+                            {isBulkRevealing ? 'Revealing All...' : `Reveal All (${unrevealedCount})`}
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredTickets.filter(t => !t.is_revealed).map((ticket) => (
+                          <ScratchCard
+                            key={ticket.id}
+                            ticket={ticket}
+                            onReveal={revealTicket}
+                            disabled={isRevealing || isBulkRevealing}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Revealed Tickets */}
+                  {filteredTickets.filter(t => t.is_revealed).length > 0 && (
+                    <div className="bg-white rounded-xl p-6">
+                      <h3 className="text-xl font-bold mb-4" style={{ color: '#1a1a1a' }}>
+                        Revealed Tickets
+                        {ticketSearchQuery && (
+                          <span className="text-sm font-normal ml-2" style={{ color: '#666' }}>
+                            ({filteredTickets.filter(t => t.is_revealed).length} found)
+                          </span>
+                        )}
+                      </h3>
+                      <div className="space-y-3">
+                        {filteredTickets.filter(t => t.is_revealed).map((ticket) => (
+                          <div
+                            key={ticket.id}
+                            className="p-4 border rounded-lg"
+                            style={{ borderColor: '#e5e7eb' }}
+                          >
+                            <div className="flex items-start gap-3">
+                              {ticket.competition?.image_url ? (
+                                <img
+                                  src={ticket.competition.image_url}
+                                  alt={ticket.competition.title}
+                                  className="size-16 rounded-lg object-cover"
+                                />
+                              ) : (
+                                <div className="size-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                                  <Ticket className="size-8 text-gray-400" />
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                <h4 className="font-bold mb-1" style={{ color: '#1a1a1a' }}>
+                                  {ticket.competition?.title || 'Competition'}
+                                </h4>
+                                <p className="text-sm mb-2" style={{ color: '#666' }}>
+                                  Ticket #{ticket.ticket_number}
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  {ticket.prize_id ? (
+                                    <>
+                                      <span className="px-2 py-1 rounded text-xs font-semibold" style={{ backgroundColor: '#dcfce7', color: '#166534' }}>
+                                        ✓ Winner!
+                                      </span>
+                                      {ticket.prize && (
+                                        <span className="text-xs" style={{ color: '#666' }}>
+                                          {ticket.prize.name}
+                                        </span>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="px-2 py-1 rounded text-xs font-semibold" style={{ backgroundColor: '#f3f4f6', color: '#666' }}>
+                                      No prize
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs" style={{ color: '#666' }}>
+                                  Revealed
+                                </p>
+                                <p className="text-xs" style={{ color: '#666' }}>
+                                  {ticket.revealed_at ? new Date(ticket.revealed_at).toLocaleDateString() : 'Recently'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No Search Results Message */}
+                  {ticketSearchQuery && filteredTickets.length === 0 && tickets.length > 0 && (
+                    <div className="bg-white rounded-xl p-6">
+                      <div className="text-center py-12">
+                        <div className="size-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                          <Search className="size-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-xl font-bold mb-2" style={{ color: '#1a1a1a' }}>
+                          No Tickets Found
+                        </h3>
+                        <p className="mb-4" style={{ color: '#666' }}>
+                          No tickets match your search for "{ticketSearchQuery}"
+                        </p>
+                        <button
+                          onClick={() => setTicketSearchQuery('')}
+                          className="px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90 cursor-pointer"
+                          style={{ backgroundColor: '#335761' }}
+                        >
+                          Clear Search
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No Tickets Message */}
+                  {tickets.length === 0 && (
+                    <div className="bg-white rounded-xl p-6">
+                      <div className="text-center py-12">
+                        <div className="size-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                          <Ticket className="size-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-xl font-bold mb-2" style={{ color: '#1a1a1a' }}>
+                          No Tickets Yet
+                        </h3>
+                        <p style={{ color: '#666' }}>
+                          Purchase tickets to enter competitions and win prizes!
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeSection === 'prizes' && (
+                <div className="space-y-6">
+                  {/* Prizes Header */}
+                  <div className="bg-white rounded-xl p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                      <Gift size={24} style={{ color: '#335761' }} />
+                      <h2 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                        My Prizes
+                      </h2>
+                    </div>
+
+                    {/* Summary Stats */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="p-4 border rounded-lg" style={{ borderColor: '#e5e7eb' }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock size={18} style={{ color: '#f59e0b' }} />
+                          <span className="text-sm font-semibold" style={{ color: '#666' }}>
+                            Pending Action
+                          </span>
+                        </div>
+                        <p className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                          {pendingFulfillments.length}
+                        </p>
+                      </div>
+
+                      <div className="p-4 border rounded-lg" style={{ borderColor: '#e5e7eb' }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <TrendingUp size={18} style={{ color: '#335761' }} />
+                          <span className="text-sm font-semibold" style={{ color: '#666' }}>
+                            In Progress
+                          </span>
+                        </div>
+                        <p className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                          {activeFulfillments.length}
+                        </p>
+                      </div>
+
+                      <div className="p-4 border rounded-lg" style={{ borderColor: '#e5e7eb' }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Gift size={18} style={{ color: '#22c55e' }} />
+                          <span className="text-sm font-semibold" style={{ color: '#666' }}>
+                            Completed
+                          </span>
+                        </div>
+                        <p className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                          {completedFulfillments.length}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Expiring Soon Alert */}
+                    {expiringSoon.length > 0 && (
+                      <div className="p-4 rounded-lg mb-6" style={{ backgroundColor: '#fef3c7', borderLeft: '4px solid #f59e0b' }}>
+                        <p className="font-semibold" style={{ color: '#92400e' }}>
+                          ⚠️ {expiringSoon.length} prize{expiringSoon.length > 1 ? 's' : ''} expiring soon!
+                        </p>
+                        <p className="text-sm mt-1" style={{ color: '#92400e' }}>
+                          Please claim your prize{expiringSoon.length > 1 ? 's' : ''} before the deadline.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pending Prizes */}
+                  {pendingFulfillments.length > 0 && (
+                    <div className="bg-white rounded-xl p-6">
+                      <h3 className="text-xl font-bold mb-4" style={{ color: '#1a1a1a' }}>
+                        Action Required
+                      </h3>
+                      <div className="space-y-3">
+                        {pendingFulfillments.map((fulfillment) => (
+                          <div
+                            key={fulfillment.id}
+                            className="p-4 border rounded-lg"
+                            style={{ borderColor: '#f59e0b', backgroundColor: '#fffbeb' }}
+                          >
+                            <div className="flex items-start gap-3">
+                              {fulfillment.prize?.image_url ? (
+                                <img
+                                  src={fulfillment.prize.image_url}
+                                  alt={fulfillment.prize.name}
+                                  className="size-16 rounded-lg object-cover"
+                                />
+                              ) : (
+                                <div className="size-16 bg-white rounded-lg flex items-center justify-center">
+                                  <Gift className="size-8 text-orange-500" />
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                <h4 className="font-bold mb-1" style={{ color: '#1a1a1a' }}>
+                                  {fulfillment.prize?.name || 'Prize'}
+                                </h4>
+                                <p className="text-sm mb-2" style={{ color: '#666' }}>
+                                  Worth £{fulfillment.prize?.value_gbp || (fulfillment.value_pence / 100).toFixed(2)}
+                                </p>
+                                <p className="text-xs" style={{ color: '#92400e' }}>
+                                  Claim by: {new Date(fulfillment.claim_deadline).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setSelectedFulfillment(fulfillment)
+                                  setShowClaimModal(true)
+                                }}
+                                className="px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90 cursor-pointer"
+                                style={{ backgroundColor: '#335761' }}
+                              >
+                                Claim Now
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Active Prizes */}
+                  {activeFulfillments.length > 0 && (
+                    <div className="bg-white rounded-xl p-6">
+                      <h3 className="text-xl font-bold mb-4" style={{ color: '#1a1a1a' }}>
+                        In Progress
+                      </h3>
+                      <div className="space-y-3">
+                        {activeFulfillments.map((fulfillment) => (
+                          <div
+                            key={fulfillment.id}
+                            className="p-4 border rounded-lg"
+                            style={{ borderColor: '#e5e7eb' }}
+                          >
+                            <div className="flex items-start gap-3">
+                              {fulfillment.prize?.image_url ? (
+                                <img
+                                  src={fulfillment.prize.image_url}
+                                  alt={fulfillment.prize.name}
+                                  className="size-16 rounded-lg object-cover"
+                                />
+                              ) : (
+                                <div className="size-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                                  <Gift className="size-8 text-gray-400" />
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                <h4 className="font-bold mb-1" style={{ color: '#1a1a1a' }}>
+                                  {fulfillment.prize?.name || 'Prize'}
+                                </h4>
+                                <p className="text-sm mb-2" style={{ color: '#666' }}>
+                                  Worth £{fulfillment.prize?.value_gbp || (fulfillment.value_pence / 100).toFixed(2)}
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2 py-1 rounded text-xs font-semibold" style={{ backgroundColor: '#dbeafe', color: '#1e40af' }}>
+                                    {fulfillment.status === 'processing' ? 'Processing' : fulfillment.status === 'dispatched' ? 'Dispatched' : fulfillment.status}
+                                  </span>
+                                  {fulfillment.tracking_number && (
+                                    <span className="text-xs" style={{ color: '#666' }}>
+                                      Tracking: {fulfillment.tracking_number}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Completed Prizes */}
+                  {completedFulfillments.length > 0 && (
+                    <div className="bg-white rounded-xl p-6">
+                      <h3 className="text-xl font-bold mb-4" style={{ color: '#1a1a1a' }}>
+                        Completed
+                      </h3>
+                      <div className="space-y-3">
+                        {completedFulfillments.map((fulfillment) => (
+                          <div
+                            key={fulfillment.id}
+                            className="p-4 border rounded-lg opacity-75"
+                            style={{ borderColor: '#e5e7eb' }}
+                          >
+                            <div className="flex items-start gap-3">
+                              {fulfillment.prize?.image_url ? (
+                                <img
+                                  src={fulfillment.prize.image_url}
+                                  alt={fulfillment.prize.name}
+                                  className="size-16 rounded-lg object-cover"
+                                />
+                              ) : (
+                                <div className="size-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                                  <Gift className="size-8 text-gray-400" />
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                <h4 className="font-bold mb-1" style={{ color: '#1a1a1a' }}>
+                                  {fulfillment.prize?.name || 'Prize'}
+                                </h4>
+                                <p className="text-sm mb-2" style={{ color: '#666' }}>
+                                  Worth £{fulfillment.prize?.value_gbp || (fulfillment.value_pence / 100).toFixed(2)}
+                                </p>
+                                <span className="px-2 py-1 rounded text-xs font-semibold" style={{ backgroundColor: '#dcfce7', color: '#166534' }}>
+                                  ✓ Completed
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No Prizes Message */}
+                  {fulfillments.length === 0 && (
+                    <div className="bg-white rounded-xl p-6">
+                      <div className="text-center py-12">
+                        <div className="size-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                          <Gift className="size-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-xl font-bold mb-2" style={{ color: '#1a1a1a' }}>
+                          No Prizes Yet
+                        </h3>
+                        <p style={{ color: '#666' }}>
+                          Your won prizes will appear here. Keep playing to win exciting prizes!
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -899,6 +1406,23 @@ function Account() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Prize Claim Modal */}
+      {showClaimModal && selectedFulfillment && selectedFulfillment.prize && (
+        <UserPrizeClaimModal
+          isOpen={showClaimModal}
+          onClose={() => {
+            setShowClaimModal(false)
+            setSelectedFulfillment(null)
+          }}
+          prize={selectedFulfillment.prize}
+          fulfillmentId={selectedFulfillment.id}
+          onClaimed={() => {
+            setShowClaimModal(false)
+            setSelectedFulfillment(null)
+          }}
+        />
       )}
     </div>
   )
