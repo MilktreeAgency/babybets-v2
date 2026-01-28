@@ -2,11 +2,13 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import confetti from 'canvas-confetti'
 import { Sparkles, Gift, DollarSign } from 'lucide-react'
-import type { TicketWithDetails } from '@/types'
+import type { TicketWithDetails, TicketRevealResult } from '@/types'
+import { UserPrizeClaimModal } from './UserPrizeClaimModal'
+import { usePrizeFulfillments } from '@/hooks/usePrizeFulfillments'
 
 interface ScratchCardProps {
   ticket: TicketWithDetails
-  onReveal: (ticketId: string) => Promise<void>
+  onReveal: (ticketId: string) => Promise<TicketRevealResult>
   disabled?: boolean
 }
 
@@ -15,11 +17,22 @@ export function ScratchCard({ ticket, onReveal, disabled }: ScratchCardProps) {
   const [scratchProgress, setScratchProgress] = useState(0)
   const [isRevealed, setIsRevealed] = useState(ticket.is_revealed || false)
   const [isRevealing, setIsRevealing] = useState(false)
+  const [showClaimModal, setShowClaimModal] = useState(false)
+  const [revealResult, setRevealResult] = useState<TicketRevealResult | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isMouseDown = useRef(false)
+  const { fulfillments } = usePrizeFulfillments()
 
   const hasPrize = !!ticket.prize_id
   const prize = ticket.prize
+
+  // Find the fulfillment for this ticket
+  const fulfillment = fulfillments.find(f => f.ticket_id === ticket.id)
+
+  // Sync isRevealed state with ticket prop to prevent re-reveal after refresh
+  useEffect(() => {
+    setIsRevealed(ticket.is_revealed || false)
+  }, [ticket.is_revealed])
 
   useEffect(() => {
     if (!isRevealed && canvasRef.current) {
@@ -92,17 +105,27 @@ export function ScratchCard({ ticket, onReveal, disabled }: ScratchCardProps) {
 
     setIsRevealing(true)
     try {
-      await onReveal(ticket.id)
+      const result = await onReveal(ticket.id)
+      setRevealResult(result)
       setIsRevealed(true)
 
       // Show confetti if won
-      if (hasPrize) {
+      if (result.hasPrize) {
         confetti({
           particleCount: 100,
           spread: 70,
           origin: { y: 0.6 },
           colors: ['#f25100', '#FED0B9', '#496B71'],
         })
+
+        // Show claim modal for non-SiteCredit prizes that need claiming
+        // SiteCredit is auto-completed, so no need to show modal
+        if (result.prize && result.prize.type !== 'SiteCredit') {
+          // Wait a moment for confetti to show, then show modal
+          setTimeout(() => {
+            setShowClaimModal(true)
+          }, 1500)
+        }
       }
     } catch (error) {
       console.error('Failed to reveal ticket:', error)
@@ -211,6 +234,20 @@ export function ScratchCard({ ticket, onReveal, disabled }: ScratchCardProps) {
             animate={{ width: `${scratchProgress}%` }}
           />
         </div>
+      )}
+
+      {/* Prize Claim Modal */}
+      {showClaimModal && revealResult?.prize && fulfillment && (
+        <UserPrizeClaimModal
+          isOpen={showClaimModal}
+          onClose={() => setShowClaimModal(false)}
+          prize={revealResult.prize}
+          fulfillmentId={fulfillment.id}
+          onClaimed={() => {
+            setShowClaimModal(false)
+            // Refresh fulfillments handled by the hook
+          }}
+        />
       )}
     </div>
   )
