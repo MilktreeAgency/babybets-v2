@@ -1,15 +1,20 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { X, Trash2, ArrowRight, ShoppingBag } from 'lucide-react'
+import { X, Trash2, ArrowRight, ShoppingBag, Wallet } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
+import { useWallet } from '@/hooks/useWallet'
+import { useAuthStore } from '@/store/authStore'
 
 export default function CartDrawer() {
   const { isCartOpen, setCartOpen, items, removeItem, getTotalItems, getTotalPrice } =
     useCartStore()
+  const { isAuthenticated } = useAuthStore()
+  const { summary } = useWallet()
   const navigate = useNavigate()
 
   const totalTickets = getTotalItems()
   const totalPrice = getTotalPrice()
+  const walletBalanceGBP = summary.availableBalance / 100
 
   const handleContinueShopping = () => {
     setCartOpen(false)
@@ -122,6 +127,22 @@ export default function CartDrawer() {
         {/* Footer */}
         {items.length > 0 && (
           <div className="p-6 border-t border-gray-200 bg-gray-50 space-y-4">
+            {/* Wallet Balance */}
+            {isAuthenticated && walletBalanceGBP > 0 && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Wallet className="size-4 text-green-600" />
+                  <p className="text-xs text-green-700 font-medium">Wallet Balance Available</p>
+                </div>
+                <p className="text-lg text-green-800 font-bold">£{walletBalanceGBP.toFixed(2)}</p>
+                <p className="text-xs text-green-600 mt-1">
+                  {walletBalanceGBP >= totalPrice
+                    ? '✓ Enough to cover this order!'
+                    : `Use at checkout to save £${Math.min(walletBalanceGBP, totalPrice).toFixed(2)}`}
+                </p>
+              </div>
+            )}
+
             {/* Total */}
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Total</span>
