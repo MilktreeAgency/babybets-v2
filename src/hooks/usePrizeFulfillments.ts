@@ -35,7 +35,34 @@ export function usePrizeFulfillments() {
       // Fetch prize details for each fulfillment
       const fulfillmentsWithPrizes = await Promise.all(
         (data || []).map(async (fulfillment: PrizeFulfillment) => {
+          // If prize_id is NULL, this is an end prize - fetch from winners table
           if (!fulfillment.prize_id) {
+            const { data: winnerData } = await supabase
+              .from('winners')
+              .select('prize_name, prize_value_gbp, prize_image_url')
+              .eq('ticket_id', fulfillment.ticket_id)
+              .eq('win_type', 'end_prize')
+              .single()
+
+            if (winnerData) {
+              return {
+                ...fulfillment,
+                prize: {
+                  id: `end-prize-${fulfillment.id}`,
+                  name: winnerData.prize_name,
+                  short_name: null,
+                  type: 'Physical',
+                  value_gbp: winnerData.prize_value_gbp,
+                  cash_alternative_gbp: winnerData.prize_value_gbp, // End prizes offer full value as cash alternative
+                  description: null,
+                  image_url: winnerData.prize_image_url,
+                  is_active: true,
+                  created_at: null,
+                  updated_at: null,
+                }
+              }
+            }
+
             return { ...fulfillment, prize: undefined }
           }
 
@@ -80,9 +107,11 @@ export function usePrizeFulfillments() {
       if (choice !== undefined) {
         updateData.choice = choice
         updateData.responded_at = new Date().toISOString()
-        // If choosing cash, mark as pending admin action
+        // Update status based on choice
         if (choice === 'cash') {
-          updateData.status = 'pending'
+          updateData.status = 'cash_selected'
+        } else if (choice === 'prize') {
+          updateData.status = 'prize_selected'
         }
       }
 
@@ -117,7 +146,7 @@ export function usePrizeFulfillments() {
 
   // Get active fulfillments (in process)
   const activeFulfillments = fulfillments.filter(
-    (f) => f.status === 'processing' || f.status === 'dispatched'
+    (f) => f.status === 'prize_selected' || f.status === 'cash_selected' || f.status === 'processing' || f.status === 'dispatched'
   )
 
   // Get completed fulfillments
