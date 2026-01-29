@@ -1,98 +1,121 @@
-import { Link } from 'react-router-dom'
-import { ArrowRight, ShoppingBag, Wallet } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import { ShoppingBag, User } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'
-import { useWallet } from '@/hooks/useWallet'
 
 export default function Header() {
-  const { isAuthenticated, user } = useAuthStore()
+  const { isAuthenticated } = useAuthStore()
   const { items, setCartOpen } = useCartStore()
-  const { summary } = useWallet()
   const cartTotal = items.length
-  const walletBalance = summary.availableBalance / 100
+  const location = useLocation()
+
+  const navLinks = [
+    { name: 'Competitions', path: '/competitions' },
+    { name: 'How it Works', path: '/how-it-works' },
+    { name: 'Partners', path: '/partners' },
+  ]
+
+  const isActive = (path: string) => {
+    if (path.includes('?')) {
+      return location.pathname + location.search === path
+    }
+    return location.pathname === path
+  }
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex justify-center px-6" style={{ backgroundColor: '#fffbf7' }}>
-      <nav className="w-full max-w-[1300px] h-14 flex items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 select-none group">
-          <img
-            src="/babybets-logo.png"
-            alt="babybets"
-            className="h-8 transition-transform duration-150 group-hover:scale-110 group-active:scale-95"
-          />
-        </Link>
+    <nav className="sticky top-0 z-50 " style={{ backgroundColor: 'rgba(255, 251, 247, 0.9)', backdropFilter: 'blur(12px)', borderColor: '#f0e0ca' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-20">
+          {/* Logo */}
+          <Link to="/" className="flex items-center group cursor-pointer">
+            <img
+              src="/babybets-logo.png"
+              alt="BabyBets Logo"
+              className="h-10 group-hover:scale-105 transition-transform"
+            />
+          </Link>
 
-        {/* Navigation */}
-        <div className="flex items-center gap-2">
-          {/* Wallet Balance - Show for authenticated users */}
-          {isAuthenticated && walletBalance > 0 && (
-            <Link
-              to="/account?tab=wallet"
-              className="hidden sm:flex items-center gap-1.5 h-8 px-3 text-[14px] font-medium rounded transition-all duration-150 hover:opacity-80"
-              style={{ color: '#335761' }}
-            >
-              <Wallet className="size-4" />
-              <span>£{walletBalance.toFixed(2)}</span>
-            </Link>
-          )}
-
-          {/* Cart Button */}
-          <button
-            onClick={() => setCartOpen(true)}
-            className="relative h-8 px-3 text-[14px] font-medium rounded flex items-center gap-1.5 transition-all duration-150 hover:opacity-80"
-            style={{ color: '#335761' }}
-          >
-            <ShoppingBag className="size-4" />
-            <span className="hidden sm:inline">Cart</span>
-            {cartTotal > 0 && (
-              <span
-                className="absolute -top-1 -right-1 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full font-bold"
-                style={{ backgroundColor: '#335761' }}
-              >
-                {cartTotal}
-              </span>
-            )}
-          </button>
-
-          {isAuthenticated && user?.isAdmin ? (
-            <>
-              {/* Dashboard Button - Admin Only */}
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center space-x-8">
+            {navLinks.map((link) => (
               <Link
-                to="/admin/dashboard"
-                className="h-8 px-3 text-[14px] font-medium rounded flex items-center gap-1.5 transition-all duration-150 hover:opacity-90 whitespace-nowrap text-white"
-                style={{ backgroundColor: '#335761' }}
+                key={link.name}
+                to={link.path}
+                className={`text-sm font-bold transition-colors flex items-center gap-1.5 group cursor-pointer ${
+                  isActive(link.path)
+                    ? 'hover:text-teal-700'
+                    : 'hover:text-teal-700'
+                }`}
+                style={{ color: isActive(link.path) ? '#496B71' : '#78716c' }}
               >
-                <span>Dashboard</span>
-                <ArrowRight className="size-3.5" strokeWidth={2.5} />
+                {link.name}
               </Link>
-            </>
-          ) : isAuthenticated && !user?.isAdmin ? (
-            <>
-              {/* My Account Button - Regular Users */}
+            ))}
+          </div>
+
+          {/* Actions */}
+          <div className="hidden md:flex items-center space-x-3">
+            {isAuthenticated ? (
               <Link
                 to="/account"
-                className="h-8 px-3 text-[14px] font-medium rounded flex items-center gap-1.5 transition-all duration-150 hover:opacity-90 whitespace-nowrap text-white"
-                style={{ backgroundColor: '#335761' }}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl transition-colors cursor-pointer hover:bg-cream-50"
+                style={{ backgroundColor: 'transparent' }}
               >
-                <span>My Account</span>
-                <ArrowRight className="size-3.5" strokeWidth={2.5} />
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: '#e1eaec', color: '#496B71' }}>
+                  <User size={16} />
+                </div>
               </Link>
-            </>
-          ) : (
-            <>
-              {/* Login Link - Hidden on mobile */}
-              <Link
-                to="/login"
-                className="h-8 px-3 text-[14px] items-center rounded transition-colors duration-150 hover:opacity-80 hidden sm:flex font-medium"
-                style={{ color: '#335761' }}
-              >
-                Log in
-              </Link>
-            </>
-          )}
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="text-sm font-bold px-4 py-2 rounded-xl transition-colors cursor-pointer hover:bg-cream-50"
+                  style={{ color: '#78716c' }}
+                >
+                  <User size={18} className="inline mr-2" />
+                  Log In
+                </Link>
+                <Link
+                  to="/signup"
+                  className="text-sm font-bold px-4 py-2 rounded-xl transition-colors cursor-pointer"
+                  style={{ backgroundColor: '#f0e0ca', color: '#151e20' }}
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
+            <button
+              onClick={() => setCartOpen(true)}
+              className="relative text-sm font-bold px-4 py-2 rounded-xl transition-colors cursor-pointer"
+              style={{ backgroundColor: '#3a565b', color: 'white' }}
+            >
+              <ShoppingBag size={18} className="inline mr-2" />
+              Basket
+              {cartTotal > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 text-teal-900 text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 font-bold" style={{ backgroundColor: '#FED0B9', borderColor: 'white' }}>
+                  {cartTotal}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Mobile Actions */}
+          <div className="md:hidden flex items-center gap-4">
+            <button
+              onClick={() => setCartOpen(true)}
+              className="relative p-2 cursor-pointer"
+              style={{ color: '#223033' }}
+            >
+              <ShoppingBag size={24} />
+              {cartTotal > 0 && (
+                <span className="absolute top-1 right-1 text-teal-900 text-[10px] w-4 h-4 flex items-center justify-center rounded-full font-bold" style={{ backgroundColor: '#FED0B9' }}>
+                  {cartTotal}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
-      </nav>
-    </div>
+      </div>
+    </nav>
   )
 }

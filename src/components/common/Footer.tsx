@@ -3,7 +3,7 @@ import { Instagram, Facebook, MonitorPlay, Mail, ShieldCheck } from 'lucide-reac
 
 export default function Footer() {
   return (
-    <footer className="relative">
+    <footer className="relative" style={{ backgroundColor: '#4a6b71' }}>
       <div className="px-6">
         <div className="max-w-[1300px] mx-auto">
           {/* Main Footer Content */}
@@ -17,11 +17,11 @@ export default function Footer() {
                       src="/babybets-logo.png"
                       alt="babybets"
                       className="h-[42px]"
-                      style={{ width: '165px' }}
+                      style={{ width: '165px', filter: 'brightness(0) invert(1)' }}
                       loading="lazy"
                     />
                   </div>
-                  <p className="text-[13px] leading-relaxed" style={{ color: '#666666' }}>
+                  <p className="text-[13px] leading-relaxed" style={{ color: '#e1eaec' }}>
                     Shop Now and Let Us Make Your <br className="hidden md:block" />
                     Parenting Journey a Breeze
                   </p>
@@ -33,30 +33,30 @@ export default function Footer() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="cursor-pointer w-10 h-10 rounded-full flex items-center justify-center transition-all hover:opacity-80"
-                      style={{ backgroundColor: 'rgba(0, 0, 0, 0.05)', border: '1px solid rgba(0, 0, 0, 0.1)' }}
+                      style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)' }}
                       aria-label="Follow BabyBets on Instagram"
                     >
-                      <Instagram size={18} color="#333333" />
+                      <Instagram size={18} color="#ffffff" />
                     </a>
                     <a
                       href="https://www.facebook.com/babybetsofficial"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="cursor-pointer w-10 h-10 rounded-full flex items-center justify-center transition-all hover:opacity-80"
-                      style={{ backgroundColor: 'rgba(0, 0, 0, 0.05)', border: '1px solid rgba(0, 0, 0, 0.1)' }}
+                      style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)' }}
                       aria-label="Follow BabyBets on Facebook"
                     >
-                      <Facebook size={18} color="#333333" />
+                      <Facebook size={18} color="#ffffff" />
                     </a>
                     <a
                       href="https://www.tiktok.com/@babybetsofficial"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="cursor-pointer w-10 h-10 rounded-full flex items-center justify-center transition-all hover:opacity-80"
-                      style={{ backgroundColor: 'rgba(0, 0, 0, 0.05)', border: '1px solid rgba(0, 0, 0, 0.1)' }}
+                      style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)' }}
                       aria-label="Follow BabyBets on TikTok"
                     >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#333333" aria-hidden="true">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#ffffff" aria-hidden="true">
                         <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
                       </svg>
                     </a>
@@ -66,25 +66,25 @@ export default function Footer() {
 
               {/* Competitions - 17% */}
               <div className="w-full sm:w-1/2 md:w-1/3 lg:w-[17%] px-4 mb-[30px]">
-                <h3 className="text-base font-medium mb-6" style={{ color: '#2D251E' }}>Competitions</h3>
+                <h3 className="text-base font-medium mb-6" style={{ color: '#ffffff' }}>Competitions</h3>
                 <ul className="space-y-3">
                   <li>
-                    <Link to="/competitions?cat=nursery" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#666666' }}>
+                    <Link to="/competitions?cat=nursery" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       Nursery & Gear
                     </Link>
                   </li>
                   <li>
-                    <Link to="/competitions?cat=toys" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#666666' }}>
+                    <Link to="/competitions?cat=toys" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       Tech & Toys
                     </Link>
                   </li>
                   <li>
-                    <Link to="/competitions?cat=cash" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#666666' }}>
+                    <Link to="/competitions?cat=cash" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       Tax Free Cash
                     </Link>
                   </li>
                   <li>
-                    <Link to="/competitions?filter=instant" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#666666' }}>
+                    <Link to="/competitions?filter=instant" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       Instant Wins
                     </Link>
                   </li>
@@ -94,7 +94,7 @@ export default function Footer() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[14px] font-normal transition-opacity hover:opacity-80 inline-flex items-center gap-2"
-                      style={{ color: '#666666' }}
+                      style={{ color: '#e1eaec' }}
                     >
                       <MonitorPlay size={16} aria-hidden="true" />
                       Watch Live Draws
@@ -105,35 +105,35 @@ export default function Footer() {
 
               {/* Support & Trust - 17% */}
               <div className="w-full sm:w-1/2 md:w-1/3 lg:w-[17%] px-4 mb-[30px]">
-                <h3 className="text-base font-medium mb-6" style={{ color: '#2D251E' }}>Support & Trust</h3>
+                <h3 className="text-base font-medium mb-6" style={{ color: '#ffffff' }}>Support & Trust</h3>
                 <ul className="space-y-3">
                   <li>
-                    <Link to="/how-it-works" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#666666' }}>
+                    <Link to="/how-it-works" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       How it Works
                     </Link>
                   </li>
                   <li>
-                    <Link to="/partners" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#666666' }}>
+                    <Link to="/partners" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       Influencer Program
                     </Link>
                   </li>
                   <li>
-                    <Link to="/faq" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#666666' }}>
+                    <Link to="/faq" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       FAQ
                     </Link>
                   </li>
                   <li>
-                    <Link to="/legal/privacy" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#666666' }}>
+                    <Link to="/legal/privacy" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       Privacy Policy
                     </Link>
                   </li>
                   <li>
-                    <Link to="/legal/terms" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#666666' }}>
+                    <Link to="/legal/terms" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       Terms & Conditions
                     </Link>
                   </li>
                   <li>
-                    <Link to="/legal/terms" className="text-[14px] font-normal transition-opacity hover:opacity-80 underline" style={{ color: '#666666' }}>
+                    <Link to="/legal/terms" className="text-[14px] font-normal transition-opacity hover:opacity-80 underline" style={{ color: '#e1eaec' }}>
                       Free Postal Entry
                     </Link>
                   </li>
@@ -142,21 +142,21 @@ export default function Footer() {
 
               {/* Get in Touch - 17% */}
               <div className="w-full sm:w-1/2 md:w-1/3 lg:w-[17%] px-4 mb-[30px]">
-                <h3 className="text-base font-medium mb-6" style={{ color: '#2D251E' }}>Get in Touch</h3>
-                <p className="text-[14px] mb-4" style={{ color: '#666666' }}>
+                <h3 className="text-base font-medium mb-6" style={{ color: '#ffffff' }}>Get in Touch</h3>
+                <p className="text-[14px] mb-4" style={{ color: '#e1eaec' }}>
                   Need help? Our parent support team is here Mon-Fri.
                 </p>
                 <a
                   href="mailto:hello@babybets.co.uk"
                   className="cursor-pointer inline-flex items-center text-[14px] font-semibold hover:opacity-80 transition-opacity"
-                  style={{ color: '#2D251E' }}
+                  style={{ color: '#FED0B9' }}
                 >
                   <Mail size={16} className="mr-2" aria-hidden="true" />
                   hello@babybets.co.uk
                 </a>
 
-                <div className="mt-8 pt-6" style={{ borderTop: '1px solid rgba(0, 0, 0, 0.1)' }}>
-                  <div className="flex items-center gap-2 text-xs" style={{ color: '#666666' }}>
+                <div className="mt-8 pt-6" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.2)' }}>
+                  <div className="flex items-center gap-2 text-xs" style={{ color: '#e1eaec' }}>
                     <ShieldCheck size={16} aria-hidden="true" />
                     <span>Secure SSL Encrypted Checkout</span>
                   </div>
@@ -165,30 +165,30 @@ export default function Footer() {
 
               {/* Categories - 17% */}
               <div className="w-full sm:w-1/2 md:w-1/3 lg:w-[17%] px-4 mb-[30px]">
-                <h3 className="text-base font-medium mb-6" style={{ color: '#2D251E' }}>Information</h3>
+                <h3 className="text-base font-medium mb-6" style={{ color: '#ffffff' }}>Information</h3>
                 <ul className="space-y-3">
                   <li>
-                    <Link to="/about" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#666666' }}>
+                    <Link to="/about" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       About Us
                     </Link>
                   </li>
                   <li>
-                    <Link to="/contact" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#666666' }}>
+                    <Link to="/contact" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       Contact Us
                     </Link>
                   </li>
                   <li>
-                    <Link to="/account" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#666666' }}>
+                    <Link to="/account" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       My Account
                     </Link>
                   </li>
                   <li>
-                    <Link to="/account?tab=orders" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#666666' }}>
+                    <Link to="/account?tab=orders" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       Order History
                     </Link>
                   </li>
                   <li>
-                    <Link to="/account?tab=wallet" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#666666' }}>
+                    <Link to="/account?tab=wallet" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       My Wallet
                     </Link>
                   </li>
@@ -200,11 +200,11 @@ export default function Footer() {
           {/* Copyright & Company Info */}
           <div
             className="py-[41px] text-center md:text-left"
-            style={{ borderTop: '1px solid rgba(0, 0, 0, 0.1)', color: '#666666' }}
+            style={{ borderTop: '1px solid rgba(255, 255, 255, 0.2)', color: '#e1eaec' }}
           >
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <p className="text-sm">
-                Copyright © {new Date().getFullYear()} <strong style={{ color: '#2D251E' }}>BabyBets</strong> All Rights Reserved.
+                Copyright © {new Date().getFullYear()} <strong style={{ color: '#ffffff' }}>BabyBets</strong> All Rights Reserved.
               </p>
               <div className="flex items-center gap-4 text-xs">
                 <span>Registered in UK: 12345678</span>
@@ -212,7 +212,7 @@ export default function Footer() {
             </div>
 
             <div className="mt-6">
-              <p className="text-[10px] max-w-2xl mx-auto md:mx-0 leading-relaxed" style={{ color: 'rgba(0, 0, 0, 0.4)' }}>
+              <p className="text-[10px] max-w-2xl mx-auto md:mx-0 leading-relaxed" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
                 BabyBets allows you to enter competitions to win prizes. This is a prize draw site, not a lottery. Please play responsibly.
                 <br />
                 Free postal entry method is available for all competitions. See terms for details. 18+ UK Residents Only.
