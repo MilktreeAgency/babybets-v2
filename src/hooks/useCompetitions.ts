@@ -4,6 +4,7 @@ import type { Competition, Database } from '@/types'
 
 interface UseCompetitionsOptions {
   category?: string
+  competitionType?: string
   featured?: boolean
   limit?: number
   showOnHomepage?: boolean
@@ -38,6 +39,10 @@ export function useCompetitions(options: UseCompetitionsOptions = {}): UseCompet
         query = query.eq('category', options.category as Database['public']['Enums']['competition_category'])
       }
 
+      if (options.competitionType) {
+        query = query.eq('competition_type', options.competitionType as Database['public']['Enums']['competition_type'])
+      }
+
       if (options.featured !== undefined) {
         query = query.eq('is_featured', options.featured)
       }
@@ -64,7 +69,7 @@ export function useCompetitions(options: UseCompetitionsOptions = {}): UseCompet
 
   useEffect(() => {
     fetchCompetitions()
-  }, [options.category, options.featured, options.limit, options.showOnHomepage])
+  }, [options.category, options.competitionType, options.featured, options.limit, options.showOnHomepage])
 
   return {
     competitions,
