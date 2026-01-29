@@ -1,75 +1,293 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Star, Zap } from 'lucide-react'
+import { useCompetitions } from '@/hooks/useCompetitions'
+import TrustStatsSection from './TrustStatsSection'
 
 export default function HeroSection() {
+  // Fetch featured competition for hero
+  const { competitions: heroCompetitions, isLoading: heroLoading } = useCompetitions({
+    showOnHomepage: true,
+    limit: 1
+  })
+
+  // Fetch instant win count
+  const { competitions: instantWinComps, isLoading: instantWinLoading } = useCompetitions({
+    competitionType: 'instant_win'
+  })
+
+  const heroCompetition = heroCompetitions[0]
+  const instantWinCount = instantWinComps.length
+
+  // Get the display image
+  const heroImage = heroCompetition?.images && Array.isArray(heroCompetition.images) && heroCompetition.images.length > 0
+    ? (heroCompetition.images[0] as string)
+    : heroCompetition?.image_url || '/images/competitions/PRIZE 1 ICANDY PEACH 7.png'
+
   return (
-    <section
-      className="pt-48 pb-24 px-6 relative"
-      style={{
-        backgroundImage: 'url(/heroframe-two.png)',
-        backgroundSize: '100%',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      }}
-    >
-      <div className="max-w-[1300px] mx-auto text-center relative z-10">
-        <h1 className="font-bold mb-6 leading-tight text-[64px] md:text-[104px]" style={{ fontFamily: "'Baloo Chettan 2', sans-serif", color: '#2D251E', lineHeight: '1.1' }}>
-          <span className="block mb-2">Win magical prizes</span>
-          <span className="block mb-2">
-              for your
-            <span className="inline-flex items-center justify-center align-middle mx-2">
-              <svg width="110" height="110" viewBox="0 0 110 110" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-20 h-20 md:w-28 md:h-28">
-                <circle cx="55" cy="55" r="55" fill="#CADE7F"></circle>
-                <g clipPath="url(#clip0_237_1914)">
-                  <path d="M27.0053 64.1623C24.408 62.0845 20.518 62.0137 17.6196 63.6369C14.7154 65.2602 12.8028 68.3651 12.2066 71.6353C11.876 73.4356 11.9174 75.3186 12.4722 77.0659C13.9893 81.8531 19.3787 84.7868 24.3726 84.2968C26.3324 84.1021 28.3039 83.4291 29.7147 82.0597C31.4207 80.401 32.1054 77.9454 32.2825 75.5725C32.4537 73.2822 32.2058 70.9328 31.2731 68.8314C30.3405 66.7359 28.4397 65.3133 27.0053 64.1682V64.1623Z" fill="#FBD8BE"></path>
-                  <path d="M28.9178 73.7898C28.9178 73.7898 28.9178 73.8075 28.9178 73.8193C28.8057 73.4651 28.5519 73.1522 28.3512 72.8394C28.0678 72.4498 27.7609 72.0543 27.2355 71.4758C26.1494 70.5373 24.8743 69.7699 23.4812 69.3803C21.4801 68.796 19.3138 69.3567 17.6078 70.4842C17.2654 70.7085 16.929 70.9387 16.6043 71.1866C16.504 71.2456 16.4272 71.346 16.3977 71.4581C16.2855 71.8359 16.7283 72.1783 17.0647 71.9717C20.7364 69.2269 24.2368 69.7994 27.2827 73.2349C27.3831 73.3352 27.4598 73.4179 27.5307 73.4946C27.1706 73.4061 26.7751 73.3234 26.415 73.3057C25.0632 73.2939 23.7351 73.9491 22.8201 74.929C22.3833 75.4071 22.0291 75.962 21.7812 76.5582C21.6159 76.995 21.551 77.7565 21.5333 77.9099C21.551 78.1756 21.4742 78.1519 21.6336 78.3703C21.7871 78.5297 22.0645 78.4884 22.1767 78.2995C22.1826 78.2877 22.1885 78.27 22.1944 78.2582C22.1944 78.2582 22.2003 78.2464 22.2121 78.2228C22.2121 78.2228 22.2121 78.211 22.2121 78.2051C22.2121 78.1933 22.2239 78.1756 22.2239 78.1519C22.5427 76.1686 23.9476 74.5748 26.0608 74.2797C26.8282 74.1793 27.8789 74.5571 28.363 74.5453C28.8175 74.6693 29.1481 74.1911 28.9119 73.7957L28.9178 73.7898Z" fill="#89321A"></path>
-                  <path d="M80.079 37.9066C80.0495 36.2007 81.5666 34.8666 83.1132 34.1583C86.1355 32.777 89.8071 32.8833 92.7173 34.4888C95.6274 36.0944 97.6757 39.1934 97.9591 42.499C98.0594 43.6854 97.9473 44.8778 97.7407 46.0466C97.3806 48.0654 96.6958 50.1136 95.2614 51.5775C94.0041 52.8584 92.2568 53.5904 90.4741 53.7911C88.6914 53.9918 86.8792 53.6848 85.1851 53.1064C84.0281 52.7168 82.8829 52.1737 82.0506 51.2824C81.2773 50.4501 80.8228 49.3699 80.4863 48.2838C79.412 44.8483 80.1381 41.2004 80.079 37.9007V37.9066Z" fill="#FBD8BE"></path>
-                  <path d="M42.2939 23.8459C43.3446 22.5236 44.0471 20.9594 44.8499 19.466C45.6527 17.9785 46.609 16.5087 48.008 15.5524C49.407 14.5961 51.3431 14.2774 52.7952 15.1451C54.2474 16.0128 54.8081 18.2618 53.6453 19.4837C55.1269 18.4212 56.8801 17.7423 58.6923 17.5357C59.2058 17.4767 59.7548 17.459 60.2211 17.6774C61.2128 18.1437 61.4667 19.5191 61.0535 20.5285C60.6403 21.5379 59.7489 22.2639 58.8989 22.9486C60.3805 22.1163 62.4466 21.0538 64.7074 21.3431C66.4665 21.5674 66.2244 23.4622 65.215 23.8872C70.0318 22.5709 75.2855 26.939 77.8828 30.1855C82.0089 35.3387 83.644 44.8659 84.0454 45.6863C84.9132 47.4867 86.8729 48.4194 88.4608 49.6294C91.4595 51.9079 93.3544 55.4732 93.9565 59.192C94.5586 62.9108 94.352 67.9931 92.7287 71.3932C82.1447 93.5288 57.7478 92.85 49.8556 91.3684C45.995 90.6423 42.3352 88.9895 39.0237 86.8822C30.4644 81.4398 23.9535 70.0532 23.3218 59.9299C22.1767 41.5839 29.5908 30.0025 42.3057 23.84L42.2939 23.8459Z" fill="#8C5644"></path>
-                  <path d="M54.6483 35.9704C47.2578 31.4429 39.7788 36.0648 35.7353 41.9618C30.3104 49.8716 28.333 66.5648 33.7401 75.5194C43.8164 92.2126 67.3573 89.8219 78.3722 82.3962C83.8324 78.7128 89.3163 73.353 90.5913 66.8953C91.8664 60.4317 90.9101 53.8501 83.4783 49.8598C82.3331 49.2459 81.0463 48.7441 80.2907 47.6875C79.8539 47.0736 79.6414 46.3358 79.4407 45.6097C78.2542 41.3715 75.7277 32.0627 66.7847 31.0533C59.0401 30.1797 55.5869 34.7131 54.6483 35.9645V35.9704Z" fill="#FBD8BE"></path>
-                  <path d="M51.3048 61.2264C52.5241 60.902 53.1781 59.3824 52.7657 57.8324C52.3532 56.2824 51.0305 55.2889 49.8113 55.6133C48.592 55.9377 47.938 57.4572 48.3504 59.0072C48.7628 60.5572 50.0856 61.5508 51.3048 61.2264Z" fill="#672914"></path>
-                  <path d="M51.3545 53.2716C50.3038 53.4074 49.1055 54.34 48.4857 55.8393C48.1138 56.7366 48.0488 57.9643 48.3735 59.0564C48.403 59.1567 48.7808 58.1709 49.8256 55.6681C50.1621 54.8595 50.8114 54.4049 51.443 53.9976C51.5434 53.9327 51.6437 53.8678 51.7146 53.7792C51.7854 53.6907 51.8267 53.5667 51.7972 53.4546C51.7618 53.3424 51.6142 53.2421 51.3545 53.2775V53.2716Z" fill="#672914"></path>
-                  <path d="M69.4356 51.2588C69.229 49.671 70.0731 48.2484 71.3187 48.0831C72.5701 47.9178 73.7507 49.0748 73.9632 50.6626C74.1698 52.2505 73.3257 53.6731 72.0801 53.8384C70.8287 54.0036 69.6481 52.8467 69.4356 51.2588Z" fill="#672914"></path>
-                  <path d="M73.1486 45.9639C72.092 45.9639 70.6516 46.5128 69.8961 47.9059C69.3353 48.933 69.2644 50.1903 69.4474 51.3118C69.4652 51.4122 69.9669 50.4854 71.3246 48.142C71.7673 47.3805 72.4638 47.0146 73.1486 46.6899C73.2548 46.6427 73.3611 46.5896 73.4437 46.5069C73.5264 46.4243 73.5854 46.3062 73.5677 46.1941C73.55 46.0819 73.4083 45.9639 73.1545 45.9639H73.1486Z" fill="#672914"></path>
-                  <path d="M66.413 64.8766C65.9702 63.3005 65.2973 61.7776 64.8074 60.6619C64.5949 60.1838 64.4237 59.7883 64.3115 59.4991L64.8664 59.2925C64.9727 59.5758 65.1438 59.9654 65.3504 60.4258C65.8522 61.5533 66.531 63.1057 66.9856 64.7172L66.4189 64.8766H66.413Z" fill="#89321A"></path>
-                  <path d="M45.2518 79.8697C49.5486 79.8697 53.0318 76.3865 53.0318 72.0897C53.0318 67.793 49.5486 64.3098 45.2518 64.3098C40.9549 64.3098 37.4717 67.793 37.4717 72.0897C37.4717 76.3865 40.9549 79.8697 45.2518 79.8697Z" fill="#DE7B61"></path>
-                  <path d="M85.6607 65.4382C88.9851 64.2394 90.5468 60.1251 89.1489 56.2488C87.751 52.3724 83.9229 50.2019 80.5985 51.4007C77.2741 52.5995 75.7123 56.7137 77.1102 60.59C78.5081 64.4664 82.3363 66.637 85.6607 65.4382Z" fill="#DE7B61"></path>
-                  <path d="M42.2408 23.7574C43.1321 22.1223 44.0294 20.4872 45.0506 18.9111C46.1131 17.3351 47.1697 15.6941 48.8462 14.667C50.558 13.5455 53.238 13.8052 54.2828 15.7472C55.729 18.1615 53.8224 22.441 51.3372 23.4976C50.2865 23.8164 49.7257 22.8955 50.4636 22.0751C51.8331 20.0858 53.8283 18.5452 56.0655 17.6656C57.4055 17.1698 59.0406 16.6149 60.4632 17.3233C63.4855 19.0351 60.4632 22.0278 58.8753 23.5685L58.4267 22.99C60.0382 21.957 64.1938 20.2452 65.829 21.7209C66.6967 22.6535 65.9057 24.0702 65.0262 24.6428C64.6188 24.9556 64.1938 25.2095 63.8515 25.5282C63.6508 25.7171 63.3674 25.4161 63.5563 25.2272C64.306 24.5011 65.28 24.0761 65.5751 23.2202C65.7345 22.8129 65.6991 22.3702 65.4216 22.1105C65.156 21.8448 64.7015 21.7563 64.2411 21.7622C62.3462 21.8803 60.416 22.5532 58.8222 23.6039C58.4503 23.8518 58.043 23.3206 58.3735 23.0254C59.0347 22.4056 59.6309 21.7209 60.1444 20.9771C60.5635 20.3278 61.1951 19.59 60.8469 18.8344C59.9673 17.1934 57.795 17.9018 56.3724 18.4507C54.1942 19.3184 52.2935 20.8768 51.0008 22.8247C50.9594 22.8955 51.0008 22.8483 50.9712 22.7657C50.9181 22.6653 50.8532 22.6712 50.9063 22.6771C50.9417 22.6771 51.0126 22.6771 51.0657 22.6594C52.5119 22.0337 53.5213 20.074 53.8814 18.5688C54.513 15.6351 51.7563 13.758 49.2063 15.2868C47.6597 16.1899 46.5972 17.8014 45.5523 19.2417C44.4957 20.7587 43.5512 22.3584 42.6068 23.9581C42.4828 24.1883 42.0991 23.9817 42.2408 23.7515V23.7574Z" fill="#864433"></path>
-                  <path d="M71.9444 66.9485C74.3056 67.3617 76.5428 68.4242 78.3727 69.9766C74.465 74.5513 68.3849 77.243 62.3639 76.9361C60.1031 76.818 57.801 76.2749 55.9238 75.0649C56.4374 74.1676 57.1457 73.3826 57.8718 72.6329C59.6486 70.7971 61.6025 69.0853 63.9164 68.0051C66.4016 66.8481 69.2409 66.4762 71.9444 66.9485Z" fill="#DE7B61"></path>
-                  <path d="M80.3025 60.2664C82.5102 62.421 80.4619 67.0783 79.6945 68.2293C79.2872 68.8373 78.8504 69.4158 78.3723 69.9707C76.5424 68.4241 74.3111 67.3557 71.944 66.9425C69.2463 66.4703 66.4011 66.8422 63.916 67.9991C61.602 69.0794 59.6422 70.7912 57.8714 72.627C57.1394 73.3766 56.4369 74.1617 55.9234 75.0589C55.4393 74.752 54.9907 74.4037 54.5716 74.0023C52.5233 72.0426 51.567 68.7842 52.8361 66.2519C53.94 64.0442 56.555 62.7987 59.0165 63.0112C61.1121 63.1883 63.1604 64.2981 65.2264 63.9144C67.1626 63.5543 68.6619 62.0845 70.2203 60.8862C73.9864 57.9938 77.5105 57.557 80.3025 60.2723V60.2664Z" fill="#672914"></path>
-                  <path d="M60.5871 58.4895C60.1916 57.0492 61.3722 55.4614 63.2257 54.9537C65.0793 54.4402 66.9092 55.1958 67.3047 56.6419C67.7002 58.0881 66.5196 59.6701 64.6661 60.1777C62.8125 60.6913 60.9826 59.9357 60.5871 58.4895Z" fill="currentColor"></path>
-                </g>
-                <defs>
-                  <clipPath id="clip0_237_1914">
-                    <rect width="86" height="78" fill="white" transform="translate(12 14)"></rect>
-                  </clipPath>
-                </defs>
-              </svg>
-            </span>{' '}
-            little{' '}
-          </span>
-          <span className="block" style={{ color: '#f25100' }}>
-            star
-          </span>
-        </h1>
-        <p className="text-lg md:text-xl mb-8 max-w-3xl mx-auto leading-relaxed" style={{ color: '#333333' }}>
-        Discover Magical Rewards, Fun Toys & Baby Essentials for Your <br className="hidden md:block" />
-        Little Star's Brightest Smile
-        </p>
-        <div className="mt-8">
-          <Link
-            to="#competitions"
-            className="inline-flex items-center gap-2 px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300 hover:opacity-90 hover:scale-105"
-            style={{ backgroundColor: '#335761', color: '#ffffff' }}
-            onClick={(e) => {
-              e.preventDefault()
-              document.querySelector('#competitions')?.scrollIntoView({ behavior: 'smooth' })
-            }}
-          >
-            <span>Enter Now</span>
-            <ArrowRight className="w-5 h-5" />
-          </Link>
+    <section className="relative overflow-hidden border-b" style={{
+      background: 'linear-gradient(to bottom right, #fffbf7, #FBEFDF, rgba(254, 208, 185, 0.3))',
+      borderColor: '#f0e0ca'
+    }}>
+      {/* Enhanced decorative circles */}
+      <div
+        className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-[800px] h-[800px] rounded-full blur-3xl -z-10"
+        style={{ backgroundColor: 'rgba(254, 208, 185, 0.4)' }}
+      />
+      <div
+        className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-[700px] h-[700px] rounded-full blur-3xl -z-10"
+        style={{ backgroundColor: 'rgba(225, 234, 236, 0.4)' }}
+      />
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-3xl -z-10"
+        style={{ backgroundColor: 'rgba(255, 240, 230, 0.2)' }}
+      />
+
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-8 md:py-28 lg:py-32">
+        <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-20 items-center">
+          {/* Left Column - Text content */}
+          <div className="w-full lg:w-[55%] text-left z-10 space-y-6 lg:space-y-8">
+            {/* Badge */}
+            <div>
+              <span
+                className="inline-flex items-center px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wider shadow-sm cursor-pointer"
+                style={{
+                  backgroundColor: '#fff0e6',
+                  color: '#151e20',
+                  borderWidth: '1px',
+                  borderColor: '#ffdec9'
+                }}
+              >
+                ⚡ Instant Win Competitions Live
+              </span>
+            </div>
+
+            {/* Headline */}
+            <h1
+              className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight leading-[1.05] mb-0"
+              style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
+            >
+              Win Premium Baby Gear{' '}
+              <span className="relative inline-block" style={{ color: '#496B71' }}>
+                Instantly
+                <span
+                  className="absolute bottom-3 left-0 w-full h-4 rounded-full -z-10"
+                  style={{ backgroundColor: 'rgba(254, 208, 185, 0.4)' }}
+                />
+              </span>
+            </h1>
+
+            {/* Subheadline */}
+            <p
+              className="text-xl lg:text-2xl font-medium leading-relaxed max-w-2xl pt-3"
+              style={{ color: '#78716c' }}
+            >
+              Enter our instant win competitions for a chance to win iCandy prams, car seats, and cash prizes. Over{' '}
+              <span className="font-bold" style={{ color: '#2c4044' }}>
+                1,900 instant wins
+              </span>{' '}
+              available now.
+            </p>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-2">
+              <Link to="/competitions" className="flex-shrink-0">
+                <button
+                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-10 py-6 text-lg font-bold transition-all duration-300 shadow-2xl hover:shadow-xl cursor-pointer"
+                  style={{
+                    backgroundColor: '#496B71',
+                    color: 'white',
+                    boxShadow: '0 20px 50px -12px rgba(73, 107, 113, 0.3)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3a565a'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#496B71'}
+                >
+                  View Competitions
+                  <ArrowRight size={20} className="ml-2" />
+                </button>
+              </Link>
+              <Link to="/how-it-works" className="flex-shrink-0">
+                <button
+                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-10 py-6 text-lg font-bold transition-all duration-300 cursor-pointer"
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: '#2c4044',
+                    borderWidth: '2px',
+                    borderColor: '#2c4044'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#2c4044'
+                    e.currentTarget.style.color = 'white'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.color = '#2c4044'
+                  }}
+                >
+                  How It Works
+                </button>
+              </Link>
+            </div>
+
+            {/* Social Proof - Reviews */}
+            <div className="flex items-center gap-4 pt-4">
+              <div className="flex -space-x-3">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <img
+                    key={i}
+                    src={`https://i.pravatar.cc/100?img=${i + 20}`}
+                    className="w-12 h-12 rounded-full shadow-md"
+                    style={{ borderWidth: '3px', borderColor: 'white' }}
+                    alt={`BabyBets winner ${i}`}
+                    loading="lazy"
+                  />
+                ))}
+              </div>
+              <div>
+                <div className="flex gap-0.5 mb-1" style={{ color: '#fa8c61' }}>
+                  <Star size={18} fill="currentColor" />
+                  <Star size={18} fill="currentColor" />
+                  <Star size={18} fill="currentColor" />
+                  <Star size={18} fill="currentColor" />
+                  <Star size={18} fill="currentColor" />
+                </div>
+                <span className="text-sm font-bold" style={{ color: '#78716c' }}>
+                  4.9/5 from 200+ reviews
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Hero Image */}
+          <div className="w-full lg:w-[45%] relative">
+            <div
+              className="relative rounded-[2.5rem] overflow-hidden shadow-2xl"
+              style={{
+                borderWidth: '8px',
+                borderColor: 'white',
+                boxShadow: '0 25px 50px -12px rgba(34, 48, 51, 0.2)'
+              }}
+            >
+              {heroLoading ? (
+                <div className="w-full h-auto aspect-[4/5] animate-pulse" style={{ backgroundColor: '#FBEFDF' }} />
+              ) : (
+                <img
+                  src={heroImage}
+                  alt={heroCompetition ? `Win ${heroCompetition.title}` : 'Win premium baby gear with BabyBets instant win competitions'}
+                  loading="eager"
+                  className="w-full h-auto object-cover aspect-[4/5]"
+                  style={{ backgroundColor: '#FBEFDF' }}
+                />
+              )}
+
+              {/* Floating Winner Badge */}
+              {!instantWinLoading && instantWinCount > 0 && (
+                <div
+                  className="absolute top-6 right-6 p-5 rounded-2xl shadow-xl max-w-[220px]"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    backdropFilter: 'blur(12px)',
+                    borderWidth: '1px',
+                    borderColor: '#FBEFDF',
+                    animation: 'bounce 4s infinite'
+                  }}
+                >
+                  <div className="flex gap-3 items-center mb-2">
+                    <div
+                      className="p-2.5 rounded-full"
+                      style={{ backgroundColor: '#fef3c7', color: '#ca8a04' }}
+                    >
+                      <Zap size={20} />
+                    </div>
+                    <div
+                      className="text-xs font-bold uppercase tracking-wide"
+                      style={{ color: '#a8a29e' }}
+                    >
+                      Instant Win
+                    </div>
+                  </div>
+                  <div
+                    className="text-base font-bold leading-tight"
+                    style={{ color: '#151e20' }}
+                  >
+                    {instantWinCount.toLocaleString()}+ prizes to be won instantly!
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom CTA Overlay */}
+              <div
+                className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 pt-32 text-white"
+                style={{
+                  background: 'linear-gradient(to top, rgba(34, 48, 51, 0.95), rgba(34, 48, 51, 0.8), transparent)'
+                }}
+              >
+                <div className="flex justify-between items-end gap-4">
+                  <div className="flex-grow">
+                    <div
+                      className="text-xs font-bold uppercase mb-2 tracking-wider"
+                      style={{ color: '#FED0B9' }}
+                    >
+                      Live Now
+                    </div>
+                    <div className="text-xl sm:text-2xl font-bold leading-tight">
+                      {heroLoading ? 'Loading...' : heroCompetition ? `${heroCompetition.title} - £${heroCompetition.total_value_gbp.toLocaleString()}` : 'Amazing Prizes Available'}
+                    </div>
+                  </div>
+                  <Link to={heroCompetition ? `/competitions/${heroCompetition.slug}` : '/competitions'} className="flex-shrink-0">
+                    <div
+                      className="rounded-full p-3 sm:p-4 shadow-lg cursor-pointer transition-all duration-300"
+                      style={{ backgroundColor: 'white', color: '#151e20' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#FED0B9'
+                        e.currentTarget.style.transform = 'scale(1.1)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'white'
+                        e.currentTarget.style.transform = 'scale(1)'
+                      }}
+                    >
+                      <ArrowRight size={22} strokeWidth={2.5} />
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Floating Stats Card */}
+            {!instantWinLoading && instantWinCount > 0 && (
+              <div
+                className="absolute -bottom-8 -left-8 p-6 rounded-2xl shadow-2xl hidden lg:block"
+                style={{
+                  backgroundColor: 'white',
+                  borderWidth: '1px',
+                  borderColor: '#f0e0ca',
+                  animation: 'float 5s ease-in-out infinite'
+                }}
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className="p-4 rounded-xl"
+                    style={{ backgroundColor: '#facc15', color: '#713f12' }}
+                  >
+                    <Zap size={28} strokeWidth={2} />
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold" style={{ color: '#151e20' }}>
+                      {instantWinCount.toLocaleString()}
+                    </div>
+                    <div className="text-sm font-medium" style={{ color: '#78716c' }}>
+                      Instant Wins
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Trust Stats Section */}
+      <TrustStatsSection />
     </section>
   )
 }
