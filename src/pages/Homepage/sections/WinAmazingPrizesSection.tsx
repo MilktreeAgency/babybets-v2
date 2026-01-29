@@ -24,7 +24,7 @@ export default function WinAmazingPrizesSection() {
 
   return (
     <section className="py-24 px-6">
-      <div className="max-w-[1300px] mx-auto">
+      <div className="max-w-[1400px] mx-auto">
         {/* Headline */}
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 max-w-6xl mx-auto" style={{ fontFamily: "'Baloo Chettan 2', sans-serif", color: '#000000' }}>
