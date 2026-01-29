@@ -1,14 +1,15 @@
 import { useAuth } from '@/hooks/useAuth'
 import Header from '@/components/common/Header'
 import Footer from '@/components/common/Footer'
+import WinnerTicker from '@/components/common/WinnerTicker'
 import HeroSection from './sections/HeroSection'
-import HowItWorksSection from './sections/HowItWorksSection'
-import MeetPartnerSection from './sections/MeetPartnerSection'
-import ScrollingTextSection from './sections/ScrollingTextSection'
 import FeaturedCompetitionsSection from './sections/FeaturedCompetitionsSection'
+import InstantWinsSection from './sections/InstantWinsSection'
+import HowItWorksSection from './sections/HowItWorksSection'
+import JustLaunchedSection from './sections/JustLaunchedSection'
+import MeetPartnerSection from './sections/MeetPartnerSection'
 import WinAmazingPrizesSection from './sections/WinAmazingPrizesSection'
-import FAQSection from './sections/FAQSection'
-import FinalCTASection from './sections/FinalCTASection'
+import NewsletterSection from './sections/NewsletterSection'
 
 function Homepage() {
   const { isLoading } = useAuth()
@@ -20,14 +21,15 @@ function Homepage() {
   return (
     <div className="antialiased relative min-h-screen" style={{ color: '#2D251E', backgroundColor: '#fffbf7' }}>
       <Header />
+      <WinnerTicker speed="fast" />
       <HeroSection />
-      <HowItWorksSection />
-      <MeetPartnerSection />
-      <ScrollingTextSection />
       <FeaturedCompetitionsSection />
+      <InstantWinsSection />
+      <HowItWorksSection />
+      <JustLaunchedSection />
+      <MeetPartnerSection />
       <WinAmazingPrizesSection />
-      <FAQSection />
-      <FinalCTASection />
+      <NewsletterSection />
       <Footer />
     </div>
   )
