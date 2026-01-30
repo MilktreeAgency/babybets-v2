@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Zap } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 interface CompetitionCardProps {
   competition: {
@@ -14,12 +16,74 @@ interface CompetitionCardProps {
     tickets_sold: number | null
     end_datetime: string
     competition_type: string
+    created_at?: string | null
   }
 }
 
 export default function CompetitionCard({ competition }: CompetitionCardProps) {
   const percentSold = (((competition.tickets_sold || 0) / competition.max_tickets) * 100)
   const isEndingSoon = percentSold > 85
+  const isInstantWin = competition.competition_type === 'instant_win'
+
+  // Check if competition is closing today
+  const closingInfo = (() => {
+    if (!competition.end_datetime) return null
+    const endDate = new Date(competition.end_datetime)
+    const now = new Date()
+
+    const endDay = endDate.toDateString()
+    const nowDay = now.toDateString()
+
+    if (endDay === nowDay) {
+      const time12hr = endDate.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'UTC'
+      })
+      return `Closing Today ${time12hr} GMT`
+    }
+    return null
+  })()
+
+  // Check if competition is just launched (7 days or less)
+  const isJustLaunched = (() => {
+    if (!competition.created_at) return false
+    const createdDate = new Date(competition.created_at)
+    const now = new Date()
+    const daysDifference = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)
+    return daysDifference <= 7
+  })()
+
+  // Fetch prize count for instant win competitions
+  const [prizeCount, setPrizeCount] = useState(0)
+  const [prizeLoading, setPrizeLoading] = useState(true)
+
+  useEffect(() => {
+    if (isInstantWin) {
+      const fetchPrizeCount = async () => {
+        try {
+          setPrizeLoading(true)
+          const { data, error } = await supabase
+            .from('competition_instant_win_prizes')
+            .select('total_quantity')
+            .eq('competition_id', competition.id)
+
+          if (error) throw error
+
+          const total = data?.reduce((sum, prize) => sum + prize.total_quantity, 0) || 0
+          setPrizeCount(total)
+        } catch (error) {
+          console.error('Error fetching prize count:', error)
+          setPrizeCount(0)
+        } finally {
+          setPrizeLoading(false)
+        }
+      }
+
+      fetchPrizeCount()
+    }
+  }, [isInstantWin, competition.id])
 
   // Use first image from images array, or fallback to image_url
   const displayImage = competition.images && competition.images.length > 0
@@ -27,16 +91,37 @@ export default function CompetitionCard({ competition }: CompetitionCardProps) {
     : competition.image_url
 
   return (
-    <Link to={`/competitions/${competition.slug}`} className="group h-full block cursor-pointer">
+    <Link to={`/competitions/${competition.slug}`} className="group h-full block cursor-pointer relative pt-3">
+      {/* Badge - Priority: Closing Today > Instant Win Prize Count > Just Launched */}
+      {(closingInfo || (isInstantWin && !prizeLoading && prizeCount > 0) || (!isInstantWin && isJustLaunched)) && (
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full cursor-pointer z-20 flex items-center gap-2"
+          style={{
+            backgroundColor: closingInfo ? '#ef4444' : 'white',
+            borderWidth: '1px',
+            borderColor: closingInfo ? '#ef4444' : '#d1d5db',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+          }}
+        >
+          <Zap size={16} style={{ color: closingInfo ? 'white' : '#ef4444' }} fill={closingInfo ? 'white' : '#ef4444'} />
+          <div
+            className="text-sm font-bold whitespace-nowrap"
+            style={{ color: closingInfo ? 'white' : '#151e20' }}
+          >
+            {closingInfo || (isInstantWin ? `${prizeCount}+ prizes` : 'Just Launched')}
+          </div>
+        </div>
+      )}
+
       <article
-        className="rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col relative"
+        className="rounded-2xl overflow-hidden shadow-sm h-full flex flex-col relative"
         style={{ backgroundColor: '#151e20', borderWidth: '1px', borderColor: '#e7e5e4' }}
       >
         {/* Image */}
         <div className="relative aspect-[4/3] overflow-hidden" style={{ backgroundColor: '#fffbf7' }}>
           <img
             src={displayImage}
-            alt={`Win ${competition.title}`}
+            alt={competition.title}
             loading="lazy"
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           />
@@ -70,7 +155,7 @@ export default function CompetitionCard({ competition }: CompetitionCardProps) {
             className="font-bold font-serif mb-2 line-clamp-2 leading-tight min-h-[2.5rem] text-sm md:text-base"
             style={{ fontFamily: "'Fraunces', serif", color: '#ffffff' }}
           >
-            Win {competition.title}
+            {competition.title}
           </h3>
 
           <div className="mt-auto space-y-3">
@@ -96,6 +181,9 @@ export default function CompetitionCard({ competition }: CompetitionCardProps) {
                   className="h-full rounded-full"
                 />
               </div>
+              <div className="text-[10px] font-bold mt-1.5 text-center" style={{ color: '#9ca3af' }}>
+                {competition.tickets_sold || 0}/{competition.max_tickets}
+              </div>
             </div>
 
             {/* Value Check */}
@@ -106,6 +194,19 @@ export default function CompetitionCard({ competition }: CompetitionCardProps) {
               <span>Worth £{competition.total_value_gbp.toLocaleString()}</span>
               <span className="font-bold" style={{ color: '#facc15' }}>Tax Free</span>
             </div>
+
+            {/* Enter Now Button */}
+            <button
+              className="w-full py-3 rounded-xl font-bold text-base transition-colors cursor-pointer"
+              style={{
+                backgroundColor: '#496B71',
+                color: 'white'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3a565a'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#496B71'}
+            >
+              Enter Now
+            </button>
           </div>
         </div>
       </article>
