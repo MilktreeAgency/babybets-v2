@@ -250,6 +250,18 @@ ON public.order_items FOR INSERT
 TO authenticated
 WITH CHECK (public.is_admin());
 
+CREATE POLICY "Users can insert items for their own orders"
+ON public.order_items FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.orders o
+    WHERE o.id = order_id
+    AND o.user_id = auth.uid()
+    AND o.status = 'pending'
+  )
+);
+
 CREATE POLICY "Admins can update order items"
 ON public.order_items FOR UPDATE
 TO authenticated

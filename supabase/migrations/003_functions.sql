@@ -195,7 +195,7 @@ $$;
 COMMENT ON FUNCTION public.debit_wallet_credits IS
   'Debits wallet credits using FIFO strategy, validates balance, creates transaction record';
 
--- Complete order with wallet credits
+-- Complete order with wallet credits (claims from pre-generated pool)
 CREATE OR REPLACE FUNCTION public.complete_order_with_wallet(
   p_order_id UUID,
   p_user_id UUID
@@ -211,7 +211,8 @@ DECLARE
   v_order_item RECORD;
   v_competition RECORD;
   v_ticket_count INTEGER;
-  v_i INTEGER;
+  v_claimed_tickets UUID[];
+  v_available_count INTEGER;
 BEGIN
   -- Get order details and verify it belongs to the user
   SELECT * INTO v_order
@@ -248,42 +249,71 @@ BEGIN
   FOR v_order_item IN
     SELECT * FROM order_items WHERE order_id = p_order_id
   LOOP
-    -- Update competition tickets_sold count
-    SELECT tickets_sold INTO v_competition
+    -- Get competition details
+    SELECT * INTO v_competition
     FROM competitions
     WHERE id = v_order_item.competition_id;
 
-    IF FOUND THEN
-      UPDATE competitions
-      SET tickets_sold = COALESCE(v_competition.tickets_sold, 0) + v_order_item.ticket_count
-      WHERE id = v_order_item.competition_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Competition not found: %', v_order_item.competition_id;
     END IF;
 
-    -- Create ticket allocations
+    -- Check if ticket pool is locked (required for claiming)
+    IF v_competition.ticket_pool_locked = false THEN
+      RAISE EXCEPTION 'Ticket pool not generated for competition: %', v_competition.title;
+    END IF;
+
     v_ticket_count := v_order_item.ticket_count;
-    FOR v_i IN 1..v_ticket_count LOOP
-      INSERT INTO ticket_allocations (
-        competition_id,
-        order_id,
-        sold_to_user_id,
-        ticket_number,
-        is_sold,
-        sold_at
-      ) VALUES (
-        v_order_item.competition_id,
-        p_order_id,
-        p_user_id,
-        EXTRACT(EPOCH FROM NOW())::BIGINT || '-' || v_i,
-        true,
-        NOW()
-      );
-    END LOOP;
+
+    -- Check if enough unsold tickets are available
+    SELECT COUNT(*)
+    INTO v_available_count
+    FROM ticket_allocations
+    WHERE competition_id = v_order_item.competition_id
+      AND is_sold = false;
+
+    IF v_available_count < v_ticket_count THEN
+      RAISE EXCEPTION 'Insufficient tickets available. Requested: %, Available: %', v_ticket_count, v_available_count;
+    END IF;
+
+    -- Claim the next N available unsold tickets (atomic with row locking)
+    WITH updated_tickets AS (
+      UPDATE ticket_allocations
+      SET
+        is_sold = true,
+        sold_at = NOW(),
+        sold_to_user_id = p_user_id,
+        order_id = p_order_id
+      WHERE id IN (
+        SELECT id
+        FROM ticket_allocations
+        WHERE competition_id = v_order_item.competition_id
+          AND is_sold = false
+        ORDER BY ticket_number ASC  -- Sequential allocation
+        LIMIT v_ticket_count
+        FOR UPDATE SKIP LOCKED  -- Prevent race conditions
+      )
+      RETURNING id
+    )
+    SELECT array_agg(id) INTO v_claimed_tickets FROM updated_tickets;
+
+    -- Verify we claimed the correct number of tickets
+    IF v_claimed_tickets IS NULL OR array_length(v_claimed_tickets, 1) != v_ticket_count THEN
+      RAISE EXCEPTION 'Failed to claim all requested tickets. Expected: %, Got: %',
+        v_ticket_count,
+        COALESCE(array_length(v_claimed_tickets, 1), 0);
+    END IF;
+
+    -- Update competition tickets_sold count
+    UPDATE competitions
+    SET tickets_sold = COALESCE(tickets_sold, 0) + v_ticket_count
+    WHERE id = v_order_item.competition_id;
   END LOOP;
 END;
 $$;
 
 COMMENT ON FUNCTION public.complete_order_with_wallet IS
-  'Completes order payment using wallet credits, allocates tickets to user';
+  'Completes order by claiming pre-allocated tickets from pool (not creating new ones)';
 
 -- ============================================
 -- INSTANT WIN PRIZE FUNCTIONS
@@ -549,10 +579,8 @@ DECLARE
   v_wallet_credit_id UUID;
   v_expiry_date TIMESTAMPTZ;
 BEGIN
-  -- Check admin role
-  IF NOT EXISTS (
-    SELECT 1 FROM profiles WHERE id = p_admin_id AND role = 'admin'
-  ) THEN
+  -- Check admin role using is_admin() function
+  IF NOT public.is_admin() THEN
     RAISE EXCEPTION 'Unauthorized: Only admins can approve cash alternatives';
   END IF;
 
@@ -659,10 +687,8 @@ DECLARE
   v_total_entries INTEGER;
   v_paid_entries INTEGER;
 BEGIN
-  -- Check admin role
-  IF NOT EXISTS (
-    SELECT 1 FROM profiles WHERE id = p_admin_id AND role = 'admin'
-  ) THEN
+  -- Check admin role using is_admin() function
+  IF NOT public.is_admin() THEN
     RAISE EXCEPTION 'Unauthorized: Only admins can execute draws';
   END IF;
 

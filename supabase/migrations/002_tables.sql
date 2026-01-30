@@ -92,6 +92,7 @@ CREATE TABLE public.competitions (
   -- Prize values
   total_value_gbp DECIMAL(10,2) NOT NULL,
   retail_value_gbp DECIMAL(10,2),
+  cash_alternative_gbp DECIMAL(10,2),
 
   -- End prize for instant win competitions
   end_prize JSONB,
@@ -121,6 +122,7 @@ COMMENT ON COLUMN public.competitions.slug IS 'URL-friendly unique identifier';
 COMMENT ON COLUMN public.competitions.competition_type IS 'Type: standard, instant_win, or instant_win_with_end_prize';
 COMMENT ON COLUMN public.competitions.base_ticket_price_pence IS 'Base price per ticket in pence';
 COMMENT ON COLUMN public.competitions.tiered_pricing IS 'JSON array of pricing tiers based on quantity';
+COMMENT ON COLUMN public.competitions.cash_alternative_gbp IS 'Optional cash alternative value for the main prize (standard competitions)';
 COMMENT ON COLUMN public.competitions.end_prize IS 'Optional end draw prize for instant win competitions';
 COMMENT ON COLUMN public.competitions.ticket_pool_locked IS 'True when ticket pool is generated and locked';
 COMMENT ON COLUMN public.competitions.images IS 'Array of image URLs for gallery';
@@ -523,7 +525,7 @@ CREATE TABLE public.prize_fulfillments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   ticket_id UUID NOT NULL REFERENCES public.ticket_allocations(id),
-  prize_id UUID REFERENCES public.competition_instant_win_prizes(id) ON DELETE RESTRICT,
+  prize_id UUID REFERENCES public.competition_instant_win_prizes(id) ON DELETE SET NULL,
   competition_id UUID NOT NULL REFERENCES public.competitions(id) ON DELETE CASCADE,
 
   -- Status
