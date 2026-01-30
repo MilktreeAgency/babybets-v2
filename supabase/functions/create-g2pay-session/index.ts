@@ -6,11 +6,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Generate SHA-256 checksum
-async function generateChecksum(params: Record<string, string>, signatureKey: string): Promise<string> {
-  const concatenated = Object.values(params).join('') + signatureKey
-  const msgBuffer = new TextEncoder().encode(concatenated)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer)
+// Generate signature using G2Pay's method (SHA-512) - as per integration guide
+async function createSignature(data: Record<string, string | number>, signatureKey: string): Promise<string> {
+  // 1. Sort by field name (alphabetically)
+  const sortedData: Record<string, string> = {}
+  Object.keys(data).sort().forEach(key => {
+    sortedData[key] = String(data[key])
+  })
+
+  // 2. Create URL encoded signature string
+  const params = new URLSearchParams()
+  for (const key in sortedData) {
+    params.append(key, sortedData[key])
+  }
+  let signatureString = params.toString()
+
+  // 3. Normalize all line endings (CRNL|NLCR|NL|CR) to just NL (%0A)
+  signatureString = signatureString
+    .replace(/%0D%0A/g, '%0A')
+    .replace(/%0A%0D/g, '%0A')
+    .replace(/%0D/g, '%0A')
+
+  // 4. Hash the signature string and the key together using SHA-512
+  const messageToHash = signatureString + signatureKey
+  console.log('[Edge Function] Signature details:', {
+    fieldsCount: Object.keys(sortedData).length,
+    signatureStringLength: signatureString.length,
+    signaturePreview: signatureString.substring(0, 150),
+    messageLength: messageToHash.length,
+  })
+
+  const msgBuffer = new TextEncoder().encode(messageToHash)
+  const hashBuffer = await crypto.subtle.digest('SHA-512', msgBuffer)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
   const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
   return hashHex
@@ -23,85 +50,130 @@ serve(async (req) => {
   }
 
   try {
+    console.log('[Edge Function] Starting request')
+
     // Get environment variables
     const G2PAY_MERCHANT_ID = Deno.env.get('G2PAY_MERCHANT_ID')
     const G2PAY_SIGNATURE_KEY = Deno.env.get('G2PAY_SIGNATURE_KEY')
-    const G2PAY_API_URL = Deno.env.get('G2PAY_API_URL') || 'https://ppp-test.safecharge.com/ppp/api/v1'
+    const G2PAY_GATEWAY_URL = Deno.env.get('G2PAY_GATEWAY_URL') || 'https://gateway.cardstream.com/direct/'
+
+    console.log('[Edge Function] Environment check:', {
+      hasG2PayMerchantId: !!G2PAY_MERCHANT_ID,
+      hasG2PaySignatureKey: !!G2PAY_SIGNATURE_KEY,
+      gatewayUrl: G2PAY_GATEWAY_URL,
+      merchantId: G2PAY_MERCHANT_ID,
+    })
 
     if (!G2PAY_MERCHANT_ID || !G2PAY_SIGNATURE_KEY) {
       throw new Error('G2Pay credentials not configured')
     }
 
-    // Verify user is authenticated
+    // TEMPORARY: Make function publicly accessible for debugging
+    console.log('[Edge Function] Running without authentication (temporary for debugging)')
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseClient.auth.getUser()
-
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
+    console.log('[Edge Function] Auth header present:', !!authHeader)
 
     // Get request body
-    const { clientRequestId } = await req.json()
+    const { amount, currencyCode, orderRef, customerEmail, customerName } = await req.json()
 
-    if (!clientRequestId) {
-      return new Response(JSON.stringify({ error: 'clientRequestId is required' }), {
+    if (!amount || !currencyCode || !orderRef) {
+      return new Response(JSON.stringify({ error: 'amount, currencyCode, and orderRef are required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // Generate timestamp
-    const timeStamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0]
+    // Generate unique transaction ID
+    const transactionUnique = crypto.randomUUID()
 
-    // Prepare params for checksum
-    const params = {
-      merchantId: G2PAY_MERCHANT_ID,
-      merchantSiteId: G2PAY_MERCHANT_ID,
-      clientRequestId,
-      timeStamp,
+    // Prepare request data as per Direct Integration guide
+    // This creates a payment session that the client will complete with card details
+    const requestData: Record<string, string | number> = {
+      merchantID: G2PAY_MERCHANT_ID,
+      action: 'SALE',
+      type: 1,
+      countryCode: 826, // UK
+      currencyCode: Number(currencyCode),
+      amount: Number(amount), // Amount in minor units (e.g., 1001 = £10.01)
+      orderRef,
+      transactionUnique,
+      // Optional customer details
+      ...(customerEmail && { customerEmail }),
+      ...(customerName && { customerName }),
+      // Redirect URL for payment completion (if using hosted page flow)
+      // redirectURL: 'https://yourdomain.com/payment/callback',
     }
 
-    // Generate checksum
-    const checksum = await generateChecksum(params, G2PAY_SIGNATURE_KEY)
-
-    // Call G2Pay API
-    const response = await fetch(`${G2PAY_API_URL}/getSessionToken.do`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ...params,
-        checksum,
-      }),
+    console.log('[Edge Function] Request data:', {
+      merchantID: requestData.merchantID,
+      action: requestData.action,
+      amount: requestData.amount,
+      currencyCode: requestData.currencyCode,
+      orderRef: requestData.orderRef,
+      transactionUnique: requestData.transactionUnique,
     })
 
-    const data = await response.json()
+    // Generate signature using G2Pay's method
+    const signature = await createSignature(requestData, G2PAY_SIGNATURE_KEY)
 
-    if (data.status === 'SUCCESS') {
+    // Add signature to request
+    const finalRequest = {
+      ...requestData,
+      signature,
+    }
+
+    console.log('[Edge Function] Sending request to:', G2PAY_GATEWAY_URL)
+
+    // Call G2Pay Gateway using form-encoded data (as per their examples)
+    const formBody = new URLSearchParams()
+    for (const key in finalRequest) {
+      formBody.append(key, String(finalRequest[key]))
+    }
+
+    const response = await fetch(G2PAY_GATEWAY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formBody.toString(),
+    })
+
+    // Parse the response (should be form-encoded response)
+    const responseText = await response.text()
+    console.log('[Edge Function] Raw response:', responseText.substring(0, 500))
+
+    // Parse form-encoded response
+    const responseData: Record<string, string> = {}
+    const params = new URLSearchParams(responseText)
+    params.forEach((value, key) => {
+      responseData[key] = value
+    })
+
+    console.log('[Edge Function] Parsed response:', {
+      responseCode: responseData.responseCode,
+      responseMessage: responseData.responseMessage,
+      hasSignature: !!responseData.signature,
+    })
+
+    // Verify response signature
+    const responseSignature = responseData.signature
+    if (responseSignature) {
+      delete responseData.signature
+      const expectedSignature = await createSignature(responseData, G2PAY_SIGNATURE_KEY)
+      if (responseSignature !== expectedSignature) {
+        throw new Error('Response signature verification failed')
+      }
+    }
+
+    // Check response code (0 = success)
+    if (responseData.responseCode === '0') {
       return new Response(
         JSON.stringify({
-          sessionToken: data.sessionToken,
-          sessionId: data.internalRequestId,
+          success: true,
+          transactionID: responseData.transactionID,
+          transactionUnique: responseData.transactionUnique,
+          orderRef: responseData.orderRef,
+          message: responseData.responseMessage,
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -109,12 +181,24 @@ serve(async (req) => {
       )
     }
 
-    throw new Error(data.reason || 'Failed to create G2Pay session')
-  } catch (error) {
-    console.error('Error creating G2Pay session:', error)
+    // Return error response
     return new Response(
       JSON.stringify({
-        error: error.message || 'Failed to create payment session',
+        success: false,
+        responseCode: responseData.responseCode,
+        message: responseData.responseMessage || 'Payment failed',
+      }),
+      {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    )
+  } catch (error) {
+    console.error('Error processing payment:', error)
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message || 'Failed to process payment',
       }),
       {
         status: 500,
