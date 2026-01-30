@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Star, Zap } from 'lucide-react'
 import { useCompetitions } from '@/hooks/useCompetitions'
+import { supabase } from '@/lib/supabase'
 import TrustStatsSection from './TrustStatsSection'
 
 export default function HeroSection() {
@@ -10,18 +12,70 @@ export default function HeroSection() {
     limit: 1
   })
 
-  // Fetch instant win count
-  const { competitions: instantWinComps, isLoading: instantWinLoading } = useCompetitions({
-    competitionType: 'instant_win'
-  })
+  // Fetch total instant win prize count
+  const [instantWinCount, setInstantWinCount] = useState(0)
+  const [instantWinLoading, setInstantWinLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchInstantWinPrizeCount = async () => {
+      try {
+        setInstantWinLoading(true)
+
+        // Get all active instant win competitions
+        const { data: activeComps, error: compError } = await supabase
+          .from('competitions')
+          .select('id')
+          .eq('status', 'active')
+          .eq('competition_type', 'instant_win')
+
+        if (compError) throw compError
+
+        const activeCompIds = new Set(activeComps?.map(c => c.id) || [])
+
+        // Get all prizes for these competitions
+        const { data: prizes, error: prizeError } = await supabase
+          .from('competition_instant_win_prizes')
+          .select('total_quantity, competition_id')
+
+        if (prizeError) throw prizeError
+
+        // Sum total_quantity for prizes in active instant win competitions
+        const total = prizes
+          ?.filter(prize => activeCompIds.has(prize.competition_id))
+          .reduce((sum, prize) => sum + prize.total_quantity, 0) || 0
+
+        setInstantWinCount(total)
+      } catch (error) {
+        console.error('Error fetching instant win prize count:', error)
+        setInstantWinCount(0)
+      } finally {
+        setInstantWinLoading(false)
+      }
+    }
+
+    fetchInstantWinPrizeCount()
+  }, [])
 
   const heroCompetition = heroCompetitions[0]
-  const instantWinCount = instantWinComps.length
 
-  // Get the display image
-  const heroImage = heroCompetition?.images && Array.isArray(heroCompetition.images) && heroCompetition.images.length > 0
-    ? (heroCompetition.images[0] as string)
-    : heroCompetition?.image_url || '/images/competitions/PRIZE 1 ICANDY PEACH 7.png'
+  // Get all images for carousel
+  const heroImages = heroCompetition?.images && Array.isArray(heroCompetition.images) && heroCompetition.images.length > 0
+    ? heroCompetition.images
+    : [heroCompetition?.image_url || '/images/competitions/PRIZE 1 ICANDY PEACH 7.png']
+
+  // Carousel state
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+
+  // Auto-rotate carousel
+  useEffect(() => {
+    if (heroImages.length <= 1) return
+
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % heroImages.length)
+    }, 3000) // Change image every 3 seconds
+
+    return () => clearInterval(interval)
+  }, [heroImages.length])
 
   return (
     <section className="relative overflow-hidden border-b" style={{
@@ -171,46 +225,29 @@ export default function HeroSection() {
                 <div className="w-full h-auto aspect-[4/5] animate-pulse" style={{ backgroundColor: '#FBEFDF' }} />
               ) : (
                 <img
-                  src={heroImage}
-                  alt={heroCompetition ? `Win ${heroCompetition.title}` : 'Win premium baby gear with BabyBets instant win competitions'}
+                  src={heroImages[currentImageIndex] as string}
+                  alt={heroCompetition ? heroCompetition.title : 'Premium baby gear with BabyBets instant win competitions'}
                   loading="eager"
-                  className="w-full h-auto object-cover aspect-[4/5]"
+                  className="w-full h-auto object-cover aspect-[4/5] transition-opacity duration-500"
                   style={{ backgroundColor: '#FBEFDF' }}
                 />
               )}
 
-              {/* Floating Winner Badge */}
-              {!instantWinLoading && instantWinCount > 0 && (
-                <div
-                  className="absolute top-6 right-6 p-5 rounded-2xl shadow-xl max-w-[220px]"
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    backdropFilter: 'blur(12px)',
-                    borderWidth: '1px',
-                    borderColor: '#FBEFDF',
-                    animation: 'bounce 4s infinite'
-                  }}
-                >
-                  <div className="flex gap-3 items-center mb-2">
-                    <div
-                      className="p-2.5 rounded-full"
-                      style={{ backgroundColor: '#fef3c7', color: '#ca8a04' }}
-                    >
-                      <Zap size={20} />
-                    </div>
-                    <div
-                      className="text-xs font-bold uppercase tracking-wide"
-                      style={{ color: '#a8a29e' }}
-                    >
-                      Instant Win
-                    </div>
-                  </div>
-                  <div
-                    className="text-base font-bold leading-tight"
-                    style={{ color: '#151e20' }}
-                  >
-                    {instantWinCount.toLocaleString()}+ prizes to be won instantly!
-                  </div>
+              {/* Carousel Indicators */}
+              {heroImages.length > 1 && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                  {heroImages.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className="w-2 h-2 rounded-full transition-all cursor-pointer"
+                      style={{
+                        backgroundColor: index === currentImageIndex ? 'white' : 'rgba(255, 255, 255, 0.5)',
+                        width: index === currentImageIndex ? '24px' : '8px'
+                      }}
+                      aria-label={`View image ${index + 1}`}
+                    />
+                  ))}
                 </div>
               )}
 
@@ -253,32 +290,20 @@ export default function HeroSection() {
               </div>
             </div>
 
-            {/* Floating Stats Card */}
+            {/* Floating Winner Badge */}
             {!instantWinLoading && instantWinCount > 0 && (
               <div
-                className="absolute -bottom-8 -left-8 p-6 rounded-2xl shadow-2xl hidden lg:block"
+                className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-8 py-4 rounded-full cursor-pointer z-10 flex items-center gap-2"
                 style={{
-                  backgroundColor: 'white',
-                  borderWidth: '1px',
-                  borderColor: '#f0e0ca',
-                  animation: 'float 5s ease-in-out infinite'
+                  backgroundColor: 'white'
                 }}
               >
-                <div className="flex items-center gap-4">
-                  <div
-                    className="p-4 rounded-xl"
-                    style={{ backgroundColor: '#facc15', color: '#713f12' }}
-                  >
-                    <Zap size={28} strokeWidth={2} />
-                  </div>
-                  <div>
-                    <div className="text-3xl font-bold" style={{ color: '#151e20' }}>
-                      {instantWinCount.toLocaleString()}
-                    </div>
-                    <div className="text-sm font-medium" style={{ color: '#78716c' }}>
-                      Instant Wins
-                    </div>
-                  </div>
+                <Zap size={20} style={{ color: '#ef4444' }} fill="#ef4444" />
+                <div
+                  className="text-lg font-bold text-center whitespace-nowrap"
+                  style={{ color: '#151e20' }}
+                >
+                  {instantWinCount}+ prizes to be won instantly!
                 </div>
               </div>
             )}
