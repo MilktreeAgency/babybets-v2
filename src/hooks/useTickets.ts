@@ -17,15 +17,21 @@ export function useTickets() {
         .from('ticket_allocations')
         .select(`
           *,
-          competition:competitions(id, title, slug, image_url, competition_type)
+          competition:competitions!inner(id, title, slug, image_url, images, competition_type)
         `)
         .eq('sold_to_user_id', user.id)
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
+      // Transform the data to ensure competition is not an array
+      const transformedData = (data || []).map((ticket: any) => ({
+        ...ticket,
+        competition: Array.isArray(ticket.competition) ? ticket.competition[0] : ticket.competition
+      }))
+
       // Check for end prize winners (main draw winners)
-      const ticketIds = (data || []).map((t: any) => t.id)
+      const ticketIds = transformedData.map((t: any) => t.id)
       let endPrizeWinners: Record<string, any> = {}
 
       if (ticketIds.length > 0) {
@@ -49,7 +55,7 @@ export function useTickets() {
 
       // Manually fetch prize details for tickets with prizes
       const ticketsWithPrizes = await Promise.all(
-        (data || []).map(async (ticket: any) => {
+        transformedData.map(async (ticket: any) => {
           // Check if this ticket is an end prize winner first
           if (endPrizeWinners[ticket.id]) {
             return {
@@ -179,8 +185,8 @@ export function useTickets() {
     },
   })
 
-  // Get unrevealed tickets count
-  const unrevealedCount = tickets.filter((t) => !t.is_revealed).length
+  // Get unrevealed tickets count (instant win only)
+  const unrevealedCount = tickets.filter((t) => !t.is_revealed && t.competition?.competition_type === 'instant_win').length
 
   // Get tickets with prizes
   const winningTickets = tickets.filter((t) => t.is_revealed && t.prize_id)
