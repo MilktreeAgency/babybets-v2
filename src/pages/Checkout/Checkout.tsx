@@ -11,7 +11,7 @@ import { ArrowLeft, ShoppingCart, CreditCard, Trash2, Wallet } from 'lucide-reac
 function Checkout() {
   const navigate = useNavigate()
   const { items, removeItem, clearCart, getTotalPrice } = useCartStore()
-  const { isAuthenticated, user } = useAuthStore()
+  const { isAuthenticated, user, isLoading: authLoading, isInitialized } = useAuthStore()
   const { summary } = useWallet()
   const [loading, setLoading] = useState(false)
   const [sessionToken, setSessionToken] = useState<string | null>(null)
@@ -24,6 +24,11 @@ function Checkout() {
   const finalPrice = Math.max(0, totalPrice - appliedCredit)
 
   useEffect(() => {
+    // Wait for auth to initialize before checking authentication
+    if (!isInitialized) {
+      return
+    }
+
     // Redirect to login if not authenticated
     if (!isAuthenticated) {
       navigate('/login?redirect=/checkout')
@@ -38,7 +43,7 @@ function Checkout() {
 
     // Initialize G2Pay session
     initializePayment()
-  }, [isAuthenticated, items])
+  }, [isAuthenticated, items, isInitialized])
 
   const initializePayment = async () => {
     try {
@@ -118,14 +123,23 @@ function Checkout() {
         )
       }
 
-      // Ensure user is authenticated
-      if (!user?.id) throw new Error('User not authenticated')
+      // Ensure user is authenticated and refresh session to get latest token
+      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession()
+
+      if (sessionError || !session?.user) {
+        console.error('Session error:', sessionError)
+        throw new Error('User not authenticated. Please log in again.')
+      }
+
+      const authenticatedUserId = session.user.id
+      console.log('Authenticated user ID:', authenticatedUserId)
+      console.log('Session access token:', session.access_token ? 'exists' : 'missing')
 
       // Create order in database
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
-          user_id: user.id,
+          user_id: authenticatedUserId,
           subtotal_pence: totalPence,
           credit_applied_pence: creditPence,
           total_pence: finalPence,
@@ -134,7 +148,26 @@ function Checkout() {
         .select()
         .single()
 
-      if (orderError) throw orderError
+      if (orderError) {
+        console.error('Order creation error:', orderError)
+        throw orderError
+      }
+
+      console.log('Order created:', order.id, 'for user:', order.user_id)
+
+      // Verify the order was created successfully
+      const { data: verifyOrder, error: verifyError } = await supabase
+        .from('orders')
+        .select('id, user_id')
+        .eq('id', order.id)
+        .single()
+
+      if (verifyError || !verifyOrder) {
+        console.error('Order verification failed:', verifyError)
+        throw new Error('Failed to verify order creation')
+      }
+
+      console.log('Order verified:', verifyOrder)
 
       // Create order items
       const orderItems = items.map((item) => ({
@@ -145,16 +178,21 @@ function Checkout() {
         total_pence: Math.round(item.totalPrice * 100),
       }))
 
+      console.log('Inserting order items:', orderItems)
+
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
 
-      if (itemsError) throw itemsError
+      if (itemsError) {
+        console.error('Order items error:', itemsError)
+        throw itemsError
+      }
 
       // If fully paid with wallet credit, complete order immediately
       if (finalPrice === 0) {
         // Complete order with wallet payment
         const { error: completeError } = await supabase.rpc('complete_order_with_wallet', {
           p_order_id: order.id,
-          p_user_id: user.id,
+          p_user_id: authenticatedUserId,
         })
 
         if (completeError) {
@@ -175,10 +213,10 @@ function Checkout() {
         amount: finalPrice.toFixed(2),
         currency: 'GBP',
         clientUniqueId: order.id, // Use order ID for webhook matching
-        userTokenId: user.id,
-        cardHolderName: user.email || '',
+        userTokenId: authenticatedUserId,
+        cardHolderName: session.user.email || '',
         billingAddress: {
-          email: user.email,
+          email: session.user.email,
           country: 'GB',
         },
         callback: async (response: any) => {
@@ -186,7 +224,7 @@ function Checkout() {
             // Deduct wallet credits if any were applied
             if (creditPence > 0) {
               await supabase.rpc('debit_wallet_credits', {
-                p_user_id: user.id,
+                p_user_id: authenticatedUserId,
                 p_amount_pence: creditPence,
                 p_description: `Order #${order.id.slice(0, 8)}`,
               })
@@ -210,6 +248,21 @@ function Checkout() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Show loading while auth is initializing
+  if (!isInitialized || authLoading) {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: '#FFFCF9', color: '#2D251E' }}>
+        <Header />
+        <div className="flex items-center justify-center pt-24 pb-16 px-6">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: '#496B71' }}></div>
+            <p className="text-gray-600">Loading checkout...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
