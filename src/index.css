@@ -51,6 +51,35 @@
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
 
+  /* Admin Colors */
+  --admin-success-bg: #dcfce7;
+  --admin-success-fg: #15803d;
+  --admin-success-text: #16a34a;
+
+  --admin-info-bg: #dbeafe;
+  --admin-info-fg: #1e40af;
+  --admin-info-text: #2563eb;
+
+  --admin-warning-bg: #fef3c7;
+  --admin-warning-fg: #a16207;
+
+  --admin-purple-bg: #f3e8ff;
+  --admin-purple-fg: #7e22ce;
+
+  --admin-orange-bg: #fed7aa;
+  --admin-orange-fg: #c2410c;
+
+  --admin-error-bg: #fef2f2;
+  --admin-error-border: #fecaca;
+  --admin-error-text: #991b1b;
+  --admin-error-light: #dc2626;
+
+  --admin-gray-bg: #e5e7eb;
+  --admin-gray-text: #4b5563;
+
+  --admin-hover-bg: #f9fafb;
+  --admin-card-bg: #ffffff;
+
   /* Border Radius */
   --radius: 0.625rem;
 
@@ -65,50 +94,87 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Dark Mode */
+/* Dark Mode - Inspired Theme */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
+  /* Base Colors - Zinc scale */
+  --base-950: #09090b;
+  --base-900: #18181b;
+  --base-800: #27272a;
+  --base-700: #3f3f46;
+  --base-300: #a1a1aa;
+  --base-200: #e4e4e7;
 
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
+  --background: var(--base-900);
+  --foreground: var(--base-200);
 
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
+  --card: var(--base-900);
+  --card-foreground: var(--base-200);
 
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --popover: var(--base-900);
+  --popover-foreground: var(--base-200);
 
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
+  --primary: var(--base-200);
+  --primary-foreground: var(--base-950);
 
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
+  --secondary: var(--base-800);
+  --secondary-foreground: var(--base-200);
 
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --muted: var(--base-800);
+  --muted-foreground: var(--base-300);
 
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
+  --accent: var(--base-800);
+  --accent-foreground: var(--base-200);
 
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --destructive: #ef4444;
+  --destructive-foreground: var(--base-200);
 
-  --sidebar: oklch(0.18 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.922 0 0);
-  --sidebar-primary-foreground: oklch(0.205 0 0);
-  --sidebar-accent: oklch(0.22 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --border: var(--base-800);
+  --input: var(--base-800);
+  --ring: var(--base-700);
+
+  --sidebar: var(--base-900);
+  --sidebar-foreground: var(--base-200);
+  --sidebar-primary: var(--base-200);
+  --sidebar-primary-foreground: var(--base-950);
+  --sidebar-accent: var(--base-800);
+  --sidebar-accent-foreground: var(--base-200);
+  --sidebar-border: var(--base-800);
+  --sidebar-ring: var(--base-700);
 
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
+
+  /* Admin Colors - Dark Mode */
+  --admin-success-bg: #166534;
+  --admin-success-fg: #4ade80;
+  --admin-success-text: #22c55e;
+
+  --admin-info-bg: #1e40af;
+  --admin-info-fg: #60a5fa;
+  --admin-info-text: #3b82f6;
+
+  --admin-warning-bg: #a16207;
+  --admin-warning-fg: #fbbf24;
+
+  --admin-purple-bg: #7e22ce;
+  --admin-purple-fg: #c084fc;
+
+  --admin-orange-bg: #c2410c;
+  --admin-orange-fg: #fb923c;
+
+  --admin-error-bg: #991b1b;
+  --admin-error-border: #b91c1c;
+  --admin-error-text: #fca5a5;
+  --admin-error-light: #ef4444;
+
+  --admin-gray-bg: var(--base-800);
+  --admin-gray-text: var(--base-300);
+
+  --admin-hover-bg: var(--base-800);
+  --admin-card-bg: var(--base-900);
 }
 
 /* Tailwind Theme Integration */
@@ -149,6 +215,28 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
+  /* Admin Color Mappings */
+  --color-admin-success-bg: var(--admin-success-bg);
+  --color-admin-success-fg: var(--admin-success-fg);
+  --color-admin-success-text: var(--admin-success-text);
+  --color-admin-info-bg: var(--admin-info-bg);
+  --color-admin-info-fg: var(--admin-info-fg);
+  --color-admin-info-text: var(--admin-info-text);
+  --color-admin-warning-bg: var(--admin-warning-bg);
+  --color-admin-warning-fg: var(--admin-warning-fg);
+  --color-admin-purple-bg: var(--admin-purple-bg);
+  --color-admin-purple-fg: var(--admin-purple-fg);
+  --color-admin-orange-bg: var(--admin-orange-bg);
+  --color-admin-orange-fg: var(--admin-orange-fg);
+  --color-admin-error-bg: var(--admin-error-bg);
+  --color-admin-error-border: var(--admin-error-border);
+  --color-admin-error-text: var(--admin-error-text);
+  --color-admin-error-light: var(--admin-error-light);
+  --color-admin-gray-bg: var(--admin-gray-bg);
+  --color-admin-gray-text: var(--admin-gray-text);
+  --color-admin-hover-bg: var(--admin-hover-bg);
+  --color-admin-card-bg: var(--admin-card-bg);
 
   /* Radius Mappings */
   --radius-sm: calc(var(--radius) - 4px);
