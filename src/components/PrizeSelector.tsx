@@ -140,18 +140,18 @@ export function PrizeSelector({
 
   const getTypeBadge = (type: string) => {
     const badges: Record<string, { color: string }> = {
-      Physical: { color: 'bg-blue-100 text-blue-800' },
-      Voucher: { color: 'bg-green-100 text-green-800' },
-      Cash: { color: 'bg-purple-100 text-purple-800' },
-      SiteCredit: { color: 'bg-orange-100 text-orange-800' },
+      Physical: { color: 'bg-admin-info-bg text-admin-info-fg' },
+      Voucher: { color: 'bg-admin-success-bg text-admin-success-fg' },
+      Cash: { color: 'bg-admin-purple-bg text-admin-purple-fg' },
+      SiteCredit: { color: 'bg-admin-orange-bg text-admin-orange-fg' },
     }
-    return badges[type] || { color: 'bg-gray-100 text-gray-800' }
+    return badges[type] || { color: 'bg-admin-gray-bg text-admin-gray-text' }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 border-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
           <DialogTitle>{title}</DialogTitle>
           <p className="text-sm text-muted-foreground">
             {mode === 'single'
@@ -160,7 +160,7 @@ export function PrizeSelector({
           </p>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col gap-4">
+        <div className="flex-1 overflow-hidden flex flex-col gap-4 px-6 py-4 bg-admin-card-bg">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -169,20 +169,20 @@ export function PrizeSelector({
               placeholder="Search prizes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-admin-info-fg bg-admin-card-bg"
             />
           </div>
 
           {/* Prize List */}
-          <div className="flex-1 overflow-y-auto border border-border rounded-lg">
+          <div className="flex-1 overflow-y-auto border border-border rounded-lg bg-admin-card-bg">
             {loading ? (
               <div className="p-8 text-center">
-                <div className="inline-block size-8 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+                <div className="inline-block size-8 border-4 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
                 <p className="mt-2 text-muted-foreground">Loading prizes...</p>
               </div>
             ) : filteredPrizes.length === 0 ? (
               <div className="p-8 text-center">
-                <Package className="size-12 text-gray-300 mx-auto mb-3" />
+                <Package className="size-12 text-admin-gray-bg mx-auto mb-3" />
                 <p className="text-muted-foreground">No prizes found</p>
               </div>
             ) : (
@@ -193,16 +193,16 @@ export function PrizeSelector({
                   const typeBadge = getTypeBadge(prize.type)
 
                   return (
-                    <div key={prize.id} className={`p-4 ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+                    <div key={prize.id} className={`p-4 ${isSelected ? 'bg-admin-info-bg/10' : 'hover:bg-admin-hover-bg'} transition-colors`}>
                       <div className="flex items-start gap-4">
                         {/* Checkbox */}
                         <div className="flex items-center pt-1">
                           <button
                             onClick={() => togglePrizeSelection(prize)}
-                            className={`size-5 rounded border-2 flex items-center justify-center transition-colors ${
+                            className={`size-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${
                               isSelected
-                                ? 'bg-blue-600 border-blue-600'
-                                : 'border-gray-300 hover:border-blue-400'
+                                ? 'bg-admin-info-fg border-admin-info-fg'
+                                : 'border-border hover:border-admin-info-fg'
                             }`}
                           >
                             {isSelected && <Check className="size-3 text-white" />}
@@ -259,7 +259,7 @@ export function PrizeSelector({
                                   type="text"
                                   value={selectedDetails.prizeCode}
                                   onChange={(e) => updatePrizeDetails(prize.id, 'prizeCode', e.target.value)}
-                                  className="w-full px-2 py-1 text-sm border border-border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                  className="w-full px-2 py-1 text-sm border border-border rounded focus:outline-none focus:ring-2 focus:ring-admin-info-fg bg-admin-card-bg"
                                   placeholder="PR-001"
                                 />
                               </div>
@@ -272,7 +272,7 @@ export function PrizeSelector({
                                   min="1"
                                   value={selectedDetails.quantity}
                                   onChange={(e) => updatePrizeDetails(prize.id, 'quantity', e.target.value)}
-                                  className="w-full px-2 py-1 text-sm border border-border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                  className="w-full px-2 py-1 text-sm border border-border rounded focus:outline-none focus:ring-2 focus:ring-admin-info-fg bg-admin-card-bg"
                                 />
                               </div>
                               <div>
@@ -284,7 +284,7 @@ export function PrizeSelector({
                                   min="1"
                                   value={selectedDetails.tier}
                                   onChange={(e) => updatePrizeDetails(prize.id, 'tier', e.target.value)}
-                                  className="w-full px-2 py-1 text-sm border border-border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                  className="w-full px-2 py-1 text-sm border border-border rounded focus:outline-none focus:ring-2 focus:ring-admin-info-fg bg-admin-card-bg"
                                 />
                               </div>
                             </div>
@@ -298,26 +298,30 @@ export function PrizeSelector({
             )}
           </div>
 
-          {/* Selected Count */}
-          {selectedPrizes.size > 0 && (
-            <div className="px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-              {selectedPrizes.size} {mode === 'single' ? 'prize' : 'prizes'} selected
-            </div>
-          )}
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirm}
-            disabled={selectedPrizes.size === 0}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            Confirm Selection ({selectedPrizes.size})
-          </Button>
+        <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-admin-hover-bg rounded-b-lg">
+          {/* Selected Count */}
+          {selectedPrizes.size > 0 && (
+            <span className="text-base text-muted-foreground font-semibold">
+              {selectedPrizes.size} {selectedPrizes.size === 1 ? 'prize' : 'prizes'} selected
+            </span>
+          )}
+          {selectedPrizes.size === 0 && <div />}
+
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={() => onOpenChange(false)} className="cursor-pointer">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={selectedPrizes.size === 0}
+              className="bg-admin-info-fg hover:bg-admin-info-text cursor-pointer"
+            >
+              Confirm Selection
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

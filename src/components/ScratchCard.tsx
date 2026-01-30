@@ -58,12 +58,12 @@ export function ScratchCard({ ticket, onReveal, disabled }: ScratchCardProps) {
         }
       }
 
-      // Add "SCRATCH HERE" text
+      // Add "TAP HERE" text
       ctx.fillStyle = '#666'
       ctx.font = 'bold 24px sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText('SCRATCH HERE', canvas.width / 2, canvas.height / 2)
+      ctx.fillText('TAP HERE', canvas.width / 2, canvas.height / 2)
     }
   }, [isRevealed])
 
@@ -109,14 +109,40 @@ export function ScratchCard({ ticket, onReveal, disabled }: ScratchCardProps) {
       setRevealResult(result)
       setIsRevealed(true)
 
-      // Show confetti if won
+      // Show dramatic confetti if won (Stake-style)
       if (result.hasPrize) {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#f25100', '#FED0B9', '#496B71'],
-        })
+        // Multiple confetti bursts for dramatic effect
+        const duration = 2000
+        const animationEnd = Date.now() + duration
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 }
+
+        function randomInRange(min: number, max: number) {
+          return Math.random() * (max - min) + min
+        }
+
+        const interval: any = setInterval(function() {
+          const timeLeft = animationEnd - Date.now()
+
+          if (timeLeft <= 0) {
+            return clearInterval(interval)
+          }
+
+          const particleCount = 50 * (timeLeft / duration)
+
+          // Launch confetti from multiple positions
+          confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+            colors: ['#f25100', '#FED0B9', '#496B71', '#FFD700', '#FF6347']
+          })
+          confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+            colors: ['#f25100', '#FED0B9', '#496B71', '#FFD700', '#FF6347']
+          })
+        }, 250)
 
         // Show claim modal for non-SiteCredit prizes that need claiming
         // SiteCredit is auto-completed, so no need to show modal
@@ -146,7 +172,7 @@ export function ScratchCard({ ticket, onReveal, disabled }: ScratchCardProps) {
           {!isRevealed && (
             <div className="flex items-center gap-1 text-orange-600">
               <Sparkles className="size-4" />
-              <span className="text-xs font-bold">SCRATCH</span>
+              <span className="text-xs font-bold">TAP</span>
             </div>
           )}
         </div>

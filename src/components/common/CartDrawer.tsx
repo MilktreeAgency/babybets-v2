@@ -45,25 +45,36 @@ export default function CartDrawer() {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-50 transition-opacity"
+        className="fixed inset-0 bg-black/50 z-50 transition-opacity cursor-pointer"
         onClick={() => setCartOpen(false)}
       />
 
       {/* Drawer */}
-      <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div
+        className="fixed top-0 right-0 h-full w-full max-w-md z-50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
+        style={{ backgroundColor: '#FFFCF9' }}
+      >
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+        <div
+          className="p-6 flex justify-between items-center"
+          style={{ borderBottomWidth: '1px', borderColor: '#e7e5e4' }}
+        >
           <div>
-            <h2 className="text-xl font-bold">Your Cart</h2>
+            <h2 className="text-xl font-bold" style={{ color: '#151e20' }}>
+              Your Cart
+            </h2>
             {items.length > 0 && (
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm mt-1" style={{ color: '#78716c' }}>
                 {items.length} {items.length === 1 ? 'item' : 'items'} • {totalTickets} tickets
               </p>
             )}
           </div>
           <button
             onClick={() => setCartOpen(false)}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 rounded-full transition-colors cursor-pointer"
+            style={{ backgroundColor: '#f5f5f4', color: '#151e20' }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#e7e5e4')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f5f5f4')}
           >
             <X className="size-5" />
           </button>
@@ -73,14 +84,27 @@ export default function CartDrawer() {
         <div className="flex-grow overflow-y-auto p-6 space-y-6">
           {items.length === 0 ? (
             <div className="text-center py-20">
-              <div className="inline-flex items-center justify-center size-20 bg-gray-100 rounded-full mb-4">
-                <ShoppingBag className="size-10 text-gray-400" />
+              <div
+                className="inline-flex items-center justify-center size-20 rounded-full mb-4"
+                style={{ backgroundColor: '#FBEFDF' }}
+              >
+                <ShoppingBag className="size-10" style={{ color: '#78716c' }} />
               </div>
-              <p className="text-gray-500 mb-4 font-medium">Your cart is empty</p>
-              <p className="text-sm text-gray-400 mb-6">Start adding prizes you'd love to win!</p>
+              <p className="mb-4 font-medium" style={{ color: '#151e20' }}>
+                Your cart is empty
+              </p>
+              <p className="text-sm mb-6" style={{ color: '#78716c' }}>
+                Start adding prizes you'd love to win!
+              </p>
               <button
                 onClick={handleContinueShopping}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg transition-colors cursor-pointer"
+                style={{
+                  backgroundColor: '#496B71',
+                  color: 'white',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#3a565a')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#496B71')}
               >
                 <ShoppingBag className="size-4" />
                 Browse Competitions
@@ -88,31 +112,45 @@ export default function CartDrawer() {
             </div>
           ) : (
             items.map((item) => (
-              <div key={item.competitionId} className="flex gap-4">
+              <div
+                key={item.competitionId}
+                className="flex gap-4 p-4 rounded-xl transition-all"
+                style={{
+                  backgroundColor: 'white',
+                  borderWidth: '1px',
+                  borderColor: '#e7e5e4',
+                }}
+              >
                 <div className="relative">
                   <img
                     src={item.imageUrl}
-                    className="size-20 rounded-xl object-cover bg-gray-100"
+                    className="size-20 rounded-xl object-cover"
+                    style={{ backgroundColor: '#FBEFDF' }}
                     alt={item.competitionTitle}
                   />
                 </div>
                 <div className="flex-grow">
-                  <h4 className="font-bold text-sm line-clamp-2">{item.competitionTitle}</h4>
-                  <div className="flex items-center gap-2 mt-1">
+                  <h4 className="font-bold text-sm line-clamp-2" style={{ color: '#151e20' }}>
+                    {item.competitionTitle}
+                  </h4>
+                  <div className="flex items-center gap-2 mt-2">
                     <span
-                      className="text-xs font-medium px-2 py-0.5 rounded text-white"
-                      style={{ backgroundColor: '#f25100' }}
+                      className="text-xs font-bold px-2 py-1 rounded-full"
+                      style={{ backgroundColor: '#e1eaec', color: '#496B71' }}
                     >
                       {item.quantity} Tickets
                     </span>
                   </div>
                   <div className="flex justify-between items-center mt-2">
-                    <span className="font-bold" style={{ color: '#f25100' }}>
+                    <span className="font-bold text-lg" style={{ color: '#496B71' }}>
                       £{item.totalPrice.toFixed(2)}
                     </span>
                     <button
                       onClick={() => removeItem(item.competitionId)}
-                      className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                      className="transition-colors p-1 cursor-pointer"
+                      style={{ color: '#78716c' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = '#78716c')}
                       aria-label="Remove item"
                     >
                       <Trash2 className="size-4" />
@@ -126,10 +164,24 @@ export default function CartDrawer() {
 
         {/* Footer */}
         {items.length > 0 && (
-          <div className="p-6 border-t border-gray-200 bg-gray-50 space-y-4">
+          <div
+            className="p-6 space-y-4"
+            style={{
+              borderTopWidth: '1px',
+              borderColor: '#e7e5e4',
+              backgroundColor: '#f5f6f7',
+            }}
+          >
             {/* Wallet Balance */}
             {isAuthenticated && walletBalanceGBP > 0 && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <div
+                className="rounded-lg p-4"
+                style={{
+                  backgroundColor: '#ecfdf5',
+                  borderWidth: '1px',
+                  borderColor: '#a7f3d0',
+                }}
+              >
                 <div className="flex items-center gap-2 mb-1">
                   <Wallet className="size-4 text-green-600" />
                   <p className="text-xs text-green-700 font-medium">Wallet Balance Available</p>
@@ -145,16 +197,20 @@ export default function CartDrawer() {
 
             {/* Total */}
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">Total</span>
-              <span className="text-2xl font-bold">{`£${totalPrice.toFixed(2)}`}</span>
+              <span style={{ color: '#78716c' }}>Total</span>
+              <span className="text-2xl font-bold" style={{ color: '#151e20' }}>
+                £{totalPrice.toFixed(2)}
+              </span>
             </div>
 
             {/* Action Buttons */}
             <div className="space-y-3">
               <button
                 onClick={handleCheckout}
-                className="w-full flex items-center justify-between px-6 py-3 font-bold rounded-lg transition-opacity hover:opacity-90 text-white group"
-                style={{ backgroundColor: '#f25100' }}
+                className="w-full flex items-center justify-between px-6 py-4 font-bold rounded-lg transition-colors text-white group cursor-pointer"
+                style={{ backgroundColor: '#496B71' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#3a565a')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#496B71')}
               >
                 <span>Secure Checkout</span>
                 <ArrowRight className="size-5 group-hover:translate-x-1 transition-transform" />
@@ -162,7 +218,19 @@ export default function CartDrawer() {
 
               <button
                 onClick={handleContinueShopping}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 font-medium rounded-lg transition-colors cursor-pointer"
+                style={{
+                  borderWidth: '1px',
+                  borderColor: '#e7e5e4',
+                  backgroundColor: 'white',
+                  color: '#151e20',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FBEFDF'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white'
+                }}
               >
                 <ShoppingBag className="size-4" />
                 Continue Shopping

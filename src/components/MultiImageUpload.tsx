@@ -21,31 +21,21 @@ export function MultiImageUpload({
   folder = 'competitions',
 }: MultiImageUploadProps) {
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pasteAreaRef = useRef<HTMLDivElement>(null)
 
-  const uploadFile = async (file: File) => {
+  const uploadFile = async (file: File): Promise<string | null> => {
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      setError('Please select an image file')
-      return
+      throw new Error(`${file.name}: Not an image file`)
     }
 
     // Validate file size
     if (file.size > maxSizeMB * 1024 * 1024) {
-      setError(`Image must be less than ${maxSizeMB}MB`)
-      return
+      throw new Error(`${file.name}: File size exceeds ${maxSizeMB}MB`)
     }
-
-    // Check max images limit
-    if (value.length >= maxImages) {
-      setError(`Maximum ${maxImages} images allowed`)
-      return
-    }
-
-    setError(null)
-    setUploading(true)
 
     try {
       // Generate unique filename
@@ -58,14 +48,59 @@ export function MultiImageUpload({
         throw uploadError
       }
 
-      if (url) {
-        onChange([...value, url])
-      }
+      return url || null
     } catch (err) {
       console.error('Error uploading image:', err)
-      setError('Failed to upload image')
+      throw err
+    }
+  }
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    const filesToUpload = Array.from(files).slice(0, maxImages - value.length)
+
+    if (filesToUpload.length === 0) {
+      setError(`Maximum ${maxImages} images allowed`)
+      return
+    }
+
+    setError(null)
+    setUploading(true)
+    setUploadProgress(`Uploading 0/${filesToUpload.length}`)
+
+    try {
+      // Upload all files in parallel
+      const uploadPromises = filesToUpload.map((file, index) =>
+        uploadFile(file).then(url => {
+          setUploadProgress(`Uploading ${index + 1}/${filesToUpload.length}`)
+          return url
+        }).catch(err => {
+          console.error(`Failed to upload ${file.name}:`, err)
+          return null
+        })
+      )
+
+      const uploadedUrls = await Promise.all(uploadPromises)
+
+      // Filter out failed uploads (null values)
+      const successfulUrls = uploadedUrls.filter((url): url is string => url !== null)
+
+      if (successfulUrls.length > 0) {
+        onChange([...value, ...successfulUrls])
+      }
+
+      const failedCount = filesToUpload.length - successfulUrls.length
+      if (failedCount > 0) {
+        setError(`${failedCount} file(s) failed to upload. ${successfulUrls.length} uploaded successfully.`)
+      }
+    } catch (err) {
+      console.error('Error during upload:', err)
+      setError('Failed to upload images')
     } finally {
       setUploading(false)
+      setUploadProgress('')
       // Reset input
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
@@ -73,29 +108,55 @@ export function MultiImageUpload({
     }
   }
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
-
-    // Upload multiple files
-    for (let i = 0; i < Math.min(files.length, maxImages - value.length); i++) {
-      await uploadFile(files[i])
-    }
-  }
-
   const handlePaste = async (e: ClipboardEvent) => {
     const items = e.clipboardData?.items
     if (!items) return
 
+    const imageFiles: File[] = []
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.startsWith('image/')) {
         e.preventDefault()
         const file = items[i].getAsFile()
-        if (file) {
-          await uploadFile(file)
+        if (file && value.length + imageFiles.length < maxImages) {
+          imageFiles.push(file)
         }
-        break
       }
+    }
+
+    if (imageFiles.length === 0) return
+
+    setError(null)
+    setUploading(true)
+    setUploadProgress(`Uploading 0/${imageFiles.length}`)
+
+    try {
+      const uploadPromises = imageFiles.map((file, index) =>
+        uploadFile(file).then(url => {
+          setUploadProgress(`Uploading ${index + 1}/${imageFiles.length}`)
+          return url
+        }).catch(err => {
+          console.error(`Failed to upload pasted image:`, err)
+          return null
+        })
+      )
+
+      const uploadedUrls = await Promise.all(uploadPromises)
+      const successfulUrls = uploadedUrls.filter((url): url is string => url !== null)
+
+      if (successfulUrls.length > 0) {
+        onChange([...value, ...successfulUrls])
+      }
+
+      const failedCount = imageFiles.length - successfulUrls.length
+      if (failedCount > 0) {
+        setError(`${failedCount} image(s) failed to upload. ${successfulUrls.length} uploaded successfully.`)
+      }
+    } catch (err) {
+      console.error('Error uploading pasted images:', err)
+      setError('Failed to upload pasted images')
+    } finally {
+      setUploading(false)
+      setUploadProgress('')
     }
   }
 
@@ -122,7 +183,7 @@ export function MultiImageUpload({
       }
       document.removeEventListener('paste', globalPasteHandler)
     }
-  }, [value.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [value.length, maxImages]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRemove = (index: number) => {
     onChange(value.filter((_, i) => i !== index))
@@ -154,7 +215,7 @@ export function MultiImageUpload({
               {uploading ? (
                 <>
                   <Loader2 className="size-4 mr-2 animate-spin" />
-                  Uploading...
+                  {uploadProgress || 'Uploading...'}
                 </>
               ) : (
                 <>
