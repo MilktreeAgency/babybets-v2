@@ -18,11 +18,11 @@ interface ActivityFeedProps {
 }
 
 const activityColors = {
-  order: 'bg-blue-100 text-blue-800',
-  win: 'bg-green-100 text-green-800',
-  signup: 'bg-purple-100 text-purple-800',
-  fulfillment: 'bg-orange-100 text-orange-800',
-  withdrawal: 'bg-yellow-100 text-yellow-800',
+  order: 'bg-admin-info-bg text-admin-info-fg',
+  win: 'bg-admin-success-bg text-admin-success-fg',
+  signup: 'bg-admin-purple-bg text-admin-purple-fg',
+  fulfillment: 'bg-admin-orange-bg text-admin-orange-fg',
+  withdrawal: 'bg-admin-warning-bg text-admin-warning-fg',
 }
 
 const activityLabels = {
@@ -36,15 +36,15 @@ const activityLabels = {
 export default function ActivityFeed({ activities, loading = false }: ActivityFeedProps) {
   if (loading) {
     return (
-      <div className="bg-white border border-border rounded-lg p-6">
+      <div className="bg-admin-card-bg border border-border rounded-lg p-6">
         <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
         <div className="space-y-4">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex gap-3">
-              <div className="size-10 bg-gray-200 animate-pulse rounded-full"></div>
+              <div className="size-10 bg-admin-gray-bg animate-pulse rounded-full"></div>
               <div className="flex-1 space-y-2">
-                <div className="h-4 bg-gray-200 animate-pulse rounded w-3/4"></div>
-                <div className="h-3 bg-gray-200 animate-pulse rounded w-1/2"></div>
+                <div className="h-4 bg-admin-gray-bg animate-pulse rounded w-3/4"></div>
+                <div className="h-3 bg-admin-gray-bg animate-pulse rounded w-1/2"></div>
               </div>
             </div>
           ))}
@@ -55,7 +55,7 @@ export default function ActivityFeed({ activities, loading = false }: ActivityFe
 
   if (activities.length === 0) {
     return (
-      <div className="bg-white border border-border rounded-lg p-6">
+      <div className="bg-admin-card-bg border border-border rounded-lg p-6">
         <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
         <div className="text-center py-8">
           <p className="text-muted-foreground">No recent activity</p>
@@ -65,7 +65,7 @@ export default function ActivityFeed({ activities, loading = false }: ActivityFe
   }
 
   return (
-    <div className="bg-white border border-border rounded-lg p-6">
+    <div className="bg-admin-card-bg border border-border rounded-lg p-6">
       <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
       <div className="space-y-4">
         {activities.map((activity) => (
@@ -86,7 +86,7 @@ export default function ActivityFeed({ activities, loading = false }: ActivityFe
                 />
               ) : null}
               <div
-                className="size-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600"
+                className="size-10 rounded-full bg-admin-gray-bg flex items-center justify-center text-sm font-medium text-admin-gray-text"
                 style={{ display: activity.user?.avatar ? 'none' : 'flex' }}
               >
                 {activity.user?.name?.charAt(0) || '?'}
@@ -113,7 +113,7 @@ export default function ActivityFeed({ activities, loading = false }: ActivityFe
           </div>
         ))}
       </div>
-      <button className="w-full mt-4 text-sm text-blue-600 hover:text-blue-700 font-medium">
+      <button className="w-full mt-4 text-sm text-admin-info-text hover:text-admin-info-fg font-medium cursor-pointer">
         View all activity
       </button>
     </div>

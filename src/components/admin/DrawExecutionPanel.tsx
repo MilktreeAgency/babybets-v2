@@ -114,18 +114,18 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
   // If draw already exists, show draw results
   if (existingDraw) {
     return (
-      <div className="bg-white rounded-lg p-6 border border-border">
+      <div className="bg-admin-card-bg rounded-lg p-6 border border-border">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Trophy className="size-5 text-green-600" />
+              <Trophy className="size-5 text-admin-success-fg" />
               Draw Completed
             </h3>
             <p className="text-sm text-muted-foreground mt-1">
               Executed on {new Date(existingDraw.executed_at).toLocaleString('en-GB')}
             </p>
           </div>
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-admin-success-bg text-admin-success-fg">
             Completed
           </span>
         </div>
@@ -173,7 +173,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
               <Shield className="size-4 text-muted-foreground" />
               <h4 className="text-sm font-medium text-muted-foreground">Verification Hash</h4>
             </div>
-            <p className="text-xs font-mono text-muted-foreground break-all bg-gray-50 p-3 rounded-lg">
+            <p className="text-xs font-mono text-muted-foreground break-all bg-admin-hover-bg p-3 rounded-lg">
               {existingDraw.verification_hash}
             </p>
           </div>
@@ -182,7 +182,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
           <button
             onClick={handleVerifyDraw}
             disabled={isVerifyingDraw}
-            className="w-full py-3 px-4 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3 px-4 rounded-lg font-semibold text-white bg-admin-info-fg hover:bg-admin-info-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >
             {isVerifyingDraw ? (
               <>
@@ -204,7 +204,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
   // Show draw execution panel
   return (
     <>
-      <div className="bg-white rounded-lg p-6 border border-border">
+      <div className="bg-admin-card-bg rounded-lg p-6 border border-border">
         <div className="mb-6">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Trophy className="size-5" />
@@ -218,8 +218,8 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
         {/* Eligibility Status */}
         <div className="mb-6">
           {canExecuteDraw ? (
-            <div className="p-4 bg-gray-50 rounded-lg border border-border flex items-start gap-3">
-              <CheckCircle className="size-5 text-green-600 shrink-0 mt-0.5" />
+            <div className="p-4 bg-admin-hover-bg rounded-lg border border-border flex items-start gap-3">
+              <CheckCircle className="size-5 text-admin-success-fg shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold text-foreground">Ready to Execute</p>
                 <p className="text-sm text-muted-foreground">
@@ -228,8 +228,8 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
               </div>
             </div>
           ) : (
-            <div className="p-4 bg-gray-50 rounded-lg border border-border flex items-start gap-3">
-              <AlertTriangle className="size-5 text-orange-600 shrink-0 mt-0.5" />
+            <div className="p-4 bg-admin-hover-bg rounded-lg border border-border flex items-start gap-3">
+              <AlertTriangle className="size-5 text-admin-orange-fg shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold text-foreground">Not Eligible</p>
                 <p className="text-sm text-muted-foreground">
@@ -264,11 +264,11 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
 
         {/* Error Display */}
         {error && (
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-border flex items-start gap-3">
-            <XCircle className="size-5 text-red-600 shrink-0 mt-0.5" />
+          <div className="mb-4 p-4 bg-admin-error-bg rounded-lg border border-admin-error-border flex items-start gap-3">
+            <XCircle className="size-5 text-admin-error-text shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-foreground">Error</p>
-              <p className="text-sm text-muted-foreground">{error}</p>
+              <p className="text-sm text-admin-error-text">{error}</p>
             </div>
           </div>
         )}
@@ -278,10 +278,10 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="mb-4 p-4 bg-gray-50 rounded-lg border border-border"
+            className="mb-4 p-4 bg-admin-success-bg rounded-lg border border-admin-success-fg"
           >
             <div className="flex items-start gap-3">
-              <CheckCircle className="size-5 text-green-600 shrink-0 mt-0.5" />
+              <CheckCircle className="size-5 text-admin-success-fg shrink-0 mt-0.5" />
               <div className="flex-1">
                 <p className="font-semibold text-foreground mb-2">Draw Executed Successfully!</p>
                 <div className="text-sm text-muted-foreground space-y-1">
@@ -299,7 +299,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
         <button
           onClick={() => setShowConfirmModal(true)}
           disabled={!canExecuteDraw || isExecutingDraw}
-          className="w-full py-3 px-4 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full py-3 px-4 rounded-lg font-semibold text-white bg-admin-info-fg hover:bg-admin-info-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 cursor-pointer"
         >
           {isExecutingDraw ? (
             <>
@@ -327,11 +327,11 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl border border-border"
+              className="bg-admin-card-bg rounded-lg p-6 max-w-md w-full shadow-xl border border-border"
             >
               <div className="mb-4">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <AlertTriangle className="size-5 text-orange-600" />
+                  <AlertTriangle className="size-5 text-admin-orange-fg" />
                   Confirm Draw Execution
                 </h3>
               </div>
@@ -353,14 +353,14 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowConfirmModal(false)}
-                  className="flex-1 py-2.5 px-4 rounded-lg font-medium border border-border bg-white hover:bg-gray-50 text-foreground transition-colors cursor-pointer"
+                  className="flex-1 py-2.5 px-4 rounded-lg font-medium border border-border bg-admin-card-bg hover:bg-admin-hover-bg text-foreground transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleExecuteDraw}
                   disabled={isExecutingDraw}
-                  className="flex-1 py-2.5 px-4 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
+                  className="flex-1 py-2.5 px-4 rounded-lg font-medium text-white bg-admin-info-fg hover:bg-admin-info-text disabled:opacity-50 transition-colors cursor-pointer"
                 >
                   {isExecutingDraw ? 'Executing...' : 'Execute Draw'}
                 </button>
@@ -385,7 +385,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
                 <motion.div
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl p-8 text-center"
+                  className="bg-linear-to-br from-admin-info-fg to-admin-purple-fg rounded-2xl p-8 text-center"
                 >
                   <motion.div
                     animate={{ rotate: 360 }}
@@ -421,7 +421,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
                 <motion.div
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl p-8 text-center"
+                  className="bg-linear-to-br from-admin-purple-fg to-admin-error-text rounded-2xl p-8 text-center"
                 >
                   <motion.div
                     animate={{ scale: [1, 1.2, 1] }}
@@ -454,7 +454,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 rounded-2xl p-8 text-center relative overflow-hidden"
+                  className="bg-linear-to-br from-admin-warning-fg via-admin-orange-fg to-admin-error-text rounded-2xl p-8 text-center relative overflow-hidden"
                 >
                   {/* Confetti */}
                   {Array.from({ length: 30 }).map((_, i) => (
@@ -503,7 +503,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
 
                     <button
                       onClick={handleCloseDrawAnimation}
-                      className="bg-white text-orange-600 px-8 py-3 rounded-lg font-bold text-lg hover:bg-white/90 transition-colors cursor-pointer"
+                      className="bg-white text-admin-orange-fg px-8 py-3 rounded-lg font-bold text-lg hover:bg-white/90 transition-colors cursor-pointer"
                     >
                       Continue
                     </button>
