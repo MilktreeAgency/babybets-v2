@@ -68,7 +68,9 @@ export type InstantWinPrize = {
 
 // Extended types with joined data
 export type TicketWithDetails = TicketAllocation & {
-  competition: Pick<Competition, 'id' | 'title' | 'slug' | 'image_url' | 'competition_type'>
+  competition: Pick<Competition, 'id' | 'title' | 'slug' | 'image_url' | 'competition_type'> & {
+    images?: string[]
+  }
   prize?: Pick<PrizeTemplate, 'id' | 'name' | 'short_name' | 'type' | 'value_gbp' | 'cash_alternative_gbp' | 'image_url'>
 }
 
