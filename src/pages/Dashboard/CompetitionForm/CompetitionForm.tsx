@@ -206,15 +206,32 @@ export default function CompetitionForm() {
   }
 
   const addTieredPrice = () => {
-    const lastTier = tieredPricing[tieredPricing.length - 1]
-    setTieredPricing([
-      ...tieredPricing,
-      {
-        minQty: lastTier.maxQty + 1,
-        maxQty: lastTier.maxQty + 10,
-        pricePerTicketPence: lastTier.pricePerTicketPence - 10,
-      },
-    ])
+    // Predefined tier ranges
+    const predefinedTiers = [
+      { minQty: 1, maxQty: 9, pricePerTicketPence: 100 },
+      { minQty: 10, maxQty: 50, pricePerTicketPence: 90 },
+      { minQty: 51, maxQty: 70, pricePerTicketPence: 80 },
+      { minQty: 71, maxQty: 100, pricePerTicketPence: 70 },
+    ]
+
+    const currentTierCount = tieredPricing.length
+
+    // Add the next predefined tier if available
+    if (currentTierCount < predefinedTiers.length) {
+      const nextTier = predefinedTiers[currentTierCount]
+      setTieredPricing([...tieredPricing, nextTier])
+    } else {
+      // If all predefined tiers are added, create a custom tier based on the last one
+      const lastTier = tieredPricing[tieredPricing.length - 1]
+      setTieredPricing([
+        ...tieredPricing,
+        {
+          minQty: lastTier.maxQty + 1,
+          maxQty: lastTier.maxQty + 10,
+          pricePerTicketPence: Math.max(lastTier.pricePerTicketPence - 10, 10),
+        },
+      ])
+    }
   }
 
   const removeTieredPrice = (index: number) => {
