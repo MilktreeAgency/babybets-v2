@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import Header from '@/components/common/Header'
+import Footer from '@/components/common/Footer'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
-import { Trophy, Clock, Plus, Minus, Share2, ArrowLeft, Gift, Sparkles } from 'lucide-react'
+import { Trophy, Plus, Minus, Share2, ArrowLeft, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 
 type Competition = Database['public']['Tables']['competitions']['Row']
@@ -41,12 +42,48 @@ function CompetitionEntry() {
   const [quantity, setQuantity] = useState(10)
   const [tieredPricing, setTieredPricing] = useState<TieredPrice[]>([])
   const [instantWinPrizes, setInstantWinPrizes] = useState<InstantWinPrize[]>([])
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
+  const [modalImageIndex, setModalImageIndex] = useState(0)
+  const [activeTab, setActiveTab] = useState<'prize' | 'details'>('details')
 
   useEffect(() => {
     if (slug) {
       loadCompetition()
     }
   }, [slug])
+
+  // Set default tab based on competition type
+  useEffect(() => {
+    if (competition) {
+      if (competition.competition_type === 'instant_win' || competition.competition_type === 'instant_win_with_end_prize') {
+        setActiveTab('prize')
+      } else {
+        setActiveTab('details')
+      }
+    }
+  }, [competition])
+
+  // Keyboard navigation for image modal
+  useEffect(() => {
+    if (!isImageModalOpen || !competition) return
+
+    const images = (competition.images as string[]) || []
+    const allImages = images.length > 0 ? images : [competition.image_url]
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsImageModalOpen(false)
+      } else if (e.key === 'ArrowLeft') {
+        setModalImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1))
+      } else if (e.key === 'ArrowRight') {
+        setModalImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1))
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isImageModalOpen, competition])
 
   const loadCompetition = async () => {
     try {
@@ -138,22 +175,17 @@ function CompetitionEntry() {
       return (qty * competition.base_ticket_price_pence) / 100
     }
 
-    let totalPence = 0
+    // Find the tier that applies to the total quantity
     const sortedTiers = [...tieredPricing].sort((a, b) => a.minQty - b.minQty)
+    const applicableTier = [...sortedTiers]
+      .reverse()
+      .find(tier => qty >= tier.minQty && qty <= tier.maxQty)
 
-    for (let i = 0; i < qty; i++) {
-      const currentQty = i + 1
-      // Find the tier that applies to this ticket
-      const applicableTier = [...sortedTiers]
-        .reverse()
-        .find(tier => currentQty >= tier.minQty && currentQty <= tier.maxQty)
+    const pricePerTicketPence = applicableTier
+      ? applicableTier.pricePerTicketPence
+      : competition.base_ticket_price_pence
 
-      totalPence += applicableTier
-        ? applicableTier.pricePerTicketPence
-        : competition.base_ticket_price_pence
-    }
-
-    return totalPence / 100
+    return (qty * pricePerTicketPence) / 100
   }
 
   const pricingDetails = useMemo(() => {
@@ -184,6 +216,22 @@ function CompetitionEntry() {
       month: 'long',
       year: 'numeric',
     })
+  }
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString)
+    const day = date.getDate()
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const month = months[date.getMonth()]
+    const year = date.getFullYear()
+
+    let hours = date.getHours()
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    const ampm = hours >= 12 ? 'PM' : 'AM'
+    hours = hours % 12
+    hours = hours ? hours : 12 // the hour '0' should be '12'
+
+    return `${day} ${month} ${year} at ${hours}:${minutes} ${ampm}`
   }
 
   const maxPurchase = useMemo(() => {
@@ -243,8 +291,7 @@ function CompetitionEntry() {
     }
 
     // Use first image from images array, or fallback to image_url
-    const images = (competition.images as string[]) || []
-    const displayImage = images.length > 0 ? images[0] : competition.image_url
+    const displayImage = allImages[0]
 
     addItem({
       competitionId: competition.id,
@@ -266,7 +313,7 @@ function CompetitionEntry() {
         <Header />
         <div className="pt-32 flex items-center justify-center">
           <div className="text-center">
-            <div className="inline-block size-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin"></div>
+            <div className="inline-block size-12 border-4 rounded-full animate-spin" style={{ borderColor: '#e7e5e4', borderTopColor: '#496B71' }}></div>
             <p className="mt-4 text-gray-600">Loading competition...</p>
           </div>
         </div>
@@ -295,37 +342,41 @@ function CompetitionEntry() {
   }
 
   const ticketsRemaining = competition.max_tickets - (competition.tickets_sold || 0)
+  const percentSold = (((competition.tickets_sold || 0) / competition.max_tickets) * 100)
 
-  // Use first image from images array, or fallback to image_url
+  // Get all images for carousel
   const images = (competition.images as string[]) || []
-  const displayImage = images.length > 0 ? images[0] : competition.image_url
+  const allImages = images.length > 0 ? images : [competition.image_url]
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FFFCF9', color: '#2D251E' }}>
       <Header />
 
       {/* Main Content */}
-      <div className="pt-24 pb-16 px-6">
-        <div className="max-w-6xl mx-auto">
-          {/* Back Link */}
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-          >
-            <ArrowLeft className="size-4" />
-            Back to Competitions
-          </Link>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <div className="pt-20 pb-12">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Left: Image and Description */}
-            <div className="space-y-8">
-              {/* Competition Image */}
-              <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 shadow-lg">
+            <div className="space-y-4">
+              {/* Main Competition Image */}
+              <div
+                className="relative aspect-square rounded-xl overflow-hidden cursor-pointer"
+                style={{
+                  backgroundColor: '#FBEFDF',
+                  borderWidth: '1px',
+                  borderColor: '#f0e0ca'
+                }}
+                onClick={() => {
+                  setModalImageIndex(currentImageIndex)
+                  setIsImageModalOpen(true)
+                }}
+              >
                 <img
-                  src={displayImage}
+                  src={allImages[currentImageIndex]}
                   alt={competition.title}
                   className="w-full h-full object-cover"
                 />
+
                 {competition.status === 'ending_soon' && (
                   <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-2 rounded-full text-sm font-bold">
                     Ending Soon!
@@ -336,344 +387,242 @@ function CompetitionEntry() {
                     Coming Soon
                   </div>
                 )}
-                {competition.is_featured && (
-                  <div className="absolute top-4 right-4 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full text-sm font-bold">
-                    Featured
-                  </div>
-                )}
               </div>
 
-              {/* Description Card */}
-              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                <h2 className="text-lg font-bold mb-3">Prize Description</h2>
-                <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
-                  {competition.description}
-                </div>
-
-                {/* Prize Value */}
-                <div className="mt-6 p-4 bg-linear-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600">Total Prize Value</span>
-                    <span className="text-2xl font-bold" style={{ color: '#f25100' }}>
-                      £{competition.total_value_gbp.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Competition Type Info */}
-              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <Sparkles className="size-5 text-orange-500" />
-                  How It Works
-                </h2>
-                <div className="space-y-3">
-                  {(competition.competition_type === 'instant_win' ||
-                    competition.competition_type === 'instant_win_with_end_prize') && (
-                    <div className="flex items-start gap-3">
-                      <div className="size-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-                        <Gift className="size-4 text-orange-600" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm">Instant Win Prizes</p>
-                        <p className="text-xs text-gray-600">
-                          Scratch your tickets immediately after purchase to reveal instant prizes!
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {(competition.competition_type === 'standard' ||
-                    competition.competition_type === 'instant_win_with_end_prize') && (
-                    <div className="flex items-start gap-3">
-                      <div className="size-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                        <Trophy className="size-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm">Main Prize Draw</p>
-                        <p className="text-xs text-gray-600">
-                          {competition.draw_datetime
-                            ? `Draw on ${formatDate(competition.draw_datetime)}`
-                            : `Draw on ${formatDate(competition.end_datetime)}`}
-                        </p>
-                        {competition.end_prize && (competition.end_prize as Record<string, unknown>).name ? (
-                          <p className="text-xs text-gray-700 font-medium mt-1">
-                            Win: {(competition.end_prize as Record<string, unknown>).name as string}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Instant Win Prizes Section */}
-              {instantWinPrizes.length > 0 && (
-                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                  <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                    <Gift className="size-5 text-orange-500" />
-                    Instant Win Prizes
-                  </h2>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Scratch your tickets to win these amazing prizes instantly!
-                  </p>
-                  <div className="space-y-3">
-                    {instantWinPrizes.map((prize) => {
-                      const claimed = prize.total_quantity - prize.remaining_quantity
-                      const percentClaimed = (claimed / prize.total_quantity) * 100
-
-                      return (
-                        <div
-                          key={prize.id}
-                          className="p-4 border border-gray-200 rounded-lg hover:border-orange-200 transition-colors"
-                        >
-                          <div className="flex items-start gap-4">
-                            {/* Prize Image */}
-                            {prize.prize_template.image_url ? (
-                              <img
-                                src={prize.prize_template.image_url}
-                                alt={prize.prize_template.name}
-                                className="size-16 rounded-lg object-cover"
-                              />
-                            ) : (
-                              <div className="size-16 rounded-lg bg-linear-to-br from-orange-100 to-orange-200 flex items-center justify-center">
-                                <Gift className="size-8 text-orange-600" />
-                              </div>
-                            )}
-
-                            {/* Prize Details */}
-                            <div className="flex-1">
-                              <div className="flex items-start justify-between gap-2">
-                                <div>
-                                  <h3 className="font-bold text-sm">{prize.prize_template.name}</h3>
-                                  {prize.prize_template.short_name && (
-                                    <p className="text-xs text-gray-500">{prize.prize_template.short_name}</p>
-                                  )}
-                                </div>
-                                <div className="text-right shrink-0">
-                                  <div className="font-bold text-green-600">
-                                    £{prize.prize_template.value_gbp.toFixed(2)}
-                                  </div>
-                                  {prize.prize_template.cash_alternative_gbp && (
-                                    <div className="text-xs text-gray-500">
-                                      or £{prize.prize_template.cash_alternative_gbp.toFixed(2)} cash
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              {prize.prize_template.description && (
-                                <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                                  {prize.prize_template.description}
-                                </p>
-                              )}
-
-                              {/* Prize Availability */}
-                              <div className="mt-3">
-                                <div className="flex items-center justify-between text-xs mb-1">
-                                  <span className="text-gray-600">
-                                    {prize.remaining_quantity} of {prize.total_quantity} remaining
-                                  </span>
-                                  <span className="font-semibold text-gray-700">
-                                    {claimed}/{prize.total_quantity} claimed
-                                  </span>
-                                </div>
-                                <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full bg-linear-to-r from-orange-400 to-orange-600 transition-all duration-300"
-                                    style={{ width: `${percentClaimed}%` }}
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Prize Type Badge */}
-                              <div className="mt-2">
-                                <span className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded">
-                                  {prize.prize_template.type}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  {/* Total Prize Pool */}
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-gray-700">
-                        Total Instant Win Prizes
-                      </span>
-                      <span className="text-lg font-bold text-orange-600">
-                        {instantWinPrizes.reduce((sum, p) => sum + p.total_quantity, 0)} prizes
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-gray-600">Total Value</span>
-                      <span className="text-sm font-bold text-green-600">
-                        £{instantWinPrizes.reduce((sum, p) => sum + (p.prize_template.value_gbp * p.total_quantity), 0).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
+              {/* Thumbnail Images */}
+              {allImages.length > 1 && (
+                <div className="grid grid-cols-4 gap-3">
+                  {allImages.slice(1).map((image, index) => (
+                    <button
+                      key={index + 1}
+                      onClick={() => {
+                        setModalImageIndex(index + 1)
+                        setIsImageModalOpen(true)
+                      }}
+                      className="relative aspect-square rounded-lg overflow-hidden cursor-pointer transition-all"
+                      style={{
+                        backgroundColor: '#FBEFDF',
+                        borderWidth: '1px',
+                        borderColor: '#f0e0ca'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.borderColor = '#e7e5e4'}
+                      onMouseLeave={(e) => e.currentTarget.style.borderColor = '#f0e0ca'}
+                    >
+                      <img
+                        src={image}
+                        alt={`${competition.title} - Image ${index + 2}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
                 </div>
               )}
+
             </div>
 
             {/* Right: Entry Form */}
             <div>
-              {/* Category Badge */}
-              <div className="mb-2">
-                <span className="inline-block bg-gray-100 text-gray-700 text-xs font-bold px-3 py-1 rounded-full uppercase">
+              {/* Category Badge - Centered */}
+              <div className="mb-4 text-center">
+                <span
+                  className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase cursor-pointer"
+                  style={{
+                    backgroundColor: '#fff0e6',
+                    borderWidth: '1px',
+                    borderColor: '#ffdec9',
+                    color: '#151e20'
+                  }}
+                >
                   {competition.category}
                 </span>
               </div>
 
-              {/* Title */}
-              <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
-                Win {competition.title}
+              {/* Title - Centered */}
+              <h1 className="text-2xl md:text-3xl font-bold mb-6 leading-tight text-center">
+                {competition.title}
               </h1>
 
-              {/* Price and Value */}
-              <div className="flex items-center gap-6 mb-8 p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
-                <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">From</p>
-                  <div className="text-3xl font-bold" style={{ color: '#f25100' }}>
-                    £{(competition.base_ticket_price_pence / 100).toFixed(2)}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">per ticket</p>
+              {/* Price - Centered */}
+              <div className="text-center mb-6">
+                <p className="text-xs font-bold uppercase mb-1" style={{ color: '#78716c' }}>From</p>
+                <div className="text-3xl font-bold" style={{ color: '#496B71' }}>
+                  £{(competition.base_ticket_price_pence / 100).toFixed(2)}
                 </div>
-                <div className="h-12 w-px bg-gray-200"></div>
-                <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">Draw Date</p>
-                  <div className="text-base font-bold flex items-center gap-2">
-                    <Clock className="size-4" />
-                    <span className="text-sm">{formatDate(competition.end_datetime)}</span>
-                  </div>
-                </div>
+                <p className="text-xs mt-1" style={{ color: '#78716c' }}>per ticket</p>
               </div>
 
-              {/* Progress */}
-              <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-sm mb-8">
-                <div className="flex justify-between text-sm font-bold mb-2">
-                  <span>Tickets Sold</span>
-                  <span>
-                    {(competition.tickets_sold || 0).toLocaleString()} / {competition.max_tickets.toLocaleString()}
-                  </span>
+              {/* Progress - Simple */}
+              <div className="mb-6">
+                <div className="flex justify-between text-xs font-bold mb-2" style={{ color: '#666666' }}>
+                  <span>{percentSold.toFixed(0)}% Sold</span>
                 </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#e7e5e4' }}>
                   <div
-                    className="h-full bg-linear-to-r from-orange-400 to-orange-600 transition-all duration-300"
-                    style={{ width: `${getProgressPercentage()}%` }}
+                    className="h-full transition-all duration-300"
+                    style={{
+                      width: `${getProgressPercentage()}%`,
+                      background: 'linear-gradient(to right, #FED0B9, #fa8c61)'
+                    }}
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-3 text-center">
-                  {ticketsRemaining.toLocaleString()} tickets remaining
-                </p>
+                <div className="text-xs font-semibold mt-2 text-center" style={{ color: '#666666' }}>
+                  {competition.tickets_sold || 0}/{competition.max_tickets}
+                </div>
               </div>
 
               {/* Ticket Selector */}
-              <div className="mb-8">
-                <h3 className="font-bold text-base mb-4">Choose Your Tickets</h3>
+              <div className="mb-6">
+                <div className="rounded-lg p-4" style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#f0e0ca' }}>
+                  <h3 className="font-bold text-sm mb-3">Choose Your Tickets</h3>
 
-                {/* Quick Select Buttons */}
-                {quickSelectOptions.length > 0 && (
-                  <div className="grid grid-cols-4 gap-3 mb-4">
-                    {quickSelectOptions.map((option) => (
-                      <button
-                        key={option}
-                        onClick={() => setQuantity(option)}
-                        className={`p-3 rounded-lg border-2 transition-all ${
-                          quantity === option
-                            ? 'border-orange-500 bg-orange-50'
-                            : 'border-gray-200 bg-white hover:border-orange-200'
-                        }`}
-                      >
-                        <div className="font-bold text-lg">{option}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          £{calculatePrice(option).toFixed(2)}
+                  {/* Quick Select Buttons */}
+                  {quickSelectOptions.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2 mb-4">
+                      {quickSelectOptions.map((option) => {
+                        const optionPrice = calculatePrice(option)
+                        const basePrice = (option * (competition.base_ticket_price_pence / 100))
+                        const savings = basePrice - optionPrice
+                        return (
+                          <button
+                            key={option}
+                            onClick={() => setQuantity(option)}
+                            className="relative pt-3 p-2 rounded-lg transition-all cursor-pointer"
+                            style={{
+                              borderWidth: '1px',
+                              borderColor: quantity === option ? '#496B71' : '#f0e0ca',
+                              backgroundColor: quantity === option ? '#e1eaec' : 'white'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (quantity !== option) {
+                                e.currentTarget.style.borderColor = '#e7e5e4'
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (quantity !== option) {
+                                e.currentTarget.style.borderColor = '#f0e0ca'
+                              }
+                            }}
+                          >
+                            {savings > 0 && (
+                              <div
+                                className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap"
+                                style={{
+                                  backgroundColor: 'white',
+                                  borderWidth: '1px',
+                                  borderColor: '#22c55e',
+                                  color: '#22c55e'
+                                }}
+                              >
+                                Save £{savings.toFixed(2)}
+                              </div>
+                            )}
+                            <div className="font-bold text-base">{option}</div>
+                            <div className="text-xs" style={{ color: '#78716c' }}>
+                              £{optionPrice.toFixed(2)}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Custom Amount */}
+                  <div>
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="font-medium text-xs" style={{ color: '#78716c' }}>Custom Amount</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => adjustQuantity(-1)}
+                          disabled={quantity <= 1}
+                          className="w-7 h-7 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                          style={{ backgroundColor: '#FBEFDF' }}
+                          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#f0e0ca')}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FBEFDF'}
+                        >
+                          <Minus className="size-3" />
+                        </button>
+                        <div className="rounded px-3 py-1 font-bold text-lg min-w-[50px] text-center" style={{ backgroundColor: '#fff0e6', borderWidth: '1px', borderColor: '#f0e0ca' }}>
+                          {quantity}
                         </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Custom Amount */}
-                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="font-medium text-sm">Custom Amount</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => adjustQuantity(-1)}
-                        disabled={quantity <= 1}
-                        className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-orange-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Minus className="size-4" />
-                      </button>
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 font-bold text-xl min-w-[60px] text-center">
-                        {quantity}
+                        <button
+                          onClick={() => adjustQuantity(1)}
+                          disabled={quantity >= maxPurchase}
+                          className="w-7 h-7 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                          style={{ backgroundColor: '#FBEFDF' }}
+                          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#f0e0ca')}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FBEFDF'}
+                        >
+                          <Plus className="size-3" />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => adjustQuantity(1)}
-                        disabled={quantity >= maxPurchase}
-                        className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-orange-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Plus className="size-4" />
-                      </button>
+                    </div>
+
+                    <input
+                      type="range"
+                      min="1"
+                      max={maxPurchase}
+                      value={quantity}
+                      onChange={(e) => setQuantity(parseInt(e.target.value))}
+                      className="w-full h-1.5 rounded-lg appearance-none cursor-pointer"
+                      style={{ backgroundColor: '#e7e5e4', accentColor: '#496B71' }}
+                    />
+                    <div className="flex justify-between text-xs mt-1.5" style={{ color: '#a8a29e' }}>
+                      <span>1</span>
+                      <span>{maxPurchase}</span>
                     </div>
                   </div>
 
-                  <input
-                    type="range"
-                    min="1"
-                    max={maxPurchase}
-                    value={quantity}
-                    onChange={(e) => setQuantity(parseInt(e.target.value))}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                  />
-                  <div className="flex justify-between text-xs font-bold text-gray-400 uppercase mt-2">
-                    <span>1</span>
-                    <span>{maxPurchase}</span>
-                  </div>
-                </div>
-              </div>
+                  {/* Divider */}
+                  <div className="my-4" style={{ borderTopWidth: '1px', borderColor: '#f0e0ca' }}></div>
 
-              {/* Total and CTA */}
-              <div className="bg-linear-to-br from-orange-500 to-orange-600 text-white p-6 rounded-xl shadow-lg">
-                <div className="flex justify-between items-center border-b border-orange-400 pb-4 mb-4">
+                  {/* Total and CTA */}
                   <div>
-                    <span className="text-orange-100 font-medium block text-sm">Total Price</span>
-                    {pricingDetails.savings > 0 && (
-                      <span className="text-green-300 text-xs font-bold">
-                        You save £{pricingDetails.savings.toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <span className="block text-3xl font-bold">£{pricingDetails.total.toFixed(2)}</span>
-                    {quantity > 1 && (
-                      <span className="text-xs text-orange-200 font-medium">
-                        £{pricingDetails.perTicket.toFixed(2)} per ticket
-                      </span>
-                    )}
+                    <div className="flex justify-between items-center pb-4 mb-4">
+                      <div>
+                        <span className="font-medium block text-xs" style={{ color: '#78716c' }}>Total Price</span>
+                        {pricingDetails.savings > 0 && (
+                          <span className="text-xs font-bold" style={{ color: '#22c55e' }}>
+                            You save £{pricingDetails.savings.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <span className="block text-2xl font-bold" style={{ color: '#496B71' }}>£{pricingDetails.total.toFixed(2)}</span>
+                        {quantity > 1 && (
+                          <span className="text-xs font-medium" style={{ color: '#78716c' }}>
+                            £{pricingDetails.perTicket.toFixed(2)} per ticket
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleAddToCart}
+                      className="w-full font-bold py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      style={{
+                        backgroundColor: '#496B71',
+                        color: 'white'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3a565a'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#496B71'}
+                      disabled={competition.status === 'scheduled'}
+                    >
+                      {competition.status === 'scheduled' ? 'Coming Soon' : 'Add to Basket'}
+                    </button>
+                    <p className="text-xs text-center mt-3" style={{ color: '#78716c' }}>
+                      By entering, you agree to our Terms & Conditions
+                    </p>
                   </div>
                 </div>
-                <button
-                  onClick={handleAddToCart}
-                  className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg hover:bg-orange-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={competition.status === 'scheduled'}
-                >
-                  {competition.status === 'scheduled' ? 'Coming Soon' : 'Enter Competition'}
-                </button>
-                <p className="text-xs text-orange-100 text-center mt-3">
-                  By entering, you agree to our Terms & Conditions
-                </p>
               </div>
 
               {/* Share Button */}
               <div className="mt-6 flex justify-center">
                 <button
                   onClick={handleShare}
-                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  className="flex items-center gap-2 text-sm transition-colors cursor-pointer"
+                  style={{ color: '#78716c' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#151e20'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#78716c'}
                 >
                   <Share2 className="size-4" />
                   Share this competition
@@ -682,7 +631,555 @@ function CompetitionEntry() {
             </div>
           </div>
         </div>
+
+        {/* Competition Closes Section */}
+        <div className="mt-8 px-4 sm:px-6">
+          <div className="rounded-lg py-16 px-4 text-center" style={{ backgroundColor: '#f5f6f7' }}>
+            <p className="text-2xl font-semibold mb-1" style={{ color: '#151e20' }}>
+              Competition Closes {formatDateTime(competition.end_datetime)}
+            </p>
+            <p className="text-xl" style={{ color: '#78716c' }}>
+              or when all tickets are sold
+            </p>
+          </div>
+        </div>
+
+        {/* How it Works Section */}
+        <div className="mt-16 max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: '#151e20', fontFamily: "'Fraunces', serif" }}>
+              How it works
+            </h2>
+            {(competition.competition_type === 'instant_win' || competition.competition_type === 'instant_win_with_end_prize') ? (
+              <p className="text-lg md:text-xl max-w-2xl mx-auto" style={{ color: '#78716c' }}>
+                Instantly find out if you are a lucky winner!
+              </p>
+            ) : (
+              <p className="text-lg md:text-xl max-w-2xl mx-auto" style={{ color: '#78716c' }}>
+                Enter our draw for a chance to win this amazing prize
+              </p>
+            )}
+          </div>
+
+          {(competition.competition_type === 'instant_win' || competition.competition_type === 'instant_win_with_end_prize') ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative">
+              {/* Connector Lines - Hidden on mobile */}
+              <div className="hidden md:block absolute top-16 left-0 right-0 h-0.5" style={{
+                background: 'linear-gradient(to right, transparent 0%, #e7e5e4 20%, #e7e5e4 80%, transparent 100%)',
+                zIndex: 0
+              }} />
+
+              {/* Step 1 */}
+              <div className="relative group cursor-pointer">
+                <div
+                  className="rounded-2xl p-8 h-full transition-all duration-300"
+                  style={{
+                    backgroundColor: 'white',
+                    borderWidth: '2px',
+                    borderColor: '#FBEFDF',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-8px)'
+                    e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                    e.currentTarget.style.borderColor = '#496B71'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                    e.currentTarget.style.borderColor = '#FBEFDF'
+                  }}
+                >
+                  <div className="relative z-10 flex flex-col items-center text-center">
+                    <div
+                      className="w-20 h-20 rounded-full mb-6 flex items-center justify-center text-white font-bold text-2xl relative"
+                      style={{
+                        background: 'linear-gradient(135deg, #496B71 0%, #3a565a 100%)',
+                        boxShadow: '0 10px 20px -5px rgba(73, 107, 113, 0.4)'
+                      }}
+                    >
+                      <span className="relative z-10">1</span>
+                      <div
+                        className="absolute inset-0 rounded-full opacity-50"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 100%)'
+                        }}
+                      />
+                    </div>
+                    <h3 className="font-bold text-xl mb-3" style={{ color: '#151e20' }}>
+                      Buy your tickets
+                    </h3>
+                    <p className="text-base leading-relaxed" style={{ color: '#78716c' }}>
+                      Choose how many tickets you want to enter
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="relative group cursor-pointer">
+                <div
+                  className="rounded-2xl p-8 h-full transition-all duration-300"
+                  style={{
+                    backgroundColor: 'white',
+                    borderWidth: '2px',
+                    borderColor: '#FBEFDF',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-8px)'
+                    e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                    e.currentTarget.style.borderColor = '#496B71'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                    e.currentTarget.style.borderColor = '#FBEFDF'
+                  }}
+                >
+                  <div className="relative z-10 flex flex-col items-center text-center">
+                    <div
+                      className="w-20 h-20 rounded-full mb-6 flex items-center justify-center text-white font-bold text-2xl relative"
+                      style={{
+                        background: 'linear-gradient(135deg, #496B71 0%, #3a565a 100%)',
+                        boxShadow: '0 10px 20px -5px rgba(73, 107, 113, 0.4)'
+                      }}
+                    >
+                      <span className="relative z-10">2</span>
+                      <div
+                        className="absolute inset-0 rounded-full opacity-50"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 100%)'
+                        }}
+                      />
+                    </div>
+                    <h3 className="font-bold text-xl mb-3" style={{ color: '#151e20' }}>
+                      Reveal if you've won
+                    </h3>
+                    <p className="text-base leading-relaxed" style={{ color: '#78716c' }}>
+                      Scratch your tickets to see if you're a winner
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="relative group cursor-pointer">
+                <div
+                  className="rounded-2xl p-8 h-full transition-all duration-300"
+                  style={{
+                    backgroundColor: 'white',
+                    borderWidth: '2px',
+                    borderColor: '#FBEFDF',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-8px)'
+                    e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                    e.currentTarget.style.borderColor = '#496B71'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                    e.currentTarget.style.borderColor = '#FBEFDF'
+                  }}
+                >
+                  <div className="relative z-10 flex flex-col items-center text-center">
+                    <div
+                      className="w-20 h-20 rounded-full mb-6 flex items-center justify-center text-white font-bold text-2xl relative"
+                      style={{
+                        background: 'linear-gradient(135deg, #496B71 0%, #3a565a 100%)',
+                        boxShadow: '0 10px 20px -5px rgba(73, 107, 113, 0.4)'
+                      }}
+                    >
+                      <span className="relative z-10">3</span>
+                      <div
+                        className="absolute inset-0 rounded-full opacity-50"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 100%)'
+                        }}
+                      />
+                    </div>
+                    <h3 className="font-bold text-xl mb-3" style={{ color: '#151e20' }}>
+                      Claim your prize
+                    </h3>
+                    <p className="text-base leading-relaxed" style={{ color: '#78716c' }}>
+                      We'll contact you to arrange delivery
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 relative">
+              {/* Connector Lines - Hidden on mobile */}
+              <div className="hidden lg:block absolute top-16 left-0 right-0 h-0.5" style={{
+                background: 'linear-gradient(to right, transparent 0%, #e7e5e4 12.5%, #e7e5e4 87.5%, transparent 100%)',
+                zIndex: 0
+              }} />
+
+              {/* Step 1 */}
+              <div className="relative group cursor-pointer">
+                <div
+                  className="rounded-2xl p-8 h-full transition-all duration-300"
+                  style={{
+                    backgroundColor: 'white',
+                    borderWidth: '2px',
+                    borderColor: '#FBEFDF',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-8px)'
+                    e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                    e.currentTarget.style.borderColor = '#496B71'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                    e.currentTarget.style.borderColor = '#FBEFDF'
+                  }}
+                >
+                  <div className="relative z-10 flex flex-col items-center text-center">
+                    <div
+                      className="w-20 h-20 rounded-full mb-6 flex items-center justify-center text-white font-bold text-2xl relative"
+                      style={{
+                        background: 'linear-gradient(135deg, #496B71 0%, #3a565a 100%)',
+                        boxShadow: '0 10px 20px -5px rgba(73, 107, 113, 0.4)'
+                      }}
+                    >
+                      <span className="relative z-10">1</span>
+                      <div
+                        className="absolute inset-0 rounded-full opacity-50"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 100%)'
+                        }}
+                      />
+                    </div>
+                    <h3 className="font-bold text-xl mb-3" style={{ color: '#151e20' }}>
+                      Buy your tickets
+                    </h3>
+                    <p className="text-base leading-relaxed" style={{ color: '#78716c' }}>
+                      Choose how many tickets you want to enter
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="relative group cursor-pointer">
+                <div
+                  className="rounded-2xl p-8 h-full transition-all duration-300"
+                  style={{
+                    backgroundColor: 'white',
+                    borderWidth: '2px',
+                    borderColor: '#FBEFDF',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-8px)'
+                    e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                    e.currentTarget.style.borderColor = '#496B71'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                    e.currentTarget.style.borderColor = '#FBEFDF'
+                  }}
+                >
+                  <div className="relative z-10 flex flex-col items-center text-center">
+                    <div
+                      className="w-20 h-20 rounded-full mb-6 flex items-center justify-center text-white font-bold text-2xl relative"
+                      style={{
+                        background: 'linear-gradient(135deg, #496B71 0%, #3a565a 100%)',
+                        boxShadow: '0 10px 20px -5px rgba(73, 107, 113, 0.4)'
+                      }}
+                    >
+                      <span className="relative z-10">2</span>
+                      <div
+                        className="absolute inset-0 rounded-full opacity-50"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 100%)'
+                        }}
+                      />
+                    </div>
+                    <h3 className="font-bold text-xl mb-3" style={{ color: '#151e20' }}>
+                      Wait for the draw
+                    </h3>
+                    <p className="text-base leading-relaxed" style={{ color: '#78716c' }}>
+                      The draw takes place on the closing date
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="relative group cursor-pointer">
+                <div
+                  className="rounded-2xl p-8 h-full transition-all duration-300"
+                  style={{
+                    backgroundColor: 'white',
+                    borderWidth: '2px',
+                    borderColor: '#FBEFDF',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-8px)'
+                    e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                    e.currentTarget.style.borderColor = '#496B71'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                    e.currentTarget.style.borderColor = '#FBEFDF'
+                  }}
+                >
+                  <div className="relative z-10 flex flex-col items-center text-center">
+                    <div
+                      className="w-20 h-20 rounded-full mb-6 flex items-center justify-center text-white font-bold text-2xl relative"
+                      style={{
+                        background: 'linear-gradient(135deg, #496B71 0%, #3a565a 100%)',
+                        boxShadow: '0 10px 20px -5px rgba(73, 107, 113, 0.4)'
+                      }}
+                    >
+                      <span className="relative z-10">3</span>
+                      <div
+                        className="absolute inset-0 rounded-full opacity-50"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 100%)'
+                        }}
+                      />
+                    </div>
+                    <h3 className="font-bold text-xl mb-3" style={{ color: '#151e20' }}>
+                      Winner announced
+                    </h3>
+                    <p className="text-base leading-relaxed" style={{ color: '#78716c' }}>
+                      One lucky winner is randomly selected
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div className="relative group cursor-pointer">
+                <div
+                  className="rounded-2xl p-8 h-full transition-all duration-300"
+                  style={{
+                    backgroundColor: 'white',
+                    borderWidth: '2px',
+                    borderColor: '#FBEFDF',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-8px)'
+                    e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                    e.currentTarget.style.borderColor = '#496B71'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                    e.currentTarget.style.borderColor = '#FBEFDF'
+                  }}
+                >
+                  <div className="relative z-10 flex flex-col items-center text-center">
+                    <div
+                      className="w-20 h-20 rounded-full mb-6 flex items-center justify-center text-white font-bold text-2xl relative"
+                      style={{
+                        background: 'linear-gradient(135deg, #496B71 0%, #3a565a 100%)',
+                        boxShadow: '0 10px 20px -5px rgba(73, 107, 113, 0.4)'
+                      }}
+                    >
+                      <span className="relative z-10">4</span>
+                      <div
+                        className="absolute inset-0 rounded-full opacity-50"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 100%)'
+                        }}
+                      />
+                    </div>
+                    <h3 className="font-bold text-xl mb-3" style={{ color: '#151e20' }}>
+                      Claim your prize
+                    </h3>
+                    <p className="text-base leading-relaxed" style={{ color: '#78716c' }}>
+                      Winner can claim prize or cash alternative
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Tabs Section */}
+        <div className="mt-8 max-w-5xl mx-auto px-4 sm:px-6">
+          {/* Tab Navigation */}
+          <div className="flex border-b mb-6" style={{ borderColor: '#e7e5e4' }}>
+            {(competition.competition_type === 'instant_win' || competition.competition_type === 'instant_win_with_end_prize') && (
+              <button
+                onClick={() => setActiveTab('prize')}
+                className="px-6 py-3 font-bold transition-all cursor-pointer"
+                style={{
+                  borderBottomWidth: '2px',
+                  borderColor: activeTab === 'prize' ? '#496B71' : 'transparent',
+                  color: activeTab === 'prize' ? '#496B71' : '#78716c'
+                }}
+              >
+                Prize
+              </button>
+            )}
+            <button
+              onClick={() => setActiveTab('details')}
+              className="px-6 py-3 font-bold transition-all cursor-pointer"
+              style={{
+                borderBottomWidth: '2px',
+                borderColor: activeTab === 'details' ? '#496B71' : 'transparent',
+                color: activeTab === 'details' ? '#496B71' : '#78716c'
+              }}
+            >
+              Competition Details
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          <div className="mb-12">
+            {/* Prize Tab Content */}
+            {activeTab === 'prize' && (
+              <div className="space-y-4">
+                {/* Instant Win Prizes */}
+                {(competition.competition_type === 'instant_win' || competition.competition_type === 'instant_win_with_end_prize') && instantWinPrizes.length > 0 ? (
+                  <div className="space-y-3">
+                    {instantWinPrizes.map((prize) => (
+                      <div
+                        key={prize.id}
+                        className="flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all"
+                        style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4' }}
+                      >
+                        {prize.prize_template.image_url && (
+                          <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0" style={{ backgroundColor: '#FBEFDF' }}>
+                            <img
+                              src={prize.prize_template.image_url}
+                              alt={prize.prize_template.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <div className="flex-grow">
+                          <p className="font-bold mb-1" style={{ color: '#151e20' }}>
+                            {prize.prize_template.name}
+                          </p>
+                          <p className="text-sm" style={{ color: '#78716c' }}>
+                            Quantity: {prize.remaining_quantity}/{prize.total_quantity}
+                          </p>
+                        </div>
+                        <span className="inline-block px-3 py-1.5 rounded-full text-xs font-bold uppercase whitespace-nowrap" style={{ backgroundColor: '#496B71', color: 'white' }}>
+                          To Be Won
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8" style={{ color: '#78716c' }}>
+                    <p>Prize information will be displayed here.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Competition Details Tab Content */}
+            {activeTab === 'details' && (
+              <div className="prose max-w-none">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-xl font-bold mb-2" style={{ color: '#151e20' }}>About This Competition</h3>
+                    <p style={{ color: '#78716c' }}>
+                      {competition.description || 'Enter for a chance to win this amazing prize!'}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2" style={{ color: '#151e20' }}>Prize Value</h3>
+                    <p style={{ color: '#78716c' }}>
+                      Worth £{competition.total_value_gbp.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2" style={{ color: '#151e20' }}>Total Tickets</h3>
+                    <p style={{ color: '#78716c' }}>
+                      {competition.max_tickets.toLocaleString()} tickets available
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2" style={{ color: '#151e20' }}>Competition Closes</h3>
+                    <p style={{ color: '#78716c' }}>
+                      {formatDate(competition.end_datetime)} or when all tickets are sold
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Image Modal */}
+      {isImageModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 cursor-pointer"
+          onClick={() => setIsImageModalOpen(false)}
+        >
+          <button
+            onClick={() => setIsImageModalOpen(false)}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 cursor-pointer z-50"
+            aria-label="Close modal"
+          >
+            <X size={32} />
+          </button>
+
+          {/* Previous Button */}
+          {allImages.length > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setModalImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1))
+              }}
+              className="absolute left-4 text-white hover:text-gray-300 cursor-pointer z-50"
+              aria-label="Previous image"
+            >
+              <ChevronLeft size={48} />
+            </button>
+          )}
+
+          {/* Image */}
+          <div
+            className="relative max-w-5xl max-h-[90vh] w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={allImages[modalImageIndex]}
+              alt={`${competition.title} - Image ${modalImageIndex + 1}`}
+              className="w-full h-full object-contain"
+            />
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-full text-sm">
+              {modalImageIndex + 1} / {allImages.length}
+            </div>
+          </div>
+
+          {/* Next Button */}
+          {allImages.length > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setModalImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1))
+              }}
+              className="absolute right-4 text-white hover:text-gray-300 cursor-pointer z-50"
+              aria-label="Next image"
+            >
+              <ChevronRight size={48} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }
