@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Ticket, Lock, Unlock, RefreshCw, CheckCircle, XCircle, AlertTriangle, Loader, BarChart3, Gift } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { useAuthStore } from '@/store/authStore'
 import type { Competition } from '@/types'
 
 interface TicketPoolStats {
@@ -28,7 +27,6 @@ interface TicketPoolPanelProps {
 }
 
 export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPanelProps) {
-  const { user } = useAuthStore()
   const [stats, setStats] = useState<TicketPoolStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -45,12 +43,13 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
   const loadStats = async () => {
     try {
       setIsLoading(true)
+      // @ts-expect-error - Custom RPC function not in generated types
       const { data, error } = await supabase.rpc('get_ticket_pool_stats', {
         p_competition_id: competition.id,
-      }) as { data: TicketPoolStats; error: unknown }
+      })
 
       if (error) throw error
-      setStats(data)
+      setStats(data as unknown as TicketPoolStats)
     } catch (err) {
       console.error('Error loading ticket pool stats:', err)
       setError('Failed to load ticket pool statistics')
@@ -78,9 +77,10 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
         })
       }, 200)
 
+      // @ts-expect-error - Custom RPC function not in generated types
       const { data, error } = await supabase.rpc('generate_ticket_pool', {
         p_competition_id: competition.id,
-      }) as { data: { success: boolean; tickets_generated: number; prizes_allocated: number; message: string }; error: unknown }
+      })
 
       clearInterval(progressInterval)
       setGenerationProgress(100)
@@ -89,7 +89,8 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
 
       await new Promise((resolve) => setTimeout(resolve, 500))
 
-      setSuccess(data.message)
+      const result = data as unknown as { success: boolean; tickets_generated: number; prizes_allocated: number; message: string }
+      setSuccess(result.message)
       await loadStats()
 
       if (onPoolGenerated) {
@@ -165,7 +166,7 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
               <div>
                 <p className="font-semibold text-foreground">Cannot Generate</p>
                 <p className="text-sm text-muted-foreground">
-                  {stats?.tickets_sold > 0
+                  {(stats?.tickets_sold ?? 0) > 0
                     ? 'Tickets already sold. Cannot regenerate pool.'
                     : 'Pool generation not available.'}
                 </p>

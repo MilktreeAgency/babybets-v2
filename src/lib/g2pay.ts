@@ -52,8 +52,6 @@ export const processG2PayPayment = async (
   const now = Math.floor(Date.now() / 1000)
   const shouldRefresh = expiresAt && expiresAt - now < 300
 
-  let session = currentSession
-
   // Refresh if needed
   if (shouldRefresh) {
     console.log('[G2Pay] Refreshing session...')
@@ -68,7 +66,6 @@ export const processG2PayPayment = async (
     }
 
     console.log('[G2Pay] Session refreshed successfully')
-    session = refreshedSession
   }
 
   console.log('[G2Pay] Making payment request:', {
@@ -109,7 +106,7 @@ export const processG2PayPayment = async (
 
 // Backward compatibility - for older code that might still use this
 export const createG2PaySession = async (
-  clientRequestId: string
+  _clientRequestId: string
 ): Promise<{ sessionToken: string; sessionId: string }> => {
   throw new Error('createG2PaySession is deprecated. Use processG2PayPayment instead.')
 }

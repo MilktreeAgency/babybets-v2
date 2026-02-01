@@ -159,7 +159,7 @@ function Checkout() {
       }
 
       // Check usage limits
-      if (promoCodeData.max_uses && promoCodeData.current_uses >= promoCodeData.max_uses) {
+      if (promoCodeData.max_uses && (promoCodeData.current_uses ?? 0) >= promoCodeData.max_uses) {
         setPromoError('This promo code has reached its usage limit')
         return
       }

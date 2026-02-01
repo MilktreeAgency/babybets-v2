@@ -46,7 +46,7 @@ function CompetitionEntry() {
   const [quantity, setQuantity] = useState(10)
   const [tieredPricing, setTieredPricing] = useState<TieredPrice[]>([])
   const [instantWinPrizes, setInstantWinPrizes] = useState<InstantWinPrize[]>([])
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [currentImageIndex] = useState(0)
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [modalImageIndex, setModalImageIndex] = useState(0)
   const [activeTab, setActiveTab] = useState<'prize' | 'details'>('details')
@@ -363,7 +363,6 @@ function CompetitionEntry() {
     )
   }
 
-  const ticketsRemaining = competition.max_tickets - (competition.tickets_sold || 0)
   const percentSold = (((competition.tickets_sold || 0) / competition.max_tickets) * 100)
 
   // Get all images for carousel
