@@ -140,29 +140,6 @@ export default function Footer() {
                 </ul>
               </div>
 
-              {/* Get in Touch - 17% */}
-              <div className="w-full sm:w-1/2 md:w-1/3 lg:w-[17%] px-4 mb-[30px]">
-                <h3 className="text-base font-medium mb-6" style={{ color: '#ffffff' }}>Get in Touch</h3>
-                <p className="text-[14px] mb-4" style={{ color: '#e1eaec' }}>
-                  Need help? Our parent support team is here Mon-Fri.
-                </p>
-                <a
-                  href="mailto:hello@babybets.co.uk"
-                  className="cursor-pointer inline-flex items-center text-[14px] font-semibold hover:opacity-80 transition-opacity"
-                  style={{ color: '#FED0B9' }}
-                >
-                  <Mail size={16} className="mr-2" aria-hidden="true" />
-                  hello@babybets.co.uk
-                </a>
-
-                <div className="mt-8 pt-6" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.2)' }}>
-                  <div className="flex items-center gap-2 text-xs" style={{ color: '#e1eaec' }}>
-                    <ShieldCheck size={16} aria-hidden="true" />
-                    <span>Secure SSL Encrypted Checkout</span>
-                  </div>
-                </div>
-              </div>
-
               {/* Categories - 17% */}
               <div className="w-full sm:w-1/2 md:w-1/3 lg:w-[17%] px-4 mb-[30px]">
                 <h3 className="text-base font-medium mb-6" style={{ color: '#ffffff' }}>Information</h3>
@@ -193,6 +170,29 @@ export default function Footer() {
                     </Link>
                   </li>
                 </ul>
+              </div>
+
+              {/* Get in Touch - 17% */}
+              <div className="w-full sm:w-1/2 md:w-1/3 lg:w-[17%] px-4 mb-[30px]">
+                <h3 className="text-base font-medium mb-6" style={{ color: '#ffffff' }}>Get in Touch</h3>
+                <p className="text-[14px] mb-4" style={{ color: '#e1eaec' }}>
+                  Need help? Our parent support team is here Mon-Fri.
+                </p>
+                <a
+                  href="mailto:hello@babybets.co.uk"
+                  className="cursor-pointer inline-flex items-center text-[14px] font-semibold hover:opacity-80 transition-opacity"
+                  style={{ color: '#FED0B9' }}
+                >
+                  <Mail size={16} className="mr-2" aria-hidden="true" />
+                  hello@babybets.co.uk
+                </a>
+
+                <div className="mt-8 pt-6" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.2)' }}>
+                  <div className="flex items-center gap-2 text-xs" style={{ color: '#e1eaec' }}>
+                    <ShieldCheck size={16} aria-hidden="true" />
+                    <span>Secure SSL Encrypted Checkout</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
