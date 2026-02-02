@@ -880,41 +880,86 @@ function Account() {
                   {/* Credit Details */}
                   {credits.length > 0 && (
                     <div className="bg-white rounded-xl p-6">
-                      <h3 className="text-xl font-bold mb-4" style={{ color: '#1a1a1a' }}>
+                      <h3 className="text-xl font-bold mb-6" style={{ color: '#1a1a1a' }}>
                         Your Credits
                       </h3>
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {credits.map((credit) => (
                           <div
                             key={credit.id}
-                            className="p-4 border rounded-lg flex items-center justify-between"
+                            className="p-5 border-2 rounded-xl"
                             style={{
-                              borderColor: credit.isExpiringSoon ? '#fbbf24' : '#e5e7eb',
-                              backgroundColor: credit.isExpiringSoon ? '#fef3c7' : 'transparent',
+                              borderColor: credit.isExpiringSoon ? '#f59e0b' : '#e5e7eb',
+                              backgroundColor: credit.isExpiringSoon ? '#fffbeb' : '#fafafa',
                             }}
                           >
-                            <div className="flex-1">
-                              <p className="font-semibold" style={{ color: '#1a1a1a' }}>
-                                {credit.description}
-                              </p>
-                              <div className="flex items-center gap-4 mt-1">
-                                <span className="text-sm" style={{ color: '#666' }}>
-                                  {credit.source_type}
-                                </span>
-                                <span className="text-sm" style={{ color: '#666' }}>
-                                  Expires: {new Date(credit.expires_at).toLocaleDateString()}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-lg font-bold" style={{ color: '#335761' }}>
-                                £{(credit.remaining_pence / 100).toFixed(2)}
-                              </p>
-                              {credit.remaining_pence < credit.amount_pence && (
-                                <p className="text-xs" style={{ color: '#666' }}>
-                                  of £{(credit.amount_pence / 100).toFixed(2)}
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                {/* Description */}
+                                <p className="font-bold text-base mb-2" style={{ color: '#1a1a1a' }}>
+                                  {credit.description}
                                 </p>
-                              )}
+
+                                {/* Competition and Ticket Info */}
+                                <div className="space-y-1.5">
+                                  {credit.competition && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#78716c' }}>
+                                        Competition:
+                                      </span>
+                                      <span className="text-sm font-medium" style={{ color: '#44403c' }}>
+                                        {credit.competition.title}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {credit.ticket && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#78716c' }}>
+                                        Ticket:
+                                      </span>
+                                      <span className="text-sm font-mono font-bold px-2 py-0.5 rounded" style={{
+                                        color: '#059669',
+                                        backgroundColor: '#d1fae5'
+                                      }}>
+                                        #{credit.ticket.ticket_number}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {/* Source Type and Expiry */}
+                                  <div className="flex items-center gap-3 flex-wrap mt-2">
+                                    <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{
+                                      backgroundColor: '#dbeafe',
+                                      color: '#1e40af'
+                                    }}>
+                                      {credit.source_type.replace('_', ' ')}
+                                    </span>
+                                    <span className={`text-xs font-medium ${credit.isExpiringSoon ? 'text-amber-600' : ''}`} style={{
+                                      color: credit.isExpiringSoon ? '#d97706' : '#78716c'
+                                    }}>
+                                      {credit.isExpiringSoon && '⚠️ '}
+                                      Expires: {new Date(credit.expires_at).toLocaleDateString('en-GB', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric'
+                                      })}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Amount */}
+                              <div className="text-right shrink-0">
+                                <p className="text-2xl font-bold" style={{ color: '#059669' }}>
+                                  £{(credit.remaining_pence / 100).toFixed(2)}
+                                </p>
+                                {credit.remaining_pence < credit.amount_pence && (
+                                  <p className="text-xs mt-1" style={{ color: '#78716c' }}>
+                                    of £{(credit.amount_pence / 100).toFixed(2)}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}

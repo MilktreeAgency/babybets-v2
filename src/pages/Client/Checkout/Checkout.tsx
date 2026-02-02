@@ -339,7 +339,7 @@ function Checkout() {
 
         // Clear cart and redirect
         clearCart()
-        navigate(`/payment/success?orderId=${order.id}`)
+        navigate('/account?tab=tickets')
         return
       }
 
@@ -370,9 +370,9 @@ function Checkout() {
             // Clear cart immediately
             clearCart()
 
-            // Redirect to success page
+            // Redirect to account tickets page
             // Note: Webhook will handle order status update and ticket allocation
-            navigate(`/payment/success?orderId=${order.id}`)
+            navigate('/account?tab=tickets')
           } else {
             // Payment declined or failed
             setError('Payment was declined. Please try another card or payment method.')
