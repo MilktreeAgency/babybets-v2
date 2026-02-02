@@ -311,11 +311,10 @@ export default function WinnerDetail() {
       // Upload to Supabase Storage
       const fileExt = file.name.split('.').pop()
       const fileName = `${winner.id}-${Date.now()}.${fileExt}`
-      const filePath = `winner-photos/${fileName}`
 
       const { error: uploadError } = await supabase.storage
-        .from('public')
-        .upload(filePath, file, {
+        .from('winner-photos')
+        .upload(fileName, file, {
           cacheControl: '3600',
           upsert: true,
         })
@@ -323,7 +322,7 @@ export default function WinnerDetail() {
       if (uploadError) throw uploadError
 
       // Get public URL
-      const { data: urlData } = supabase.storage.from('public').getPublicUrl(filePath)
+      const { data: urlData } = supabase.storage.from('winner-photos').getPublicUrl(fileName)
 
       // Update winner record
       const { error: updateError } = await supabase
@@ -333,7 +332,6 @@ export default function WinnerDetail() {
 
       if (updateError) throw updateError
 
-      alert('Photo uploaded successfully')
       loadWinner()
     } catch (error) {
       console.error('Error uploading photo:', error)

@@ -7,6 +7,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { ImageUpload } from '@/components/ImageUpload'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
@@ -259,15 +260,14 @@ export function PrizeDialog({
           </div>
 
           {/* Active Status */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+          <div className="flex items-center gap-3">
+            <Switch
               id="is_active"
               checked={formData.is_active ?? true}
-              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-              className="size-4 rounded border-border text-blue-600 focus:ring-blue-500"
+              onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+              className="data-[state=checked]:bg-green-600"
             />
-            <label htmlFor="is_active" className="text-sm font-medium text-foreground">
+            <label htmlFor="is_active" className="text-sm font-medium text-foreground cursor-pointer">
               Active (available for selection in competitions)
             </label>
           </div>

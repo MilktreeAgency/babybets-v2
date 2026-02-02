@@ -111,11 +111,64 @@ export default function Fulfillments() {
         }, {} as Record<string, { prize_name: string; prize_value_gbp?: number; win_type?: string }>)
       }
 
+      // Fetch prize types from prize_templates
+      const prizeIds = (data || [])
+        .map((f) => f.prize_id)
+        .filter((id): id is string => !!id)
+
+      let prizeTypesMap: Record<string, string> = {}
+
+      if (prizeIds.length > 0) {
+        // Get prize_template_ids from competition_instant_win_prizes
+        const { data: compPrizesData } = await supabase
+          .from('competition_instant_win_prizes')
+          .select('id, prize_template_id')
+          .in('id', prizeIds)
+
+        if (compPrizesData) {
+          const templateIds = compPrizesData
+            .map((cp) => cp.prize_template_id)
+            .filter((id): id is string => !!id)
+
+          if (templateIds.length > 0) {
+            // Get actual prize types from prize_templates
+            const { data: templatesData } = await supabase
+              .from('prize_templates')
+              .select('id, type')
+              .in('id', templateIds)
+
+            if (templatesData) {
+              // Create mapping from competition prize id to prize type
+              const templateTypeMap: Record<string, string> = {}
+              templatesData.forEach((t) => {
+                if (t.id) templateTypeMap[t.id] = t.type
+              })
+
+              compPrizesData.forEach((cp) => {
+                if (cp.id && cp.prize_template_id) {
+                  prizeTypesMap[cp.id] = templateTypeMap[cp.prize_template_id] || 'Physical'
+                }
+              })
+            }
+          }
+        }
+      }
+
       // Transform data
       const transformedData = (data || []).map((fulfillment) => {
         const user = fulfillment.user as { first_name?: string; last_name?: string; email: string } | null
         const competition = fulfillment.competition as { title: string } | null
         const winner = winnersMap[fulfillment.ticket_id]
+
+        // Determine prize type
+        let prizeType = 'Physical' // default
+        if (fulfillment.prize_id) {
+          // Instant win prize - get from prize_templates
+          prizeType = prizeTypesMap[fulfillment.prize_id] || 'Physical'
+        } else {
+          // End prize - typically physical
+          prizeType = 'Physical'
+        }
 
         return {
           ...fulfillment,
@@ -126,7 +179,7 @@ export default function Fulfillments() {
           competition_title: competition?.title || 'Unknown Competition',
           prize_name: winner?.prize_name || 'Unknown Prize',
           prize_value_gbp: winner?.prize_value_gbp,
-          prize_type: winner?.win_type,
+          prize_type: prizeType,
         }
       })
 
@@ -471,15 +524,35 @@ export default function Fulfillments() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-admin-gray-bg text-admin-gray-text">
-                              {isPhysical ? (
+                              {fulfillment.choice === 'cash' ? (
+                                <>
+                                  <Wallet className="size-3" />
+                                  Cash Alternative
+                                </>
+                              ) : fulfillment.prize_type === 'Physical' ? (
                                 <>
                                   <Gift className="size-3" />
                                   Physical
                                 </>
-                              ) : (
+                              ) : fulfillment.prize_type === 'SiteCredit' ? (
+                                <>
+                                  <Wallet className="size-3" />
+                                  Site Credit
+                                </>
+                              ) : fulfillment.prize_type === 'Voucher' ? (
+                                <>
+                                  <Gift className="size-3" />
+                                  Voucher
+                                </>
+                              ) : fulfillment.prize_type === 'Cash' ? (
                                 <>
                                   <Wallet className="size-3" />
                                   Cash
+                                </>
+                              ) : (
+                                <>
+                                  <Gift className="size-3" />
+                                  {fulfillment.prize_type || 'Physical'}
                                 </>
                               )}
                             </div>
@@ -518,61 +591,61 @@ export default function Fulfillments() {
 
       {/* Details Dialog */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-0">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           {selectedFulfillment && (
             <>
               <DialogHeader>
-                <DialogTitle>Fulfillment Details</DialogTitle>
+                <DialogTitle className="text-xl">Fulfillment Details</DialogTitle>
               </DialogHeader>
 
               <div className="space-y-6">
                 {/* User Information */}
-                <div>
-                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-900">
                     <User className="size-4" />
                     User Information
                   </h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-muted-foreground">Name:</span>
-                      <p className="font-medium">{selectedFulfillment.user_name}</p>
+                      <span className="text-gray-600">Name:</span>
+                      <p className="font-medium text-gray-900">{selectedFulfillment.user_name}</p>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Email:</span>
-                      <p className="font-medium">{selectedFulfillment.user_email}</p>
+                      <span className="text-gray-600">Email:</span>
+                      <p className="font-medium text-gray-900">{selectedFulfillment.user_email}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Prize Information */}
-                <div>
-                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-900">
                     <Gift className="size-4" />
                     Prize Information
                   </h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-muted-foreground">Prize:</span>
-                      <p className="font-medium">{selectedFulfillment.prize_name}</p>
+                      <span className="text-gray-600">Prize:</span>
+                      <p className="font-medium text-gray-900">{selectedFulfillment.prize_name}</p>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Competition:</span>
-                      <p className="font-medium">{selectedFulfillment.competition_title}</p>
+                      <span className="text-gray-600">Competition:</span>
+                      <p className="font-medium text-gray-900">{selectedFulfillment.competition_title}</p>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Value:</span>
-                      <p className="font-medium">£{selectedFulfillment.prize_value_gbp?.toFixed(2)}</p>
+                      <span className="text-gray-600">Value:</span>
+                      <p className="font-medium text-gray-900">£{selectedFulfillment.prize_value_gbp?.toFixed(2)}</p>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Type:</span>
-                      <p className="font-medium">
+                      <span className="text-gray-600">Type:</span>
+                      <p className="font-medium text-gray-900">
                         {selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize'
                           ? 'Physical Prize'
                           : 'Cash Alternative'}
                       </p>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Status:</span>
+                      <span className="text-gray-600">Status:</span>
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           getStatusBadge(selectedFulfillment.status).color
@@ -582,8 +655,8 @@ export default function Fulfillments() {
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Claimed:</span>
-                      <p className="font-medium">
+                      <span className="text-gray-600">Claimed:</span>
+                      <p className="font-medium text-gray-900">
                         {selectedFulfillment.created_at
                           ? new Date(selectedFulfillment.created_at).toLocaleDateString('en-GB')
                           : 'N/A'}
@@ -595,31 +668,31 @@ export default function Fulfillments() {
                 {/* Delivery Address */}
                 {(selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize') &&
                   selectedFulfillment.delivery_address && (
-                    <div>
-                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-900">
                         <MapPin className="size-4" />
                         Delivery Address
                       </h4>
                       <div className="text-sm space-y-1">
                         {typeof selectedFulfillment.delivery_address === 'object' ? (
                           <>
-                            <p className="font-medium">
+                            <p className="font-medium text-gray-900">
                               {(selectedFulfillment.delivery_address as { fullName?: string }).fullName}
                             </p>
-                            <p>{(selectedFulfillment.delivery_address as { line1?: string }).line1}</p>
+                            <p className="text-gray-700">{(selectedFulfillment.delivery_address as { line1?: string }).line1}</p>
                             {(selectedFulfillment.delivery_address as { line2?: string }).line2 && (
-                              <p>{(selectedFulfillment.delivery_address as { line2?: string }).line2}</p>
+                              <p className="text-gray-700">{(selectedFulfillment.delivery_address as { line2?: string }).line2}</p>
                             )}
-                            <p>
+                            <p className="text-gray-700">
                               {(selectedFulfillment.delivery_address as { city?: string }).city},{' '}
                               {(selectedFulfillment.delivery_address as { postcode?: string }).postcode}
                             </p>
-                            <p className="text-muted-foreground pt-2">
+                            <p className="text-gray-600 pt-2">
                               {(selectedFulfillment.delivery_address as { phone?: string }).phone}
                             </p>
                           </>
                         ) : (
-                          <p>{String(selectedFulfillment.delivery_address)}</p>
+                          <p className="text-gray-700">{String(selectedFulfillment.delivery_address)}</p>
                         )}
                       </div>
                     </div>
@@ -627,12 +700,12 @@ export default function Fulfillments() {
 
                 {/* Tracking Number */}
                 {selectedFulfillment.tracking_number && (
-                  <div>
-                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-900">
                       <Truck className="size-4" />
                       Tracking Information
                     </h4>
-                    <p className="font-mono text-sm">{selectedFulfillment.tracking_number}</p>
+                    <p className="font-mono text-sm text-gray-900">{selectedFulfillment.tracking_number}</p>
                   </div>
                 )}
 
@@ -640,12 +713,12 @@ export default function Fulfillments() {
                 {selectedFulfillment.choice === 'cash' &&
                   (selectedFulfillment.status === 'cash_selected' ||
                     selectedFulfillment.status === 'processing') && (
-                    <div className="bg-admin-purple-bg border border-admin-purple-fg rounded-lg p-4">
-                      <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
+                      <h4 className="font-semibold mb-2 flex items-center gap-2 text-gray-900">
                         <Wallet className="size-4" />
                         Cash Alternative
                       </h4>
-                      <p className="text-sm">
+                      <p className="text-sm text-gray-700">
                         Winner selected cash alternative. Approve to add £
                         {selectedFulfillment.prize_value_gbp?.toFixed(2)} to their wallet balance.
                       </p>
@@ -654,21 +727,21 @@ export default function Fulfillments() {
 
                 {/* Completed Wallet Credit */}
                 {selectedFulfillment.choice === 'cash' && selectedFulfillment.status === 'completed' && (
-                  <div className="bg-admin-success-bg border border-admin-success-fg rounded-lg p-4">
-                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-900">
                       <CheckCircle className="size-4" />
                       Wallet Credit Added
                     </h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-muted-foreground">Amount:</span>
-                        <p className="font-semibold text-admin-success-fg">
+                        <span className="text-gray-600">Amount:</span>
+                        <p className="font-semibold text-gray-900">
                           £{selectedFulfillment.prize_value_gbp?.toFixed(2)}
                         </p>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Expires:</span>
-                        <p className="font-medium">90 days</p>
+                        <span className="text-gray-600">Expires:</span>
+                        <p className="font-medium text-gray-900">90 days</p>
                       </div>
                     </div>
                   </div>
@@ -676,22 +749,22 @@ export default function Fulfillments() {
 
                 {/* Notes */}
                 {selectedFulfillment.notes && (
-                  <div>
-                    <h4 className="font-semibold mb-3">Admin Notes</h4>
-                    <p className="text-sm bg-admin-warning-bg border border-admin-warning-fg rounded-lg p-4">
+                  <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
+                    <h4 className="font-semibold mb-3 text-gray-900">Admin Notes</h4>
+                    <p className="text-sm text-gray-700">
                       {selectedFulfillment.notes}
                     </p>
                   </div>
                 )}
 
                 {/* Actions */}
-                <div className="flex gap-2 flex-wrap pt-4 border-t border-border">
+                <div className="flex gap-2 flex-wrap pt-4 border-t border-gray-200">
                   {selectedFulfillment.status === 'prize_selected' &&
                     (selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize') && (
                       <Button
                         onClick={() => handleUpdateStatus(selectedFulfillment.id, 'processing')}
                         disabled={processingId === selectedFulfillment.id}
-                        className="bg-admin-orange-fg hover:bg-admin-orange-text cursor-pointer"
+                        className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer"
                       >
                         <Package className="size-4 mr-2" />
                         Start Processing
@@ -708,7 +781,7 @@ export default function Fulfillments() {
                           }
                         }}
                         disabled={processingId === selectedFulfillment.id}
-                        className="bg-admin-purple-fg hover:bg-admin-purple-text cursor-pointer"
+                        className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer"
                       >
                         <Truck className="size-4 mr-2" />
                         Mark Dispatched
@@ -732,7 +805,7 @@ export default function Fulfillments() {
                           }
                         }}
                         disabled={processingId === selectedFulfillment.id}
-                        className="bg-admin-purple-fg hover:bg-admin-purple-text cursor-pointer"
+                        className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer"
                       >
                         <Wallet className="size-4 mr-2" />
                         Approve Wallet Credit
@@ -743,7 +816,7 @@ export default function Fulfillments() {
                     <Button
                       onClick={() => handleUpdateStatus(selectedFulfillment.id, 'delivered')}
                       disabled={processingId === selectedFulfillment.id}
-                      className="bg-admin-success-fg hover:bg-admin-success-text cursor-pointer"
+                      className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer"
                     >
                       <CheckCircle className="size-4 mr-2" />
                       Mark Delivered
@@ -754,7 +827,7 @@ export default function Fulfillments() {
                     <Button
                       onClick={() => handleUpdateStatus(selectedFulfillment.id, 'completed')}
                       disabled={processingId === selectedFulfillment.id}
-                      className="bg-admin-success-fg hover:bg-admin-success-text cursor-pointer"
+                      className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer"
                     >
                       <CheckCircle className="size-4 mr-2" />
                       Complete

@@ -39,7 +39,7 @@ export function Sidebar() {
       <div className="my-2 h-px bg-sidebar-border" />
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto px-1">
+      <div className="flex-1 px-1">
         <div className="flex flex-col gap-2">
           {configWithCounts.map((group, index) => (
             <SidebarNavGroup key={index} group={group} />
