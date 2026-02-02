@@ -76,6 +76,8 @@ export type TicketWithDetails = TicketAllocation & {
 
 export type WalletCreditWithDetails = WalletCredit & {
   isExpiringSoon: boolean
+  competition?: Pick<Competition, 'id' | 'title' | 'slug'> | null
+  ticket?: Pick<TicketAllocation, 'id' | 'ticket_number'> | null
 }
 
 export type WalletSummary = {
