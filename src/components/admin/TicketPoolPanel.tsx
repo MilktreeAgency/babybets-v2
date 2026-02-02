@@ -297,7 +297,7 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
       {/* Confirmation Modal */}
       <AnimatePresence>
         {showConfirmModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="fixed inset-0 w-screen h-screen z-50 flex items-center justify-center p-4 bg-black/50">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -345,37 +345,37 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
       {/* Generation Animation Modal */}
       <AnimatePresence>
         {showGenerationAnimation && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="fixed inset-0 w-screen h-screen z-100 flex items-center justify-center bg-black/50">
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-gradient-to-br from-admin-info-fg to-admin-purple-fg rounded-2xl p-8 text-center max-w-md w-full mx-4"
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-lg p-8 text-center max-w-md w-full mx-4 shadow-xl"
             >
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
                 className="inline-block mb-6"
               >
-                <RefreshCw className="size-16 text-white" />
+                <RefreshCw className="size-16 text-gray-900" />
               </motion.div>
 
-              <h2 className="text-3xl font-bold text-white mb-4">Generating Ticket Pool</h2>
-              <p className="text-white/80 text-lg mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Generating Ticket Pool</h2>
+              <p className="text-gray-600 text-sm mb-6">
                 Creating {competition.max_tickets.toLocaleString()} pre-allocated tickets...
               </p>
 
               {/* Progress Bar */}
-              <div className="bg-white/20 rounded-full h-3 mb-4 overflow-hidden">
+              <div className="bg-gray-200 rounded-full h-2 mb-3 overflow-hidden">
                 <motion.div
                   initial={{ width: '0%' }}
                   animate={{ width: `${generationProgress}%` }}
                   transition={{ duration: 0.3 }}
-                  className="bg-white h-full rounded-full"
+                  className="bg-gray-900 h-full rounded-full"
                 />
               </div>
 
-              <p className="text-white font-semibold text-lg">{generationProgress}%</p>
+              <p className="text-gray-900 font-semibold text-base">{generationProgress}%</p>
 
               {generationProgress === 100 && (
                 <motion.div
@@ -383,8 +383,8 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
                   animate={{ opacity: 1, scale: 1 }}
                   className="mt-4 flex items-center justify-center gap-2"
                 >
-                  <CheckCircle className="size-6 text-white" />
-                  <span className="text-white font-semibold">Complete!</span>
+                  <CheckCircle className="size-5 text-gray-900" />
+                  <span className="text-gray-900 font-semibold">Complete!</span>
                 </motion.div>
               )}
             </motion.div>
