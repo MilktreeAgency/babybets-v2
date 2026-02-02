@@ -29,6 +29,7 @@ GRANT EXECUTE ON FUNCTION public.complete_order_with_wallet(UUID, UUID) TO authe
 -- Prize allocation functions
 GRANT EXECUTE ON FUNCTION public.allocate_instant_win_prize(UUID, UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.approve_cash_alternative(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.claim_cash_alternative(UUID, UUID) TO authenticated;
 
 -- Draw execution functions
 GRANT EXECUTE ON FUNCTION public.execute_competition_draw(UUID, UUID) TO authenticated;

@@ -374,7 +374,7 @@ CREATE INDEX idx_ticket_allocations_main_winner ON public.ticket_allocations(com
   WHERE is_main_winner = true;
 
 COMMENT ON TABLE public.ticket_allocations IS 'Pre-generated ticket pool with instant win prize allocations';
-COMMENT ON COLUMN public.ticket_allocations.ticket_number IS '7-digit unique ticket code';
+COMMENT ON COLUMN public.ticket_allocations.ticket_number IS '7-character alphanumeric unique ticket code (0-9, A-Z, a-z)';
 COMMENT ON COLUMN public.ticket_allocations.prize_id IS 'Reference to competition instant win prize (null = no instant win)';
 COMMENT ON COLUMN public.ticket_allocations.is_revealed IS 'True when user has revealed/scratched the ticket';
 COMMENT ON COLUMN public.ticket_allocations.is_main_winner IS 'True if this ticket won the main prize draw';

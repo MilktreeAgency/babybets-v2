@@ -4,8 +4,41 @@
 -- ============================================
 
 -- ============================================
+-- HELPER FUNCTION: Generate Random Alphanumeric Code
+-- ============================================
+
+CREATE OR REPLACE FUNCTION public.generate_alphanumeric_code(code_length INTEGER DEFAULT 7)
+RETURNS TEXT
+LANGUAGE plpgsql
+VOLATILE
+AS $$
+DECLARE
+  v_chars TEXT := '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  v_chars_length INTEGER := 62; -- 10 digits + 26 uppercase + 26 lowercase
+  v_result TEXT := '';
+  v_i INTEGER;
+  v_random_index INTEGER;
+BEGIN
+  FOR v_i IN 1..code_length LOOP
+    -- Generate cryptographically secure random index
+    v_random_index := (
+      (('x' || encode(gen_random_bytes(4), 'hex'))::bit(32)::bigint::numeric % v_chars_length)::integer
+    ) + 1;
+
+    -- Append random character
+    v_result := v_result || substring(v_chars, v_random_index, 1);
+  END LOOP;
+
+  RETURN v_result;
+END;
+$$;
+
+COMMENT ON FUNCTION public.generate_alphanumeric_code(INTEGER) IS
+  'Generates a cryptographically secure random alphanumeric code (0-9, A-Z, a-z)';
+
+-- ============================================
 -- FUNCTION: generate_ticket_pool
--- Description: Generates and locks a pre-allocated ticket pool for a competition
+-- Description: Generates and locks a pre-allocated ticket pool for a competition with alphanumeric codes
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.generate_ticket_pool(
@@ -25,10 +58,9 @@ DECLARE
   v_generated_count INTEGER := 0;
   v_prizes_allocated INTEGER := 0;
   v_i INTEGER;
-  v_ticket_numbers INTEGER[];
-  v_shuffled_numbers INTEGER[];
-  v_temp INTEGER;
-  v_j INTEGER;
+  v_max_attempts INTEGER := 100; -- Max attempts to generate unique code
+  v_attempt INTEGER;
+  v_code_exists BOOLEAN;
 BEGIN
   RAISE NOTICE 'Starting ticket pool generation for competition: %', p_competition_id;
 
@@ -63,29 +95,31 @@ BEGIN
   WHERE competition_id = p_competition_id
     AND is_sold = false;
 
-  -- Generate array of sequential numbers from 1 to max_tickets
-  v_ticket_numbers := ARRAY(SELECT generate_series(1, v_competition.max_tickets));
+  RAISE NOTICE 'Generating % alphanumeric tickets...', v_competition.max_tickets;
 
-  -- Fisher-Yates shuffle algorithm for cryptographically secure randomization
-  -- Shuffle the array to randomize ticket number assignment
-  FOR v_i IN REVERSE array_length(v_ticket_numbers, 1)..2 LOOP
-    -- Generate random index from 1 to v_i using secure random bytes
-    v_j := (
-      (('x' || encode(gen_random_bytes(4), 'hex'))::bit(32)::bigint::numeric % v_i)::integer
-    ) + 1;
-
-    -- Swap elements at positions v_i and v_j
-    v_temp := v_ticket_numbers[v_i];
-    v_ticket_numbers[v_i] := v_ticket_numbers[v_j];
-    v_ticket_numbers[v_j] := v_temp;
-  END LOOP;
-
-  RAISE NOTICE 'Ticket numbers shuffled. Generating % tickets...', v_competition.max_tickets;
-
-  -- Generate all tickets with randomized 7-digit codes
+  -- Generate all tickets with random 7-character alphanumeric codes
   FOR v_i IN 1..v_competition.max_tickets LOOP
-    -- Use shuffled number and pad with leading zeros for 7-digit format
-    v_ticket_number := LPAD(v_ticket_numbers[v_i]::TEXT, 7, '0');
+    v_attempt := 0;
+    v_code_exists := true;
+
+    -- Generate unique code (retry if collision occurs)
+    WHILE v_code_exists AND v_attempt < v_max_attempts LOOP
+      v_ticket_number := generate_alphanumeric_code(7);
+
+      -- Check if code already exists in this competition
+      SELECT EXISTS(
+        SELECT 1 FROM ticket_allocations
+        WHERE competition_id = p_competition_id
+          AND ticket_number = v_ticket_number
+      ) INTO v_code_exists;
+
+      v_attempt := v_attempt + 1;
+    END LOOP;
+
+    -- If still exists after max attempts, raise error
+    IF v_code_exists THEN
+      RAISE EXCEPTION 'Failed to generate unique ticket code after % attempts', v_max_attempts;
+    END IF;
 
     INSERT INTO ticket_allocations (
       competition_id,
@@ -106,6 +140,11 @@ BEGIN
     );
 
     v_generated_count := v_generated_count + 1;
+
+    -- Log progress every 1000 tickets
+    IF v_generated_count % 1000 = 0 THEN
+      RAISE NOTICE 'Generated % tickets...', v_generated_count;
+    END IF;
   END LOOP;
 
   -- Collect all ticket IDs for prize distribution
@@ -180,7 +219,7 @@ BEGIN
     'tickets_generated', v_generated_count,
     'prizes_allocated', v_prizes_allocated,
     'pool_locked_at', NOW(),
-    'message', FORMAT('Successfully generated %s tickets with %s instant win prizes', v_generated_count, v_prizes_allocated)
+    'message', FORMAT('Successfully generated %s alphanumeric tickets with %s instant win prizes', v_generated_count, v_prizes_allocated)
   );
 
 EXCEPTION
@@ -195,7 +234,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.generate_ticket_pool(UUID) IS
-  'Generates pre-allocated ticket pool with 7-digit codes and random prize distribution (admin only)';
+  'Generates pre-allocated ticket pool with random 7-character alphanumeric codes (0-9, A-Z, a-z) and random prize distribution (admin only)';
 
 -- ============================================
 -- NOTE: complete_order_with_wallet is defined in 003_functions.sql

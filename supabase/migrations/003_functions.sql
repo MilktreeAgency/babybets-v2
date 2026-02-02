@@ -478,7 +478,7 @@ BEGIN
       v_ticket.competition_id,
       p_ticket_id,
       v_ticket.prize_id,
-      FORMAT('Won %s from instant win competition', v_prize_template.name),
+      'Won ' || v_prize_template.name || ' from instant win competition',
       v_expiry_date
     )
     RETURNING id INTO v_wallet_credit_id;
@@ -549,8 +549,8 @@ BEGIN
     ),
     'message', CASE
       WHEN v_prize_template.type = 'SiteCredit'
-      THEN FORMAT('Congratulations! £%.2f has been added to your wallet.', v_prize_template.value_gbp)
-      ELSE FORMAT('Congratulations! You won %s!', v_prize_template.name)
+      THEN 'Congratulations! £' || TO_CHAR(v_prize_template.value_gbp, 'FM999999990.00') || ' has been added to your wallet.'
+      ELSE 'Congratulations! You won ' || v_prize_template.name || '!'
     END
   );
 
@@ -657,6 +657,99 @@ $$;
 
 COMMENT ON FUNCTION public.approve_cash_alternative IS
   'Approves cash alternative for prize, creates wallet credit, completes fulfillment (admin only)';
+
+-- Auto-claim cash alternative (instant credit when user selects cash)
+CREATE OR REPLACE FUNCTION public.claim_cash_alternative(
+  p_fulfillment_id UUID,
+  p_user_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_fulfillment RECORD;
+  v_wallet_credit_id UUID;
+  v_expiry_date TIMESTAMPTZ;
+BEGIN
+  -- Get fulfillment details
+  SELECT * INTO v_fulfillment
+  FROM prize_fulfillments
+  WHERE id = p_fulfillment_id
+    AND user_id = p_user_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Fulfillment not found or does not belong to user';
+  END IF;
+
+  -- Verify it's a cash selection
+  IF v_fulfillment.choice != 'cash' THEN
+    RAISE EXCEPTION 'Fulfillment is not a cash alternative (choice: %)', v_fulfillment.choice;
+  END IF;
+
+  -- Check if already processed
+  IF v_fulfillment.status = 'completed' THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'message', 'Cash alternative already claimed'
+    );
+  END IF;
+
+  -- Set expiry date (90 days from now for wallet credits)
+  v_expiry_date := NOW() + INTERVAL '90 days';
+
+  -- Create wallet credit
+  INSERT INTO public.wallet_credits (
+    user_id,
+    amount_pence,
+    remaining_pence,
+    status,
+    source_type,
+    source_competition_id,
+    source_ticket_id,
+    source_prize_id,
+    description,
+    expires_at
+  ) VALUES (
+    v_fulfillment.user_id,
+    v_fulfillment.value_pence,
+    v_fulfillment.value_pence,
+    'active',
+    'cash_alternative',
+    v_fulfillment.competition_id,
+    v_fulfillment.ticket_id,
+    v_fulfillment.prize_id,
+    'Cash alternative for prize (£' || TO_CHAR((v_fulfillment.value_pence / 100.0), 'FM999999990.00') || ')',
+    v_expiry_date
+  ) RETURNING id INTO v_wallet_credit_id;
+
+  -- Update fulfillment status to completed
+  UPDATE prize_fulfillments
+  SET
+    status = 'completed',
+    responded_at = NOW(),
+    updated_at = NOW(),
+    notes = COALESCE(notes || E'\n', '') || FORMAT('Cash alternative auto-claimed. Wallet credit ID: %s', v_wallet_credit_id)
+  WHERE id = p_fulfillment_id;
+
+  -- Return success response
+  RETURN jsonb_build_object(
+    'success', true,
+    'wallet_credit_id', v_wallet_credit_id,
+    'amount_pence', v_fulfillment.value_pence,
+    'amount_gbp', (v_fulfillment.value_pence / 100.0),
+    'expires_at', v_expiry_date,
+    'message', '£' || TO_CHAR((v_fulfillment.value_pence / 100.0), 'FM999999990.00') || ' has been added to your wallet!'
+  );
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Error claiming cash alternative: %', SQLERRM;
+END;
+$$;
+
+COMMENT ON FUNCTION public.claim_cash_alternative IS
+  'Instantly claims cash alternative when user selects it, creates wallet credit and completes fulfillment (user can call)';
 
 -- ============================================
 -- DRAW EXECUTION FUNCTIONS
@@ -863,7 +956,10 @@ BEGIN
       (v_competition.end_prize->>'value_gbp')::DECIMAL,
       v_competition.total_value_gbp
     ),
-    v_competition.image_url,
+    COALESCE(
+      v_competition.image_url,
+      v_competition.images->>0  -- Use first image from images array if image_url is null
+    ),
     p_competition_id,
     v_winning_ticket.id,
     'end_prize',
@@ -872,6 +968,28 @@ BEGIN
     true,
     NOW()
   RETURNING id INTO v_winner_id;
+
+  -- Create prize fulfillment for end prize winner
+  INSERT INTO prize_fulfillments (
+    user_id,
+    ticket_id,
+    competition_id,
+    prize_id,
+    value_pence,
+    status,
+    claim_deadline
+  ) VALUES (
+    v_winning_ticket.sold_to_user_id,
+    v_winning_ticket.id,
+    p_competition_id,
+    NULL, -- end_prize has no prize_id
+    ROUND(COALESCE(
+      (v_competition.end_prize->>'value_gbp')::DECIMAL,
+      v_competition.total_value_gbp
+    ) * 100),
+    'pending',
+    NOW() + INTERVAL '30 days' -- 30 days to claim
+  );
 
   -- Create audit log entry
   INSERT INTO draw_audit_log (
