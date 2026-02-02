@@ -114,7 +114,7 @@ export function UserPrizeClaimModal({
                 <h2 className="text-2xl font-bold mb-2">Prize Claimed!</h2>
                 <p className="text-gray-600">
                   {selectedChoice === 'cash'
-                    ? "We'll process your cash alternative and contact you shortly."
+                    ? `£${prize.cash_alternative_gbp} has been added to your wallet!`
                     : prize.type === 'Physical'
                     ? "We'll ship your prize to the address provided."
                     : "We'll send you the prize details via email."}

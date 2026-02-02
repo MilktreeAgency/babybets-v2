@@ -24,21 +24,43 @@ export function PrizeClaimModal({ isOpen, onClose, prize, ticketId, onClaimed }:
       const { data: { user } } = await supabase.auth.getUser()
       if (!user?.id) throw new Error('User not found')
 
-      // Update prize fulfillment with user's choice
-      const { error } = await supabase.from('prize_fulfillments').upsert({
-        ticket_id: ticketId,
-        prize_id: prize.id,
-        user_id: user.id,
-        competition_id: prize.competition_id,
-        choice: selectedChoice,
-        value_pence: selectedChoice === 'cash'
-          ? Math.round((prize.cash_alternative_gbp || 0) * 100)
-          : Math.round(prize.value_gbp * 100),
-        claim_deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days from now
-        status: selectedChoice === 'cash' ? 'cash_selected' : 'prize_selected',
-      })
+      // Create/update prize fulfillment with user's choice
+      const { data: fulfillmentData, error: fulfillmentError } = await supabase
+        .from('prize_fulfillments')
+        .upsert({
+          ticket_id: ticketId,
+          prize_id: prize.id,
+          user_id: user.id,
+          competition_id: prize.competition_id,
+          choice: selectedChoice,
+          value_pence: selectedChoice === 'cash'
+            ? Math.round((prize.cash_alternative_gbp || 0) * 100)
+            : Math.round(prize.value_gbp * 100),
+          claim_deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days from now
+          status: selectedChoice === 'cash' ? 'cash_selected' : 'prize_selected',
+        })
+        .select()
+        .single()
 
-      if (error) throw error
+      if (fulfillmentError) throw fulfillmentError
+
+      // If user chose cash alternative, instantly claim it
+      if (selectedChoice === 'cash' && fulfillmentData) {
+        const { data: claimData, error: claimError } = await supabase.rpc(
+          'claim_cash_alternative',
+          {
+            p_fulfillment_id: fulfillmentData.id,
+            p_user_id: user.id,
+          }
+        )
+
+        if (claimError) {
+          console.error('Failed to claim cash alternative:', claimError)
+          throw claimError
+        }
+
+        console.log('Cash alternative claimed:', claimData)
+      }
 
       setSuccess(true)
       setTimeout(() => {
@@ -86,7 +108,7 @@ export function PrizeClaimModal({ isOpen, onClose, prize, ticketId, onClaimed }:
                 <h2 className="text-2xl font-bold mb-2">Prize Claimed!</h2>
                 <p className="text-gray-600">
                   {selectedChoice === 'cash'
-                    ? "We'll process your cash alternative shortly."
+                    ? `£${prize.cash_alternative_gbp} has been added to your wallet!`
                     : "We'll send you the prize details via email."}
                 </p>
               </div>
