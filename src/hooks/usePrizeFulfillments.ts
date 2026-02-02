@@ -131,11 +131,29 @@ export function usePrizeFulfillments() {
         .single()
 
       if (error) throw error
+
+      // If user chose cash alternative, instantly claim it
+      if (choice === 'cash' && user?.id) {
+        const { error: claimError } = await supabase.rpc(
+          'claim_cash_alternative',
+          {
+            p_fulfillment_id: fulfillmentId,
+            p_user_id: user.id,
+          }
+        )
+
+        if (claimError) {
+          console.error('Failed to claim cash alternative:', claimError)
+          throw claimError
+        }
+      }
+
       return data
     },
     onSuccess: () => {
-      // Invalidate and refetch fulfillments
+      // Invalidate and refetch fulfillments and wallet credits
       queryClient.invalidateQueries({ queryKey: ['prize-fulfillments'] })
+      queryClient.invalidateQueries({ queryKey: ['wallet-credits'] })
     },
   })
 
