@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Trophy, Gift, Wallet, Banknote } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 interface Winner {
   id: string
@@ -11,21 +12,20 @@ interface Winner {
 }
 
 interface WinnerTickerProps {
-  winners?: Winner[]
   speed?: 'slow' | 'normal' | 'fast'
   className?: string
 }
 
-// Mock winners for demo
+// Mock winners for fallback
 const mockWinners: Winner[] = [
-  { id: '1', display_name: 'Sarah J.', location: 'Manchester', prize_name: '£50 Site Credit', prize_value_gbp: 50, won_at: new Date().toISOString() },
-  { id: '2', display_name: 'David M.', location: 'Essex', prize_name: 'iCandy Cocoon', prize_value_gbp: 349, won_at: new Date().toISOString() },
-  { id: '3', display_name: 'Emma W.', location: 'Bristol', prize_name: '£20 Cash', prize_value_gbp: 20, won_at: new Date().toISOString() },
-  { id: '4', display_name: 'James P.', location: 'Leeds', prize_name: 'Rockit Baby Rocker', prize_value_gbp: 40, won_at: new Date().toISOString() },
-  { id: '5', display_name: 'Lisa T.', location: 'London', prize_name: '£5 Site Credit', prize_value_gbp: 5, won_at: new Date().toISOString() },
-  { id: '6', display_name: 'Michael R.', location: 'Birmingham', prize_name: 'Smyths Voucher', prize_value_gbp: 100, won_at: new Date().toISOString() },
-  { id: '7', display_name: 'Sophie B.', location: 'Glasgow', prize_name: '£10 Cash', prize_value_gbp: 10, won_at: new Date().toISOString() },
-  { id: '8', display_name: 'Chris K.', location: 'Newcastle', prize_name: '£2 Site Credit', prize_value_gbp: 2, won_at: new Date().toISOString() },
+  { id: '1', display_name: 'Sarah J.', location: 'Manchester', prize_name: '£50 Site Credit', prize_value_gbp: 50, won_at: new Date(Date.now() - 300000).toISOString() },
+  { id: '2', display_name: 'David M.', location: 'Essex', prize_name: 'iCandy Cocoon', prize_value_gbp: 349, won_at: new Date(Date.now() - 600000).toISOString() },
+  { id: '3', display_name: 'Emma W.', location: 'Bristol', prize_name: '£20 Cash', prize_value_gbp: 20, won_at: new Date(Date.now() - 900000).toISOString() },
+  { id: '4', display_name: 'James P.', location: 'Leeds', prize_name: 'Rockit Baby Rocker', prize_value_gbp: 40, won_at: new Date(Date.now() - 1200000).toISOString() },
+  { id: '5', display_name: 'Lisa T.', location: 'London', prize_name: '£5 Site Credit', prize_value_gbp: 5, won_at: new Date(Date.now() - 1500000).toISOString() },
+  { id: '6', display_name: 'Michael R.', location: 'Birmingham', prize_name: 'Smyths Voucher', prize_value_gbp: 100, won_at: new Date(Date.now() - 1800000).toISOString() },
+  { id: '7', display_name: 'Sophie B.', location: 'Glasgow', prize_name: '£10 Cash', prize_value_gbp: 10, won_at: new Date(Date.now() - 2100000).toISOString() },
+  { id: '8', display_name: 'Chris K.', location: 'Newcastle', prize_name: '£2 Site Credit', prize_value_gbp: 2, won_at: new Date(Date.now() - 2400000).toISOString() },
 ]
 
 const getPrizeIcon = (prizeName: string) => {
@@ -51,14 +51,44 @@ const getTimeAgo = (dateStr: string) => {
 }
 
 export default function WinnerTicker({
-  winners = mockWinners,
   speed = 'normal',
   className = '',
 }: WinnerTickerProps) {
+  const [winners, setWinners] = useState<Winner[]>(mockWinners)
+  const [isLoading, setIsLoading] = useState(true)
   const [pixelsPerSecond, setPixelsPerSecond] = useState(50)
   const tickerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const [contentWidth, setContentWidth] = useState(0)
+
+  // Fetch recent winners
+  useEffect(() => {
+    const fetchWinners = async () => {
+      try {
+        setIsLoading(true)
+        const { data, error } = await supabase
+          .from('recent_winners_view')
+          .select('*')
+          .order('won_at', { ascending: false })
+
+        if (error) throw error
+
+        // Use real winners if available, otherwise use mock data
+        if (data && data.length > 0) {
+          setWinners(data as Winner[])
+        } else {
+          setWinners(mockWinners)
+        }
+      } catch (error) {
+        console.error('Error fetching winners:', error)
+        setWinners(mockWinners)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchWinners()
+  }, [])
 
   useEffect(() => {
     // Set speed based on device and speed prop
@@ -118,6 +148,22 @@ export default function WinnerTicker({
       <span className="mx-2 sm:mx-4" style={{ color: '#e7e5e4' }}>•</span>
     </div>
   )
+
+  // Show nothing while loading
+  if (isLoading) {
+    return (
+      <div className={`overflow-hidden border-y py-3 ${className}`} style={{ backgroundColor: '#fffbf7', borderColor: '#f0e0ca' }}>
+        <div className="flex items-center justify-center">
+          <span className="text-sm" style={{ color: '#78716c' }}>Loading recent winners...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render if no winners
+  if (winners.length === 0) {
+    return null
+  }
 
   return (
     <div ref={tickerRef} className={`overflow-hidden border-y py-3 ${className}`} style={{ backgroundColor: '#fffbf7', borderColor: '#f0e0ca' }}>
