@@ -9,6 +9,12 @@ import SignIn from './pages/Client/signin/SignIn'
 import SignUp from './pages/Client/signup/SignUp'
 import AuthCallback from './pages/Client/AuthCallback/AuthCallback'
 import Account from './pages/Client/Account/Account'
+import HowItWorks from './pages/Client/HowItWorks/HowItWorks'
+import FAQ from './pages/Client/FAQ/FAQ'
+import PrivacyPolicy from './pages/Client/Legal/PrivacyPolicy'
+import Terms from './pages/Client/Legal/Terms'
+import Partners from './pages/Client/Partners/Partners'
+import WinnersGallery from './pages/Client/Winners/Winners'
 import Dashboard from './pages/Admin/Dashboard/Dashboard'
 import Settings from './pages/Admin/Settings/Settings'
 import Analytics from './pages/Admin/Analytics'
@@ -23,6 +29,7 @@ import Fulfillments from './pages/Admin/Fulfillments'
 import Withdrawals from './pages/Admin/Withdrawals'
 import { DashboardLayout } from './pages/Admin/components'
 import { AdminRoute, CartDrawer } from './components/common'
+import ScrollToTop from './components/common/ScrollToTop'
 
 function App() {
   // Check authentication status on mount
@@ -30,6 +37,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/competitions" element={<CompetitionsPage />} />
@@ -40,6 +48,12 @@ function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/account" element={<Account />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/faq" element={<FAQ />} />
+        <Route path="/partners" element={<Partners />} />
+        <Route path="/winners" element={<WinnersGallery />} />
+        <Route path="/legal/privacy" element={<PrivacyPolicy />} />
+        <Route path="/legal/terms" element={<Terms />} />
         <Route
           path="/admin/dashboard"
           element={
