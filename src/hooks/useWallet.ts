@@ -15,7 +15,11 @@ export function useWallet() {
 
       const { data, error } = await supabase
         .from('wallet_credits')
-        .select('*')
+        .select(`
+          *,
+          competition:competitions(id, title, slug),
+          ticket:ticket_allocations(id, ticket_number)
+        `)
         .eq('user_id', user.id)
         .eq('status', 'active')
         .gt('remaining_pence', 0)
