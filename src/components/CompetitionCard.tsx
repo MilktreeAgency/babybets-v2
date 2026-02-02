@@ -90,25 +90,28 @@ export default function CompetitionCard({ competition }: CompetitionCardProps) {
     ? competition.images[0]
     : competition.image_url
 
+  // Check if all tickets are sold
+  const isAllTicketsSold = percentSold >= 100
+
   return (
     <Link to={`/competitions/${competition.slug}`} className="group h-full block cursor-pointer relative pt-3">
-      {/* Badge - Priority: Closing Today > Instant Win Prize Count > Just Launched */}
-      {(closingInfo || (isInstantWin && !prizeLoading && prizeCount > 0) || (!isInstantWin && isJustLaunched)) && (
+      {/* Badge - Priority: Closing Today > All Tickets Sold > Instant Win Prize Count > Just Launched */}
+      {(closingInfo || isAllTicketsSold || (isInstantWin && !prizeLoading && prizeCount > 0) || (!isInstantWin && isJustLaunched)) && (
         <div
           className="absolute top-0 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full cursor-pointer z-20 flex items-center gap-2"
           style={{
-            backgroundColor: closingInfo ? '#ef4444' : 'white',
+            backgroundColor: closingInfo || isAllTicketsSold ? '#ef4444' : 'white',
             borderWidth: '1px',
-            borderColor: closingInfo ? '#ef4444' : '#d1d5db',
+            borderColor: closingInfo || isAllTicketsSold ? '#ef4444' : '#d1d5db',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
           }}
         >
-          <Zap size={16} style={{ color: closingInfo ? 'white' : '#ef4444' }} fill={closingInfo ? 'white' : '#ef4444'} />
+          <Zap size={16} style={{ color: closingInfo || isAllTicketsSold ? 'white' : '#ef4444' }} fill={closingInfo || isAllTicketsSold ? 'white' : '#ef4444'} />
           <div
             className="text-sm font-bold whitespace-nowrap"
-            style={{ color: closingInfo ? 'white' : '#151e20' }}
+            style={{ color: closingInfo || isAllTicketsSold ? 'white' : '#151e20' }}
           >
-            {closingInfo || (isInstantWin ? `${prizeCount}+ prizes` : 'Just Launched')}
+            {closingInfo || (isAllTicketsSold ? 'All Tickets Sold' : (isInstantWin ? `${prizeCount}+ prizes` : 'Just Launched'))}
           </div>
         </div>
       )}
@@ -199,13 +202,15 @@ export default function CompetitionCard({ competition }: CompetitionCardProps) {
             <button
               className="w-full py-3 rounded-xl font-bold text-base transition-colors cursor-pointer"
               style={{
-                backgroundColor: '#496B71',
-                color: 'white'
+                backgroundColor: isAllTicketsSold ? '#9ca3af' : '#496B71',
+                color: 'white',
+                cursor: isAllTicketsSold ? 'not-allowed' : 'pointer'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3a565a'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#496B71'}
+              onMouseEnter={(e) => !isAllTicketsSold && (e.currentTarget.style.backgroundColor = '#3a565a')}
+              onMouseLeave={(e) => !isAllTicketsSold && (e.currentTarget.style.backgroundColor = '#496B71')}
+              disabled={isAllTicketsSold}
             >
-              Enter Now
+              {isAllTicketsSold ? 'Closed' : 'Enter Now'}
             </button>
           </div>
         </div>
