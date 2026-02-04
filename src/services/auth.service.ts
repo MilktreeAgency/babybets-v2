@@ -60,7 +60,8 @@ class AuthService {
     try {
       useAuthStore.getState().setLoading(true)
 
-      const { data: { session }, error } = await supabase.auth.getSession()
+      // Use refreshSession() to fetch a new JWT with updated metadata from server
+      const { data: { session }, error } = await supabase.auth.refreshSession()
 
       if (error) {
         console.error('Auth refresh error:', error)
@@ -101,6 +102,9 @@ class AuthService {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            prompt: 'select_account',
+          },
         },
       })
 

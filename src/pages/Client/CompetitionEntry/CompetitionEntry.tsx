@@ -50,6 +50,7 @@ function CompetitionEntry() {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [modalImageIndex, setModalImageIndex] = useState(0)
   const [activeTab, setActiveTab] = useState<'prize' | 'details'>('details')
+  const [entryMode, setEntryMode] = useState<'paid' | 'postal'>('paid')
 
   useEffect(() => {
     if (slug) {
@@ -174,6 +175,14 @@ function CompetitionEntry() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Calculate number of postal entries based on ticket price
+  const calculatePostalEntries = () => {
+    if (!competition?.base_ticket_price_pence) return 1
+    const ticketPriceGBP = competition.base_ticket_price_pence / 100
+    const entries = Math.floor(0.87 / ticketPriceGBP)
+    return Math.max(1, entries)
   }
 
   const calculatePrice = (qty: number) => {
@@ -494,7 +503,44 @@ function CompetitionEntry() {
               {/* Ticket Selector */}
               <div className="mb-6">
                 <div className="rounded-lg p-4" style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#f0e0ca' }}>
-                  <h3 className="font-bold text-sm mb-3">Choose Your Tickets</h3>
+                  {/* Entry Mode Toggle */}
+                  <div className="flex items-stretch gap-0 mb-6">
+                    <button
+                      onClick={() => setEntryMode('paid')}
+                      className="flex-1 py-3 font-bold text-sm transition-all cursor-pointer"
+                      style={{
+                        backgroundColor: entryMode === 'paid' ? '#496B71' : 'transparent',
+                        color: entryMode === 'paid' ? 'white' : '#78716c',
+                        borderWidth: '2px',
+                        borderColor: entryMode === 'paid' ? '#496B71' : '#e7e5e4',
+                        borderTopLeftRadius: '0.5rem',
+                        borderBottomLeftRadius: '0.5rem',
+                        borderRight: 'none'
+                      }}
+                    >
+                      Paid Entry
+                    </button>
+                    <button
+                      onClick={() => setEntryMode('postal')}
+                      className="flex-1 py-3 font-bold text-sm transition-all cursor-pointer"
+                      style={{
+                        backgroundColor: entryMode === 'postal' ? '#496B71' : 'transparent',
+                        color: entryMode === 'postal' ? 'white' : '#78716c',
+                        borderWidth: '2px',
+                        borderColor: entryMode === 'postal' ? '#496B71' : '#e7e5e4',
+                        borderTopRightRadius: '0.5rem',
+                        borderBottomRightRadius: '0.5rem',
+                        borderLeft: 'none'
+                      }}
+                    >
+                      Free Postal Entry
+                    </button>
+                  </div>
+
+                  {/* Paid Entry Section */}
+                  {entryMode === 'paid' && (
+                    <>
+                      <h3 className="font-bold text-sm mb-3">Choose Your Tickets</h3>
 
                   {/* Quick Select Buttons */}
                   {quickSelectOptions.length > 0 && (
@@ -633,6 +679,62 @@ function CompetitionEntry() {
                       By entering, you agree to our Terms & Conditions
                     </p>
                   </div>
+                </>
+              )}
+
+              {/* Postal Entry Section */}
+              {entryMode === 'postal' && (
+                <div className="space-y-4">
+                  <div className="text-center mb-4">
+                    <p className="text-2xl font-bold mb-2" style={{ color: '#496B71' }}>
+                      {calculatePostalEntries()} {calculatePostalEntries() === 1 ? 'Entry' : 'Entries'}
+                    </p>
+                    <p className="text-sm" style={{ color: '#78716c' }}>
+                      You can enter this competition for free by post
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="font-bold mb-3" style={{ color: '#151e20' }}>How to Enter by Post:</h3>
+                    <ol className="space-y-2 text-sm" style={{ color: '#78716c' }}>
+                      <li className="flex gap-2">
+                        <span className="font-bold shrink-0">1.</span>
+                        <span>Write your full name, email address, phone number, and the competition name on a postcard or envelope.</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="font-bold shrink-0">2.</span>
+                        <span>Include {calculatePostalEntries()} separate {calculatePostalEntries() === 1 ? 'entry' : 'entries'} (one per envelope/postcard) to increase your chances.</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="font-bold shrink-0">3.</span>
+                        <span>Post to: BabyBets Free Entry, PO Box 12345, London, UK, SW1A 1AA</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="font-bold shrink-0">4.</span>
+                        <span>Entries must be received before the competition closing date: {formatDate(competition.end_datetime)}</span>
+                      </li>
+                    </ol>
+
+                    <div className="mt-4 pt-4" style={{ borderTopWidth: '1px', borderColor: '#f0e0ca' }}>
+                      <p className="text-xs" style={{ color: '#78716c' }}>
+                        <strong>Important:</strong> Based on the £{(competition.base_ticket_price_pence / 100).toFixed(2)} ticket price, you can receive up to {calculatePostalEntries()} {calculatePostalEntries() === 1 ? 'entry' : 'entries'} per postal submission. Standard postage costs apply (87p for a first-class stamp).
+                      </p>
+                    </div>
+
+                    <div className="mt-4">
+                      <Link
+                        to="/terms"
+                        className="text-sm font-bold underline cursor-pointer"
+                        style={{ color: '#496B71' }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = '#3a565a'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = '#496B71'}
+                      >
+                        Read full Terms & Conditions
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              )}
                 </div>
               </div>
 

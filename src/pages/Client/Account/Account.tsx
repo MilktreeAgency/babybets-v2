@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { LogOut, MapPin, User, Bell, LayoutDashboard, X, Save, Wallet, Clock, TrendingUp, Gift, Ticket, Trophy, ChevronDown, ChevronUp } from 'lucide-react'
+import { LogOut, MapPin, User, Bell, LayoutDashboard, X, Save, Wallet, Clock, TrendingUp, Gift, Ticket, Trophy, ChevronDown, ChevronUp, UserCheck } from 'lucide-react'
 import Header from '@/components/common/Header'
 import { useAuthStore } from '@/store/authStore'
 import { useTickets } from '@/hooks/useTickets'
@@ -234,6 +234,9 @@ function Account() {
     { id: 'logout' as Section, label: 'Logout', icon: LogOut },
   ]
 
+  // Add influencer dashboard link if user is an influencer
+  const isInfluencer = profile?.role === 'influencer'
+
   if (isLoading || !isAuthenticated) {
     return null
   }
@@ -292,6 +295,25 @@ function Account() {
                       From your account dashboard you can view your tickets, manage your prizes, check your wallet balance, and edit your account details.
                     </p>
                   </div>
+
+                  {/* Influencer Dashboard Card */}
+                  {isInfluencer && (
+                    <button
+                      onClick={() => navigate('/influencer/dashboard')}
+                      className="w-full bg-gradient-to-r from-[#496B71] to-[#335761] rounded-xl p-6 text-white cursor-pointer hover:shadow-xl transition-all text-left"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="p-4 bg-white/20 rounded-full">
+                          <UserCheck size={32} />
+                        </div>
+                        <div className="flex-1">
+                          <h2 className="text-2xl font-bold mb-2">Partner Dashboard</h2>
+                          <p className="text-white/90">View your commission stats, sales, referral link, and manage your partner profile</p>
+                        </div>
+                        <div className="text-4xl font-bold">→</div>
+                      </div>
+                    </button>
+                  )}
 
                   {/* Quick Stats */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
