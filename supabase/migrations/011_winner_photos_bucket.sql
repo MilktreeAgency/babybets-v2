@@ -19,6 +19,12 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Public can view winner photos" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload winner photos" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can update winner photos" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can delete winner photos" ON storage.objects;
+
 -- Public can read winner photos
 CREATE POLICY "Public can view winner photos"
 ON storage.objects FOR SELECT

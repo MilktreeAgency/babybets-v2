@@ -20,6 +20,12 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Public can view competition images" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload competition images" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can update competition images" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can delete competition images" ON storage.objects;
+
 -- Public can read competition images
 CREATE POLICY "Public can view competition images"
 ON storage.objects FOR SELECT
@@ -59,6 +65,12 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Public can view prize images" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload prize images" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can update prize images" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can delete prize images" ON storage.objects;
+
 -- Public can read prize images
 CREATE POLICY "Public can view prize images"
 ON storage.objects FOR SELECT
@@ -86,6 +98,7 @@ USING (bucket_id = 'prize-images');
 -- ============================================
 -- STORAGE BUCKET: winner-photos
 -- Description: Winner photos for social proof (max 5MB per file)
+-- Note: This bucket is also defined in migration 011
 -- ============================================
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -97,6 +110,12 @@ VALUES (
   ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
 )
 ON CONFLICT (id) DO NOTHING;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Public can view winner photos" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload winner photos" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can update winner photos" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can delete winner photos" ON storage.objects;
 
 -- Public can read winner photos
 CREATE POLICY "Public can view winner photos"
