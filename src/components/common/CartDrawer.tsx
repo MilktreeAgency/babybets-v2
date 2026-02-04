@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, Trash2, ArrowRight, ShoppingBag, Wallet } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
@@ -6,11 +6,12 @@ import { useWallet } from '@/hooks/useWallet'
 import { useAuthStore } from '@/store/authStore'
 
 export default function CartDrawer() {
-  const { isCartOpen, setCartOpen, items, removeItem, getTotalItems, getTotalPrice } =
+  const { isCartOpen, setCartOpen, items, removeItem, getTotalItems, getTotalPrice, validateCart } =
     useCartStore()
   const { isAuthenticated } = useAuthStore()
   const { summary } = useWallet()
   const navigate = useNavigate()
+  const [cartWarning, setCartWarning] = useState<string | null>(null)
 
   const totalTickets = getTotalItems()
   const totalPrice = getTotalPrice()
@@ -25,6 +26,25 @@ export default function CartDrawer() {
     setCartOpen(false)
     navigate('/checkout')
   }
+
+  // Validate cart when drawer opens
+  useEffect(() => {
+    if (isCartOpen && items.length > 0) {
+      const validateOnOpen = async () => {
+        const result = await validateCart()
+        if (result.removedCount > 0) {
+          setCartWarning(
+            `${result.removedCount} item(s) were removed (no longer available)`
+          )
+          // Clear warning after 5 seconds
+          setTimeout(() => setCartWarning(null), 5000)
+        }
+      }
+      validateOnOpen()
+    } else {
+      setCartWarning(null)
+    }
+  }, [isCartOpen])
 
   // Prevent body scroll when drawer is open
   useEffect(() => {
@@ -79,6 +99,24 @@ export default function CartDrawer() {
             <X className="size-5" />
           </button>
         </div>
+
+        {/* Cart Warning */}
+        {cartWarning && (
+          <div className="px-6 pt-4">
+            <div
+              className="p-3 rounded-lg border-2 flex items-start gap-2"
+              style={{
+                backgroundColor: '#fef3c7',
+                borderColor: '#f59e0b',
+              }}
+            >
+              <span className="text-lg">⚠️</span>
+              <p className="text-sm font-medium flex-1" style={{ color: '#92400e' }}>
+                {cartWarning}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-grow overflow-y-auto p-6 space-y-6">

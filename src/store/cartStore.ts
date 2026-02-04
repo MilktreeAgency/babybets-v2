@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { validateCartItems } from '@/lib/cartValidation'
 
-interface CartItem {
+export interface CartItem {
   competitionId: string
   competitionTitle: string
   competitionSlug: string
@@ -21,6 +22,7 @@ interface CartStore {
   getTotalItems: () => number
   getTotalPrice: () => number
   setCartOpen: (open: boolean) => void
+  validateCart: () => Promise<{ removedCount: number; reasons: string[] }>
 }
 
 export const useCartStore = create<CartStore>()(
@@ -105,6 +107,36 @@ export const useCartStore = create<CartStore>()(
 
       getTotalPrice: () => {
         return get().items.reduce((total, item) => total + item.totalPrice, 0)
+      },
+
+      validateCart: async () => {
+        const currentItems = get().items
+
+        if (currentItems.length === 0) {
+          return { removedCount: 0, reasons: [] }
+        }
+
+        const { validItems, removedItems } = await validateCartItems(currentItems)
+
+        // Update cart with only valid items
+        if (removedItems.length > 0) {
+          set({ items: validItems })
+
+          // Return info about removed items
+          return {
+            removedCount: removedItems.length,
+            reasons: removedItems.map((removed) =>
+              `${removed.item.competitionTitle}: ${removed.reason}`
+            ),
+          }
+        }
+
+        // If prices changed but items are still valid, update with new data
+        if (JSON.stringify(validItems) !== JSON.stringify(currentItems)) {
+          set({ items: validItems })
+        }
+
+        return { removedCount: 0, reasons: [] }
       },
     }),
     {

@@ -5,18 +5,31 @@ import Footer from '@/components/common/Footer'
 import { useCartStore } from '@/store/cartStore'
 import { useAuthStore } from '@/store/authStore'
 import { useWallet } from '@/hooks/useWallet'
-import { createG2PaySession, G2PAY_CONFIG } from '@/lib/g2pay'
+import { processG2PayPayment, parseCardExpiry, validateCardNumber } from '@/lib/g2pay'
 import { supabase } from '@/lib/supabase'
-import { ShoppingCart, Trash2, Wallet, ShieldCheck, Tag, X, Check } from 'lucide-react'
+import { ShoppingCart, Trash2, Wallet, ShieldCheck, Tag, X, Check, Users } from 'lucide-react'
+import { getReferral, clearReferral, setReferral } from '@/lib/referralTracking'
 
 function Checkout() {
   const navigate = useNavigate()
-  const { items, removeItem, clearCart, getTotalPrice } = useCartStore()
-  const { isAuthenticated, user, isLoading: authLoading, isInitialized } = useAuthStore()
+  const { items, removeItem, clearCart, getTotalPrice, validateCart } = useCartStore()
+  const { isAuthenticated, isLoading: authLoading, isInitialized } = useAuthStore()
   const { summary } = useWallet()
   const [loading, setLoading] = useState(false)
-  const [sessionToken, setSessionToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [cartWarning, setCartWarning] = useState<string | null>(null)
+
+  // Referral tracking state (handles both link referrals and manual codes)
+  const [activeReferral, setActiveReferral] = useState<{ slug: string; influencerId: string; displayName?: string } | null>(null)
+  const [influencerCode, setInfluencerCode] = useState('')
+  const [codeError, setCodeError] = useState<string | null>(null)
+  const [checkingCode, setCheckingCode] = useState(false)
+
+  // Card details state
+  const [cardNumber, setCardNumber] = useState('')
+  const [cardExpiry, setCardExpiry] = useState('')
+  const [cardCVV, setCardCVV] = useState('')
+  const [cardName, setCardName] = useState('')
   const [appliedCredit, setAppliedCredit] = useState(0)
   const [promoCode, setPromoCode] = useState('')
   const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null)
@@ -55,68 +68,95 @@ function Checkout() {
       navigate('/')
       return
     }
-
-    // Initialize G2Pay session
-    initializePayment()
   }, [isAuthenticated, items, isInitialized])
 
-  const initializePayment = async () => {
-    try {
-      setLoading(true)
-      setError(null)
+  // Load active referral on mount
+  useEffect(() => {
+    const loadReferral = async () => {
+      const referral = getReferral()
+      if (referral) {
+        // Fetch influencer display name and slug (use maybeSingle to handle missing influencer gracefully)
+        const { data: influencer } = await supabase
+          .from('influencers')
+          .select('display_name, slug')
+          .eq('id', referral.influencerId)
+          .maybeSingle()
 
-      // Generate unique client request ID
-      const clientRequestId = `${user?.id}-${Date.now()}`
-
-      // Create G2Pay session
-      const session = await createG2PaySession(clientRequestId)
-      setSessionToken(session.sessionToken)
-
-      // Load G2Pay SDK
-      loadG2PaySDK()
-    } catch (err) {
-      console.error('Error initializing payment:', err)
-
-      // Check if it's an authentication error
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-      if (errorMessage.includes('authenticated') || errorMessage.includes('Session expired')) {
-        setError('Your session has expired. Please log in again.')
-        // Redirect to login after a short delay
-        setTimeout(() => {
-          navigate('/login?redirect=/checkout')
-        }, 2000)
-      } else {
-        setError('Failed to initialize payment. Please try again.')
+        // Only set referral if influencer exists
+        if (influencer) {
+          setActiveReferral({
+            slug: influencer.slug,
+            influencerId: referral.influencerId,
+            displayName: influencer.display_name
+          })
+        }
       }
+    }
+    loadReferral()
+  }, [])
+
+  // Validate cart on mount
+  useEffect(() => {
+    const validateCartOnLoad = async () => {
+      const result = await validateCart()
+      if (result.removedCount > 0) {
+        setCartWarning(
+          `${result.removedCount} item(s) removed from cart: ${result.reasons.join(', ')}`
+        )
+      }
+    }
+    validateCartOnLoad()
+  }, [])
+
+  // Handle applying influencer code
+  const handleApplyInfluencerCode = async () => {
+    const code = influencerCode.trim().toLowerCase()
+
+    if (!code) {
+      setCodeError('Please enter an influencer code')
+      return
+    }
+
+    try {
+      setCheckingCode(true)
+      setCodeError(null)
+
+      // Fetch influencer by slug
+      const { data: influencer, error: influencerError } = await supabase
+        .from('influencers')
+        .select('id, user_id, slug, display_name, is_active')
+        .eq('slug', code)
+        .eq('is_active', true)
+        .single()
+
+      if (influencerError || !influencer) {
+        setCodeError('Invalid influencer code')
+        return
+      }
+
+      // Save to localStorage and update state
+      setReferral(influencer.id, influencer.slug)
+      setActiveReferral({
+        slug: influencer.slug,
+        influencerId: influencer.id,
+        displayName: influencer.display_name
+      })
+      setInfluencerCode('')
+      setCodeError(null)
+    } catch (err) {
+      console.error('Error validating influencer code:', err)
+      setCodeError('Failed to validate code')
     } finally {
-      setLoading(false)
+      setCheckingCode(false)
     }
   }
 
-  const loadG2PaySDK = () => {
-    if (document.getElementById('g2pay-sdk')) return
-
-    const script = document.createElement('script')
-    script.id = 'g2pay-sdk'
-    script.src =
-      G2PAY_CONFIG.environment === 'production'
-        ? 'https://cdn.safecharge.com/safecharge_resources/v1/websdk/safecharge.js'
-        : 'https://cdn.safecharge.com/safecharge_resources/v1/websdk/safecharge.js'
-    script.async = true
-    script.onload = () => initializeG2PayFields()
-    document.body.appendChild(script)
-  }
-
-  const initializeG2PayFields = () => {
-    if (!sessionToken) return
-
-    // Initialize G2Pay hosted fields
-    ;(window as any).SafeCharge({
-      sessionToken,
-      env: G2PAY_CONFIG.environment === 'production' ? 'prod' : 'test',
-      merchantId: G2PAY_CONFIG.merchantId,
-      renderTo: '#g2pay-payment-form',
-    })
+  // Handle removing influencer code
+  const handleRemoveInfluencerCode = () => {
+    clearReferral()
+    setActiveReferral(null)
+    setInfluencerCode('')
+    setCodeError(null)
   }
 
   const handleApplyPromoCode = async () => {
@@ -244,6 +284,21 @@ function Checkout() {
       const totalPence = Math.round(totalPrice * 100)
       const creditPence = Math.round(appliedCredit * 100)
       const finalPence = Math.round(finalPrice * 100)
+      const discountPence = Math.round(discountAmount * 100)
+
+      console.log('💰 ORDER VALUES CALCULATION:', {
+        totalPrice,
+        totalPence,
+        discountAmount,
+        discountPence,
+        appliedCredit,
+        creditPence,
+        finalPrice,
+        finalPence,
+        promoDiscount,
+        promoCodeType,
+        promoCodeValue
+      })
 
       // Validate order total is greater than 0
       if (totalPence <= 0) {
@@ -272,16 +327,49 @@ function Checkout() {
       console.log('Authenticated user ID:', authenticatedUserId)
       console.log('Session access token:', session.access_token ? 'exists' : 'missing')
 
+      // Get influencer data from active referral
+      let influencerUserId: string | null = null
+
+      if (activeReferral) {
+        // Get the influencer's user_id from the influencers table
+        const { data: influencerData } = await supabase
+          .from('influencers')
+          .select('user_id')
+          .eq('id', activeReferral.influencerId)
+          .single()
+
+        if (influencerData) {
+          influencerUserId = influencerData.user_id
+        }
+      }
+
       // Create order in database
+      const orderData: {
+        user_id: string
+        subtotal_pence: number
+        discount_pence: number
+        credit_applied_pence: number
+        total_pence: number
+        status: 'pending'
+        influencer_id?: string
+      } = {
+        user_id: authenticatedUserId,
+        subtotal_pence: totalPence,
+        discount_pence: discountPence,
+        credit_applied_pence: creditPence,
+        total_pence: finalPence,
+        status: 'pending',
+      }
+
+      if (influencerUserId) {
+        orderData.influencer_id = influencerUserId
+      }
+
+      console.log('📦 ORDER DATA BEING SENT:', orderData)
+
       const { data: order, error: orderError } = await supabase
         .from('orders')
-        .insert({
-          user_id: authenticatedUserId,
-          subtotal_pence: totalPence,
-          credit_applied_pence: creditPence,
-          total_pence: finalPence,
-          status: 'pending',
-        })
+        .insert(orderData)
         .select()
         .single()
 
@@ -290,7 +378,16 @@ function Checkout() {
         throw orderError
       }
 
-      console.log('Order created:', order.id, 'for user:', order.user_id)
+      console.log('✅ ORDER CREATED SUCCESSFULLY:', {
+        orderId: order.id,
+        userId: order.user_id,
+        subtotal_pence: order.subtotal_pence,
+        discount_pence: order.discount_pence,
+        credit_applied_pence: order.credit_applied_pence,
+        total_pence: order.total_pence,
+        status: order.status,
+        influencer_id: order.influencer_id
+      })
 
       // Verify the order was created successfully
       const { data: verifyOrder, error: verifyError } = await supabase
@@ -315,27 +412,33 @@ function Checkout() {
         total_pence: Math.round(item.totalPrice * 100),
       }))
 
-      console.log('Inserting order items:', orderItems)
+      console.log('📝 INSERTING ORDER ITEMS:', orderItems)
 
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
 
       if (itemsError) {
-        console.error('Order items error:', itemsError)
+        console.error('❌ Order items error:', itemsError)
         throw itemsError
       }
 
+      console.log('✅ ORDER ITEMS CREATED')
+
       // If fully paid with wallet credit, complete order immediately
       if (finalPrice === 0) {
+        console.log('💳 ORDER FULLY PAID WITH WALLET - Completing order via RPC...')
+
         // Complete order with wallet payment
-        const { error: completeError } = await supabase.rpc('complete_order_with_wallet', {
+        const { data: rpcResult, error: completeError } = await supabase.rpc('complete_order_with_wallet', {
           p_order_id: order.id,
           p_user_id: authenticatedUserId,
         })
 
         if (completeError) {
-          console.error('Error completing wallet order:', completeError)
+          console.error('❌ Error completing wallet order:', completeError)
           throw new Error('Failed to process wallet payment')
         }
+
+        console.log('✅ WALLET ORDER COMPLETED:', rpcResult)
 
         // Clear cart and redirect
         clearCart()
@@ -343,45 +446,104 @@ function Checkout() {
         return
       }
 
-      // Otherwise, trigger G2Pay payment with order ID as clientUniqueId
-      ;(window as any).SafeCharge.payment({
-        sessionToken,
-        merchantId: G2PAY_CONFIG.merchantId,
-        amount: finalPrice.toFixed(2),
-        currency: 'GBP',
-        clientUniqueId: order.id, // Use order ID for webhook matching
-        userTokenId: authenticatedUserId,
-        cardHolderName: session.user.email || '',
-        billingAddress: {
-          email: session.user.email,
-          country: 'GB',
-        },
-        callback: async (response: any) => {
-          if (response.result === 'APPROVED') {
-            // Deduct wallet credits if any were applied
-            if (creditPence > 0) {
-              await supabase.rpc('debit_wallet_credits', {
-                p_user_id: authenticatedUserId,
-                p_amount_pence: creditPence,
-                p_description: `Order #${order.id.slice(0, 8)}`,
-              })
-            }
+      // Validate card details
+      if (!cardNumber || !cardExpiry || !cardCVV || !cardName) {
+        throw new Error('Please fill in all card details')
+      }
 
-            // Clear cart immediately
-            clearCart()
+      // Validate card number
+      if (!validateCardNumber(cardNumber)) {
+        throw new Error('Invalid card number')
+      }
 
-            // Redirect to account tickets page
-            // Note: Webhook will handle order status update and ticket allocation
-            navigate('/account?tab=tickets')
-          } else {
-            // Payment declined or failed
-            setError('Payment was declined. Please try another card or payment method.')
-          }
-        },
+      // Parse and validate expiry
+      const { month, year } = parseCardExpiry(cardExpiry)
+
+      // Validate CVV
+      if (!/^\d{3,4}$/.test(cardCVV)) {
+        throw new Error('Invalid CVV')
+      }
+
+      // Process payment via G2Pay Direct Integration
+      const paymentResult = await processG2PayPayment({
+        amount: finalPence,
+        currencyCode: 826, // GBP
+        orderRef: order.id,
+        customerEmail: session.user.email,
+        customerName: cardName,
+        cardNumber: cardNumber.replace(/\s/g, ''),
+        cardExpiryMonth: month,
+        cardExpiryYear: year,
+        cardCVV,
       })
+
+      if (paymentResult.success) {
+        // Deduct wallet credits if any were applied
+        if (creditPence > 0) {
+          await supabase.rpc('debit_wallet_credits', {
+            p_user_id: authenticatedUserId,
+            p_amount_pence: creditPence,
+            p_description: `Order #${order.id.slice(0, 8)}`,
+          })
+        }
+
+        // Update order status
+        await supabase
+          .from('orders')
+          .update({
+            status: 'paid',
+            paid_at: new Date().toISOString(),
+          })
+          .eq('id', order.id)
+
+        // Get order items to allocate tickets
+        const { data: orderItemsData } = await supabase
+          .from('order_items')
+          .select('*')
+          .eq('order_id', order.id)
+
+        // Process each item
+        for (const item of orderItemsData || []) {
+          // Update competition tickets_sold count
+          const { data: competition } = await supabase
+            .from('competitions')
+            .select('tickets_sold')
+            .eq('id', item.competition_id)
+            .single()
+
+          if (competition) {
+            await supabase
+              .from('competitions')
+              .update({
+                tickets_sold: (competition.tickets_sold || 0) + item.ticket_count,
+              })
+              .eq('id', item.competition_id)
+          }
+
+          // Create ticket allocations
+          const ticketAllocations = Array.from({ length: item.ticket_count }, (_, i) => ({
+            competition_id: item.competition_id,
+            order_id: order.id,
+            sold_to_user_id: authenticatedUserId,
+            ticket_number: `${Date.now()}-${i + 1}`,
+            is_sold: true,
+            sold_at: new Date().toISOString(),
+          }))
+
+          await supabase.from('ticket_allocations').insert(ticketAllocations)
+        }
+
+        // Clear cart and redirect
+        clearCart()
+        navigate('/account?tab=tickets')
+      } else {
+        // Payment declined or failed
+        throw new Error(paymentResult.message || 'Payment was declined')
+      }
     } catch (err) {
       console.error('Error processing payment:', err)
-      setError('Failed to process payment. Please try again.')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to process payment'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -436,6 +598,21 @@ function Checkout() {
                     ({items.length} {items.length === 1 ? 'item' : 'items'})
                   </span>
                 </h2>
+
+                {/* Cart Validation Warning */}
+                {cartWarning && (
+                  <div
+                    className="mb-6 p-4 rounded-lg border-2"
+                    style={{
+                      backgroundColor: '#fef3c7',
+                      borderColor: '#f59e0b',
+                    }}
+                  >
+                    <p className="text-sm font-medium" style={{ color: '#92400e' }}>
+                      ⚠️ {cartWarning}
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-6">
                   {items.map((item) => (
@@ -571,6 +748,117 @@ function Checkout() {
                   )}
                   {promoError && (
                     <p className="text-rose-500 text-sm mt-2">{promoError}</p>
+                  )}
+                </div>
+
+                {/* Partner Code Section */}
+                <div
+                  className="mt-8 pt-8"
+                  style={{ borderTopWidth: '1px', borderColor: '#e7e5e4' }}
+                >
+                  <label
+                    className="block text-xs font-bold uppercase tracking-wider mb-2"
+                    style={{ color: '#78716c' }}
+                  >
+                    Partner Code
+                  </label>
+
+                  {activeReferral ? (
+                    <div
+                      className="flex justify-between items-start p-4 rounded-xl"
+                      style={{
+                        backgroundColor: '#e1eaec',
+                        borderWidth: '1px',
+                        borderColor: '#496B71',
+                      }}
+                    >
+                      <div className="flex items-start gap-3 flex-1">
+                        <div
+                          className="p-2 rounded-lg"
+                          style={{ backgroundColor: '#496B71' }}
+                        >
+                          <Users size={20} className="text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <a
+                            href={`/partner/${activeReferral.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-bold text-base mb-1 hover:underline cursor-pointer inline-block"
+                            style={{ color: '#496B71' }}
+                          >
+                            {activeReferral.displayName || activeReferral.slug}
+                          </a>
+                          <p className="text-xs leading-relaxed mt-1" style={{ color: '#78716c' }}>
+                            Shopping with code <span className="font-bold">{activeReferral.slug}</span>. They'll earn a commission on your purchase at no extra cost to you.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleRemoveInfluencerCode}
+                        className="ml-2 p-2 hover:bg-white/50 rounded-lg transition-colors cursor-pointer shrink-0"
+                        style={{ color: '#78716c' }}
+                        title="Remove code"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={influencerCode}
+                          onChange={(e) => {
+                            setInfluencerCode(e.target.value)
+                            setCodeError(null)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleApplyInfluencerCode()
+                            }
+                          }}
+                          placeholder="Enter partner code"
+                          className="grow p-3 rounded-xl focus:ring-2 focus:outline-none lowercase font-medium placeholder:normal-case"
+                          style={{
+                            backgroundColor: '#f5f5f4',
+                            borderWidth: '1px',
+                            borderColor: '#e7e5e4',
+                            color: '#151e20',
+                          }}
+                          disabled={checkingCode}
+                        />
+                        <button
+                          onClick={handleApplyInfluencerCode}
+                          disabled={checkingCode}
+                          className="px-6 rounded-lg transition-colors cursor-pointer font-bold disabled:opacity-50"
+                          style={{
+                            backgroundColor: 'white',
+                            borderWidth: '1px',
+                            borderColor: '#e7e5e4',
+                            color: '#151e20',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!checkingCode) {
+                              e.currentTarget.style.backgroundColor = '#496B71'
+                              e.currentTarget.style.color = 'white'
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'white'
+                            e.currentTarget.style.color = '#151e20'
+                          }}
+                        >
+                          {checkingCode ? 'Checking...' : 'Apply'}
+                        </button>
+                      </div>
+                      {codeError && (
+                        <p className="text-rose-500 text-sm mt-2">{codeError}</p>
+                      )}
+                      <p className="text-xs mt-2" style={{ color: '#78716c' }}>
+                        Have a partner code? Enter it here to support your favorite influencer.
+                      </p>
+                    </>
                   )}
                 </div>
 
@@ -753,9 +1041,9 @@ function Checkout() {
                     </span>
                   </div>
 
-                  {(promoDiscount > 0 || appliedCredit > 0) && (
+                  {promoDiscount > 0 && (
                     <p className="text-sm text-green-600 text-right font-medium">
-                      You're saving £{(discountAmount + appliedCredit).toFixed(2)}!
+                      You're saving £{discountAmount.toFixed(2)}!
                     </p>
                   )}
                 </div>
@@ -799,6 +1087,104 @@ function Checkout() {
                       <p className="text-red-800 text-sm">{error}</p>
                     </div>
                   )}
+
+                  {/* Card Details Form */}
+                  <div className="space-y-4 mb-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: '#151e20' }}>
+                        Cardholder Name
+                      </label>
+                      <input
+                        type="text"
+                        value={cardName}
+                        onChange={(e) => setCardName(e.target.value)}
+                        placeholder="John Smith"
+                        className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:outline-none"
+                        style={{
+                          backgroundColor: '#f5f5f4',
+                          borderWidth: '1px',
+                          borderColor: '#e7e5e4',
+                          color: '#151e20',
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: '#151e20' }}>
+                        Card Number
+                      </label>
+                      <input
+                        type="text"
+                        value={cardNumber}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\s/g, '')
+                          const formatted = value.match(/.{1,4}/g)?.join(' ') || value
+                          setCardNumber(formatted)
+                        }}
+                        placeholder="1234 5678 9012 3456"
+                        maxLength={19}
+                        className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:outline-none"
+                        style={{
+                          backgroundColor: '#f5f5f4',
+                          borderWidth: '1px',
+                          borderColor: '#e7e5e4',
+                          color: '#151e20',
+                        }}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: '#151e20' }}>
+                          Expiry Date
+                        </label>
+                        <input
+                          type="text"
+                          value={cardExpiry}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '')
+                            let formatted = value
+                            if (value.length >= 2) {
+                              formatted = value.slice(0, 2) + '/' + value.slice(2, 4)
+                            }
+                            setCardExpiry(formatted)
+                          }}
+                          placeholder="MM/YY"
+                          maxLength={5}
+                          className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:outline-none"
+                          style={{
+                            backgroundColor: '#f5f5f4',
+                            borderWidth: '1px',
+                            borderColor: '#e7e5e4',
+                            color: '#151e20',
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={{ color: '#151e20' }}>
+                          CVV
+                        </label>
+                        <input
+                          type="text"
+                          value={cardCVV}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '')
+                            setCardCVV(value)
+                          }}
+                          placeholder="123"
+                          maxLength={4}
+                          className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:outline-none"
+                          style={{
+                            backgroundColor: '#f5f5f4',
+                            borderWidth: '1px',
+                            borderColor: '#e7e5e4',
+                            color: '#151e20',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Entry Requirements */}
                   <div
@@ -899,13 +1285,13 @@ function Checkout() {
 
                   <button
                     onClick={handlePayment}
-                    disabled={loading || !sessionToken || !canProceed}
+                    disabled={loading || !canProceed}
                     className="w-full font-bold py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-white text-lg"
                     style={{
                       backgroundColor: '#496B71',
                     }}
                     onMouseEnter={(e) => {
-                      if (!loading && sessionToken) {
+                      if (!loading && canProceed) {
                         e.currentTarget.style.backgroundColor = '#3a565a'
                       }
                     }}
