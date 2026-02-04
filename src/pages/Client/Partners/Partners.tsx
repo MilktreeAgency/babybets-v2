@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Check, TrendingUp, Users, Gift, PoundSterling, Calculator, Target, Rocket, ShieldCheck, Ticket, Star } from 'lucide-react'
 import Header from '@/components/common/Header'
 import Footer from '@/components/common/Footer'
+import PartnerApplicationForm from '@/pages/Client/PartnerApplication/PartnerApplicationForm'
 
 export default function Partners() {
   const [salesVolume, setSalesVolume] = useState(2500)
@@ -389,30 +390,8 @@ export default function Partners() {
 
       <Footer />
 
-      {/* Simple Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6" onClick={() => setIsModalOpen(false)}>
-          <div
-            className="rounded-3xl p-8 max-w-md w-full shadow-2xl"
-            style={{ backgroundColor: 'white' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-2xl font-bold mb-4" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
-              Apply to Join
-            </h3>
-            <p className="mb-6" style={{ color: '#78716c' }}>
-              Please email us at <a href="mailto:hello@babybets.co.uk" className="font-bold underline" style={{ color: '#496B71' }}>hello@babybets.co.uk</a> with your social media links and a brief introduction.
-            </p>
-            <button
-              className="w-full py-3 font-bold rounded-xl cursor-pointer"
-              style={{ backgroundColor: '#496B71', color: 'white' }}
-              onClick={() => setIsModalOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Application Form Modal */}
+      <PartnerApplicationForm isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   )
 }
