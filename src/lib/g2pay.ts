@@ -15,6 +15,10 @@ interface PaymentRequest {
   orderRef: string // Your order reference
   customerEmail?: string
   customerName?: string
+  cardNumber: string
+  cardExpiryMonth: string
+  cardExpiryYear: string
+  cardCVV: string
 }
 
 // Payment response
@@ -104,9 +108,53 @@ export const processG2PayPayment = async (
   return data
 }
 
-// Backward compatibility - for older code that might still use this
-export const createG2PaySession = async (
-  _clientRequestId: string
-): Promise<{ sessionToken: string; sessionId: string }> => {
-  throw new Error('createG2PaySession is deprecated. Use processG2PayPayment instead.')
+// Helper function to validate card expiry format (MM/YY or MM/YYYY)
+export const parseCardExpiry = (expiry: string): { month: string; year: string } => {
+  const cleaned = expiry.replace(/\s/g, '')
+  const parts = cleaned.split('/')
+
+  if (parts.length !== 2) {
+    throw new Error('Invalid expiry format. Use MM/YY or MM/YYYY')
+  }
+
+  const month = parts[0].padStart(2, '0')
+  let year = parts[1]
+
+  // Convert YY to YYYY
+  if (year.length === 2) {
+    const currentYear = new Date().getFullYear()
+    const century = Math.floor(currentYear / 100) * 100
+    year = String(century + parseInt(year))
+  }
+
+  return { month, year }
+}
+
+// Validate card number (basic Luhn algorithm check)
+export const validateCardNumber = (cardNumber: string): boolean => {
+  const cleaned = cardNumber.replace(/\s/g, '')
+
+  if (!/^\d{13,19}$/.test(cleaned)) {
+    return false
+  }
+
+  // Luhn algorithm
+  let sum = 0
+  let isEven = false
+
+  for (let i = cleaned.length - 1; i >= 0; i--) {
+    let digit = parseInt(cleaned[i])
+
+    if (isEven) {
+      digit *= 2
+      if (digit > 9) {
+        digit -= 9
+      }
+    }
+
+    sum += digit
+    isEven = !isEven
+  }
+
+  return sum % 10 === 0
 }
