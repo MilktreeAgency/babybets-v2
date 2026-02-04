@@ -26,6 +26,13 @@ export function Sidebar() {
           badge: counts.withdrawals > 0 ? counts.withdrawals.toString() : undefined,
         }
       }
+      // Update Influencers badge
+      if (item.href === '/admin/dashboard/influencers') {
+        return {
+          ...item,
+          badge: counts.influencers > 0 ? counts.influencers.toString() : undefined,
+        }
+      }
       return item
     }),
   }))

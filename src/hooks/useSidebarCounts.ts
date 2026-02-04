@@ -4,12 +4,14 @@ import { supabase } from '@/lib/supabase'
 interface SidebarCounts {
   fulfillments: number
   withdrawals: number
+  influencers: number
 }
 
 export function useSidebarCounts() {
   const [counts, setCounts] = useState<SidebarCounts>({
     fulfillments: 0,
     withdrawals: 0,
+    influencers: 0,
   })
   const [loading, setLoading] = useState(true)
 
@@ -48,9 +50,26 @@ export function useSidebarCounts() {
       )
       .subscribe()
 
+    // Set up real-time subscription for influencer applications
+    const influencersChannel = supabase
+      .channel('influencers-count')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'influencers',
+        },
+        () => {
+          loadCounts()
+        }
+      )
+      .subscribe()
+
     return () => {
       fulfillmentsChannel.unsubscribe()
       withdrawalsChannel.unsubscribe()
+      influencersChannel.unsubscribe()
     }
   }, [])
 
@@ -72,9 +91,18 @@ export function useSidebarCounts() {
 
       if (withdrawalsError) throw withdrawalsError
 
+      // Get pending influencer applications count (is_active = false means pending)
+      const { count: influencersCount, error: influencersError } = await supabase
+        .from('influencers')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', false)
+
+      if (influencersError) throw influencersError
+
       setCounts({
         fulfillments: fulfillmentsCount || 0,
         withdrawals: withdrawalsCount || 0,
+        influencers: influencersCount || 0,
       })
     } catch (error) {
       console.error('Error loading sidebar counts:', error)

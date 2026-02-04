@@ -8,7 +8,10 @@ import {
   Award,
   DollarSign,
   BarChart3,
-  Package
+  Package,
+  UserCheck,
+  Activity,
+  Mail
 } from 'lucide-react'
 import { type ReactNode } from 'react'
 
@@ -64,6 +67,16 @@ export const sidebarConfig: NavGroup[] = [
         icon: <Users className="size-4" />,
       },
       {
+        label: 'Influencers',
+        href: '/admin/dashboard/influencers',
+        icon: <UserCheck className="size-4" />,
+      },
+      {
+        label: 'Influencer Sales',
+        href: '/admin/dashboard/influencer-sales',
+        icon: <DollarSign className="size-4" />,
+      },
+      {
         label: 'Promo Codes',
         href: '/admin/dashboard/promo-codes',
         icon: <Tag className="size-4" />,
@@ -77,6 +90,21 @@ export const sidebarConfig: NavGroup[] = [
         label: 'Withdrawals',
         href: '/admin/dashboard/withdrawals',
         icon: <DollarSign className="size-4" />,
+      },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      {
+        label: 'Activity',
+        href: '/admin/dashboard/activity',
+        icon: <Activity className="size-4" />,
+      },
+      {
+        label: 'Email Logs',
+        href: '/admin/dashboard/email-logs',
+        icon: <Mail className="size-4" />,
       },
     ],
   },

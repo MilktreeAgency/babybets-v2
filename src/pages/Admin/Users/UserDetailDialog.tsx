@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
-import { Mail, Phone, MapPin, Calendar, CreditCard, ShoppingBag, Gift, UserCheck } from 'lucide-react'
+import { Mail, Phone, MapPin, Calendar, CreditCard, ShoppingBag, UserCheck } from 'lucide-react'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type UserRole = Database['public']['Enums']['user_role']
@@ -332,22 +332,6 @@ export function UserDetailDialog({ user, open, onOpenChange, onUserUpdated }: Us
               </div>
             )}
           </div>
-
-          {/* Referral Info */}
-          {user.referral_code && (
-            <div>
-              <h4 className="font-semibold mb-3 flex items-center gap-2">
-                <Gift className="size-4" />
-                Referral Information
-              </h4>
-              <div className="p-3 bg-purple-50 rounded-lg">
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Referral Code: </span>
-                  <span className="font-mono font-medium">{user.referral_code}</span>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Account Info */}
           <div className="pt-4 border-t text-xs text-muted-foreground space-y-1">

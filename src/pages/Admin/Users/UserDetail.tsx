@@ -500,19 +500,6 @@ export default function UserDetail() {
                   </label>
                 </div>
               </div>
-
-              {/* Referral Info */}
-              {user.referral_code && (
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <Gift className="size-5" />
-                    Referral Code
-                  </h3>
-                  <div className="p-3 bg-purple-50 rounded-lg">
-                    <span className="font-mono font-medium text-lg">{user.referral_code}</span>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
