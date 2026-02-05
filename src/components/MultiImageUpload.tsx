@@ -1,15 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
-import { Upload, X, Loader2 } from 'lucide-react'
+import { Upload, X, Loader2, FolderOpen } from 'lucide-react'
 import { uploadImage } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
+import { ImageLibrary } from './ImageLibrary'
 
 interface MultiImageUploadProps {
   value: string[]
   onChange: (urls: string[]) => void
   maxImages?: number
   maxSizeMB?: number
-  bucket?: string
-  folder?: string
 }
 
 export function MultiImageUpload({
@@ -17,12 +16,12 @@ export function MultiImageUpload({
   onChange,
   maxImages = 5,
   maxSizeMB = 10,
-  bucket = 'competition-images',
-  folder = 'competitions',
 }: MultiImageUploadProps) {
+  const bucket = 'babybets-assets'
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
+  const [libraryOpen, setLibraryOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pasteAreaRef = useRef<HTMLDivElement>(null)
 
@@ -40,7 +39,7 @@ export function MultiImageUpload({
     try {
       // Generate unique filename
       const fileExt = file.name.split('.').pop() || 'png'
-      const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
 
       const { url, error: uploadError } = await uploadImage(bucket, fileName, file)
 
@@ -190,6 +189,12 @@ export function MultiImageUpload({
     setError(null)
   }
 
+  const handleLibrarySelect = (urls: string[]) => {
+    const remainingSlots = maxImages - value.length
+    const urlsToAdd = urls.slice(0, remainingSlots)
+    onChange([...value, ...urlsToAdd])
+  }
+
   return (
     <div ref={pasteAreaRef} className="space-y-3" tabIndex={0}>
       <div className="flex items-center gap-3">
@@ -226,6 +231,17 @@ export function MultiImageUpload({
             </span>
           </Button>
         </label>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setLibraryOpen(true)}
+          disabled={uploading || value.length >= maxImages}
+          className="cursor-pointer"
+        >
+          <FolderOpen className="size-4 mr-2" />
+          Select from Library
+        </Button>
       </div>
 
       {error && (
@@ -267,6 +283,14 @@ export function MultiImageUpload({
       <p className="text-xs text-muted-foreground">
         Maximum {maxImages} images, {maxSizeMB}MB each. PNG or JPG. You can also paste images (Ctrl+V / Cmd+V)
       </p>
+
+      <ImageLibrary
+        open={libraryOpen}
+        onOpenChange={setLibraryOpen}
+        onSelect={handleLibrarySelect}
+        multiSelect={true}
+        maxSelect={maxImages - value.length}
+      />
     </div>
   )
 }

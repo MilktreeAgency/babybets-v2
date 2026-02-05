@@ -1,23 +1,22 @@
 import { useState, useRef, useEffect } from 'react'
-import { Upload, X, Loader2 } from 'lucide-react'
+import { Upload, X, Loader2, FolderOpen } from 'lucide-react'
 import { uploadImage } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
+import { ImageLibrary } from './ImageLibrary'
 
 interface ImageUploadProps {
   value: string | null
   onChange: (url: string | null) => void
-  bucket?: string
-  folder?: string
 }
 
 export function ImageUpload({
   value,
   onChange,
-  bucket = 'prize-images',
-  folder = 'prizes',
 }: ImageUploadProps) {
+  const bucket = 'babybets-assets'
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [libraryOpen, setLibraryOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pasteAreaRef = useRef<HTMLDivElement>(null)
 
@@ -40,7 +39,7 @@ export function ImageUpload({
     try {
       // Generate unique filename
       const fileExt = file.name.split('.').pop() || 'png'
-      const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
 
       const { url, error: uploadError } = await uploadImage(bucket, fileName, file)
 
@@ -115,6 +114,12 @@ export function ImageUpload({
     setError(null)
   }
 
+  const handleLibrarySelect = (urls: string[]) => {
+    if (urls.length > 0) {
+      onChange(urls[0])
+    }
+  }
+
   return (
     <div ref={pasteAreaRef} className="space-y-3" tabIndex={0}>
       <div className="flex items-center gap-3">
@@ -151,6 +156,17 @@ export function ImageUpload({
           </Button>
         </label>
 
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setLibraryOpen(true)}
+          disabled={uploading}
+          className="cursor-pointer"
+        >
+          <FolderOpen className="size-4 mr-2" />
+          Select from Library
+        </Button>
+
         {value && (
           <Button
             type="button"
@@ -158,7 +174,7 @@ export function ImageUpload({
             size="sm"
             onClick={handleRemove}
             disabled={uploading}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
           >
             <X className="size-4 mr-1" />
             Remove
@@ -188,6 +204,14 @@ export function ImageUpload({
       <p className="text-xs text-muted-foreground">
         Recommended: PNG or JPG, max 5MB. You can also paste images (Ctrl+V / Cmd+V)
       </p>
+
+      <ImageLibrary
+        open={libraryOpen}
+        onOpenChange={setLibraryOpen}
+        onSelect={handleLibrarySelect}
+        multiSelect={false}
+        maxSelect={1}
+      />
     </div>
   )
 }
