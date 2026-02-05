@@ -43,7 +43,6 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
   const loadStats = async () => {
     try {
       setIsLoading(true)
-      // @ts-expect-error - Custom RPC function not in generated types
       const { data, error } = await supabase.rpc('get_ticket_pool_stats', {
         p_competition_id: competition.id,
       })
@@ -77,7 +76,6 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
         })
       }, 200)
 
-      // @ts-expect-error - Custom RPC function not in generated types
       const { data, error } = await supabase.rpc('generate_ticket_pool', {
         p_competition_id: competition.id,
       })

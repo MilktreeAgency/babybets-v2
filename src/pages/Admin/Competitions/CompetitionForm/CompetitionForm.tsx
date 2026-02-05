@@ -529,8 +529,6 @@ export default function CompetitionForm() {
                     onChange={(urls) => setFormData((prev) => ({ ...prev, images: urls }))}
                     maxImages={5}
                     maxSizeMB={10}
-                    bucket="competition-images"
-                    folder="competitions"
                   />
                 </div>
 
