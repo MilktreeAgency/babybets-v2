@@ -73,32 +73,21 @@ export const processG2PayPayment = async (
   }
 
   console.log('[G2Pay] Making payment request:', {
-    url: `${G2PAY_CONFIG.edgeFunctionUrl}/create-g2pay-session`,
     amount: paymentRequest.amount,
     currencyCode: paymentRequest.currencyCode,
     orderRef: paymentRequest.orderRef,
   })
 
-  // TEMPORARY: Use anon key instead of user JWT for debugging
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-  const response = await fetch(`${G2PAY_CONFIG.edgeFunctionUrl}/create-g2pay-session`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${anonKey}`,
-    },
-    body: JSON.stringify(paymentRequest),
+  // Use Supabase client's invoke method which handles JWT authentication automatically
+  const { data, error } = await supabase.functions.invoke('create-g2pay-session', {
+    body: paymentRequest,
   })
 
-  console.log('[G2Pay] Response status:', response.status)
-
-  if (!response.ok) {
-    const error = await response.json()
+  if (error) {
     console.error('[G2Pay] Edge function error:', error)
-    throw new Error(error.error || error.message || 'Failed to process payment')
+    throw new Error(error.message || 'Failed to process payment')
   }
 
-  const data = await response.json()
   console.log('[G2Pay] Payment response:', {
     success: data.success,
     transactionID: data.transactionID,
