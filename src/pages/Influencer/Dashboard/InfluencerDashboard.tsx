@@ -97,10 +97,6 @@ export default function InfluencerDashboard() {
     .filter(s => s.status === 'pending' || s.status === 'approved')
     .reduce((sum, s) => sum + (s.commission_pence || 0), 0)
 
-  const paidCommission = sales
-    .filter(s => s.status === 'paid')
-    .reduce((sum, s) => sum + (s.commission_pence || 0), 0)
-
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -281,7 +277,7 @@ export default function InfluencerDashboard() {
                     {sales.map((sale) => (
                       <tr key={sale.id} style={{ borderBottom: '1px solid #f5f5f4' }}>
                         <td className="py-3 px-3 text-xs" style={{ color: '#151e20' }}>
-                          {new Date(sale.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                          {sale.created_at ? new Date(sale.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'N/A'}
                         </td>
                         <td className="py-3 px-3 font-bold text-sm" style={{ color: '#151e20' }}>
                           £{((sale.order_value_pence || 0) / 100).toFixed(2)}

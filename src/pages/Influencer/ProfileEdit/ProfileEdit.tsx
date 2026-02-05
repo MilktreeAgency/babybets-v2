@@ -77,17 +77,16 @@ export default function ProfileEdit() {
 
       const fileExt = file.name.split('.').pop()
       const fileName = `${influencer?.id}-profile-${Date.now()}.${fileExt}`
-      const filePath = `influencer-images/${fileName}`
 
       const { error: uploadError } = await supabase.storage
-        .from('public-assets')
-        .upload(filePath, file)
+        .from('babybets-assets')
+        .upload(fileName, file)
 
       if (uploadError) throw uploadError
 
       const { data: { publicUrl } } = supabase.storage
-        .from('public-assets')
-        .getPublicUrl(filePath)
+        .from('babybets-assets')
+        .getPublicUrl(fileName)
 
       setFormData(prev => ({ ...prev, profile_image_url: publicUrl }))
     } catch (error) {
