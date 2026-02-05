@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       competition_instant_win_prizes: {
@@ -101,6 +76,7 @@ export type Database = {
         Row: {
           base_ticket_price_pence: number
           bundles: Json | null
+          cash_alternative_gbp: number | null
           category: Database["public"]["Enums"]["competition_category"]
           competition_type: Database["public"]["Enums"]["competition_type"]
           created_at: string | null
@@ -130,6 +106,7 @@ export type Database = {
         Insert: {
           base_ticket_price_pence: number
           bundles?: Json | null
+          cash_alternative_gbp?: number | null
           category: Database["public"]["Enums"]["competition_category"]
           competition_type: Database["public"]["Enums"]["competition_type"]
           created_at?: string | null
@@ -159,6 +136,7 @@ export type Database = {
         Update: {
           base_ticket_price_pence?: number
           bundles?: Json | null
+          cash_alternative_gbp?: number | null
           category?: Database["public"]["Enums"]["competition_category"]
           competition_type?: Database["public"]["Enums"]["competition_type"]
           created_at?: string | null
@@ -186,6 +164,213 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      draw_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          competition_id: string | null
+          created_at: string | null
+          details: Json | null
+          draw_id: string | null
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          competition_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          draw_id?: string | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          competition_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          draw_id?: string | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draw_audit_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draw_audit_log_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "active_competitions_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draw_audit_log_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draw_audit_log_draw_id_fkey"
+            columns: ["draw_id"]
+            isOneToOne: false
+            referencedRelation: "draws"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      draw_snapshots: {
+        Row: {
+          competition_id: string
+          created_at: string | null
+          id: string
+          paid_entries: number
+          postal_entries: number | null
+          promotional_entries: number | null
+          snapshot_hash: string
+          ticket_ids_json: Json
+          total_entries: number
+        }
+        Insert: {
+          competition_id: string
+          created_at?: string | null
+          id?: string
+          paid_entries: number
+          postal_entries?: number | null
+          promotional_entries?: number | null
+          snapshot_hash: string
+          ticket_ids_json: Json
+          total_entries: number
+        }
+        Update: {
+          competition_id?: string
+          created_at?: string | null
+          id?: string
+          paid_entries?: number
+          postal_entries?: number | null
+          promotional_entries?: number | null
+          snapshot_hash?: string
+          ticket_ids_json?: Json
+          total_entries?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draw_snapshots_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "active_competitions_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draw_snapshots_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      draws: {
+        Row: {
+          competition_id: string
+          created_at: string | null
+          executed_at: string | null
+          executed_by: string | null
+          id: string
+          random_seed: string
+          random_source: string | null
+          snapshot_id: string
+          verification_hash: string
+          winner_index: number
+          winner_notified_at: string | null
+          winning_ticket_id: string | null
+          winning_user_id: string | null
+        }
+        Insert: {
+          competition_id: string
+          created_at?: string | null
+          executed_at?: string | null
+          executed_by?: string | null
+          id?: string
+          random_seed: string
+          random_source?: string | null
+          snapshot_id: string
+          verification_hash: string
+          winner_index: number
+          winner_notified_at?: string | null
+          winning_ticket_id?: string | null
+          winning_user_id?: string | null
+        }
+        Update: {
+          competition_id?: string
+          created_at?: string | null
+          executed_at?: string | null
+          executed_by?: string | null
+          id?: string
+          random_seed?: string
+          random_source?: string | null
+          snapshot_id?: string
+          verification_hash?: string
+          winner_index?: number
+          winner_notified_at?: string | null
+          winning_ticket_id?: string | null
+          winning_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draws_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "active_competitions_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draws_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draws_executed_by_fkey"
+            columns: ["executed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draws_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "draw_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draws_winning_ticket_id_fkey"
+            columns: ["winning_ticket_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_allocations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draws_winning_user_id_fkey"
+            columns: ["winning_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_notifications: {
         Row: {
@@ -280,7 +465,6 @@ export type Database = {
           commission_tier: number | null
           created_at: string | null
           display_name: string
-          featured_competition_id: string | null
           id: string
           is_active: boolean | null
           is_ambassador: boolean | null
@@ -290,7 +474,7 @@ export type Database = {
           primary_platform: string | null
           profile_image_url: string | null
           slug: string
-          social_links: Json | null
+          social_profile_url: string | null
           total_commission_pence: number | null
           total_followers: string | null
           total_sales_pence: number | null
@@ -302,7 +486,6 @@ export type Database = {
           commission_tier?: number | null
           created_at?: string | null
           display_name: string
-          featured_competition_id?: string | null
           id?: string
           is_active?: boolean | null
           is_ambassador?: boolean | null
@@ -312,7 +495,7 @@ export type Database = {
           primary_platform?: string | null
           profile_image_url?: string | null
           slug: string
-          social_links?: Json | null
+          social_profile_url?: string | null
           total_commission_pence?: number | null
           total_followers?: string | null
           total_sales_pence?: number | null
@@ -324,7 +507,6 @@ export type Database = {
           commission_tier?: number | null
           created_at?: string | null
           display_name?: string
-          featured_competition_id?: string | null
           id?: string
           is_active?: boolean | null
           is_ambassador?: boolean | null
@@ -334,7 +516,7 @@ export type Database = {
           primary_platform?: string | null
           profile_image_url?: string | null
           slug?: string
-          social_links?: Json | null
+          social_profile_url?: string | null
           total_commission_pence?: number | null
           total_followers?: string | null
           total_sales_pence?: number | null
@@ -342,20 +524,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "influencers_featured_competition_id_fkey"
-            columns: ["featured_competition_id"]
-            isOneToOne: false
-            referencedRelation: "active_competitions_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "influencers_featured_competition_id_fkey"
-            columns: ["featured_competition_id"]
-            isOneToOne: false
-            referencedRelation: "competitions"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "influencers_user_id_fkey"
             columns: ["user_id"]
@@ -429,8 +597,6 @@ export type Database = {
           promo_code_id: string | null
           promo_code_value: string | null
           status: Database["public"]["Enums"]["order_status"] | null
-          stripe_checkout_session_id: string | null
-          stripe_payment_intent_id: string | null
           subtotal_pence: number
           total_pence: number
           updated_at: string | null
@@ -447,8 +613,6 @@ export type Database = {
           promo_code_id?: string | null
           promo_code_value?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
-          stripe_checkout_session_id?: string | null
-          stripe_payment_intent_id?: string | null
           subtotal_pence: number
           total_pence: number
           updated_at?: string | null
@@ -465,21 +629,12 @@ export type Database = {
           promo_code_id?: string | null
           promo_code_value?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
-          stripe_checkout_session_id?: string | null
-          stripe_payment_intent_id?: string | null
           subtotal_pence?: number
           total_pence?: number
           updated_at?: string | null
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "fk_orders_promo_code"
-            columns: ["promo_code_id"]
-            isOneToOne: false
-            referencedRelation: "promo_codes"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "orders_influencer_id_fkey"
             columns: ["influencer_id"]
@@ -488,7 +643,89 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "orders_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_transactions: {
+        Row: {
+          amount_pence: number
+          created_at: string
+          currency_code: number
+          error_message: string | null
+          gateway_url: string | null
+          id: string
+          order_id: string
+          request_data: Json | null
+          response_code: string | null
+          response_data: Json | null
+          response_message: string | null
+          signature_mismatch_reason: string | null
+          signature_verified: boolean | null
+          status: string
+          transaction_id: string | null
+          transaction_unique: string
+          user_id: string
+        }
+        Insert: {
+          amount_pence: number
+          created_at?: string
+          currency_code?: number
+          error_message?: string | null
+          gateway_url?: string | null
+          id?: string
+          order_id: string
+          request_data?: Json | null
+          response_code?: string | null
+          response_data?: Json | null
+          response_message?: string | null
+          signature_mismatch_reason?: string | null
+          signature_verified?: boolean | null
+          status: string
+          transaction_id?: string | null
+          transaction_unique: string
+          user_id: string
+        }
+        Update: {
+          amount_pence?: number
+          created_at?: string
+          currency_code?: number
+          error_message?: string | null
+          gateway_url?: string | null
+          id?: string
+          order_id?: string
+          request_data?: Json | null
+          response_code?: string | null
+          response_data?: Json | null
+          response_message?: string | null
+          signature_mismatch_reason?: string | null
+          signature_verified?: boolean | null
+          status?: string
+          transaction_id?: string | null
+          transaction_unique?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -508,7 +745,10 @@ export type Database = {
           id: string
           notes: string | null
           notified_at: string | null
-          prize_id: string
+          payment_date: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          prize_id: string | null
           responded_at: string | null
           status: Database["public"]["Enums"]["fulfillment_status"] | null
           ticket_id: string
@@ -528,7 +768,10 @@ export type Database = {
           id?: string
           notes?: string | null
           notified_at?: string | null
-          prize_id: string
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          prize_id?: string | null
           responded_at?: string | null
           status?: Database["public"]["Enums"]["fulfillment_status"] | null
           ticket_id: string
@@ -548,7 +791,10 @@ export type Database = {
           id?: string
           notes?: string | null
           notified_at?: string | null
-          prize_id?: string
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          prize_id?: string | null
           responded_at?: string | null
           status?: Database["public"]["Enums"]["fulfillment_status"] | null
           ticket_id?: string
@@ -655,8 +901,6 @@ export type Database = {
           marketing_sms: boolean | null
           phone: string | null
           postcode: string | null
-          referral_code: string | null
-          referred_by: string | null
           role: Database["public"]["Enums"]["user_role"] | null
           updated_at: string | null
         }
@@ -677,8 +921,6 @@ export type Database = {
           marketing_sms?: boolean | null
           phone?: string | null
           postcode?: string | null
-          referral_code?: string | null
-          referred_by?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string | null
         }
@@ -699,20 +941,10 @@ export type Database = {
           marketing_sms?: boolean | null
           phone?: string | null
           postcode?: string | null
-          referral_code?: string | null
-          referred_by?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_referred_by_fkey"
-            columns: ["referred_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       promo_codes: {
         Row: {
@@ -768,11 +1000,50 @@ export type Database = {
         }
         Relationships: []
       }
+      system_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value: Json
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_allocations: {
         Row: {
           competition_id: string
           created_at: string | null
           id: string
+          is_main_winner: boolean | null
           is_revealed: boolean | null
           is_sold: boolean | null
           order_id: string | null
@@ -786,6 +1057,7 @@ export type Database = {
           competition_id: string
           created_at?: string | null
           id?: string
+          is_main_winner?: boolean | null
           is_revealed?: boolean | null
           is_sold?: boolean | null
           order_id?: string | null
@@ -799,6 +1071,7 @@ export type Database = {
           competition_id?: string
           created_at?: string | null
           id?: string
+          is_main_winner?: boolean | null
           is_revealed?: boolean | null
           is_sold?: boolean | null
           order_id?: string | null
@@ -1155,6 +1428,7 @@ export type Database = {
         Row: {
           base_ticket_price_pence: number | null
           bundles: Json | null
+          cash_alternative_gbp: number | null
           category: Database["public"]["Enums"]["competition_category"] | null
           competition_type:
             | Database["public"]["Enums"]["competition_type"]
@@ -1166,6 +1440,7 @@ export type Database = {
           end_prize: Json | null
           id: string | null
           image_url: string | null
+          images: Json | null
           is_featured: boolean | null
           max_tickets: number | null
           max_tickets_per_user: number | null
@@ -1217,6 +1492,40 @@ export type Database = {
       }
     }
     Functions: {
+      allocate_instant_win_prize: {
+        Args: { p_ticket_id: string; p_user_id: string }
+        Returns: Json
+      }
+      approve_cash_alternative: {
+        Args: { p_admin_id: string; p_fulfillment_id: string }
+        Returns: Json
+      }
+      calculate_commission_tier: {
+        Args: { p_monthly_sales_pence: number }
+        Returns: number
+      }
+      check_file_usage: {
+        Args: { file_url: string }
+        Returns: {
+          count: number
+          table_name: string
+        }[]
+      }
+      claim_cash_alternative: {
+        Args: { p_fulfillment_id: string; p_user_id: string }
+        Returns: Json
+      }
+      claim_tickets_atomic: {
+        Args: {
+          p_competition_id: string
+          p_order_id: string
+          p_ticket_count: number
+          p_user_id: string
+        }
+        Returns: {
+          id: string
+        }[]
+      }
       complete_order_with_wallet: {
         Args: { p_order_id: string; p_user_id: string }
         Returns: undefined
@@ -1229,13 +1538,45 @@ export type Database = {
         }
         Returns: undefined
       }
-      delete_user: { Args: { user_id_to_delete: string }; Returns: undefined }
+      delete_user: { Args: { user_id: string }; Returns: undefined }
+      execute_competition_draw: {
+        Args: { p_admin_id: string; p_competition_id: string }
+        Returns: Json
+      }
+      generate_alphanumeric_code: {
+        Args: { code_length?: number }
+        Returns: string
+      }
+      generate_random_ticket_numbers: {
+        Args: { p_competition_id: string; p_count: number }
+        Returns: string[]
+      }
+      generate_ticket_pool: {
+        Args: { p_competition_id: string }
+        Returns: Json
+      }
+      get_commission_rate: { Args: { p_tier: number }; Returns: number }
       get_competition_stats: { Args: { competition_id: string }; Returns: Json }
       get_dashboard_stats: { Args: never; Returns: Json }
       get_pending_tasks: { Args: never; Returns: Json }
       get_recent_activities: { Args: { limit_count?: number }; Returns: Json }
+      get_system_setting: { Args: { key: string }; Returns: Json }
+      get_ticket_pool_stats: {
+        Args: { p_competition_id: string }
+        Returns: Json
+      }
       is_admin: { Args: never; Returns: boolean }
       is_influencer: { Args: never; Returns: boolean }
+      recalculate_monthly_commissions: {
+        Args: { p_influencer_id: string }
+        Returns: undefined
+      }
+      reset_monthly_influencer_sales: { Args: never; Returns: undefined }
+      update_system_setting: {
+        Args: { key: string; value: Json }
+        Returns: undefined
+      }
+      verify_draw_integrity: { Args: { p_draw_id: string }; Returns: Json }
     }
     Enums: {
       competition_category:
@@ -1404,9 +1745,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       competition_category: [
