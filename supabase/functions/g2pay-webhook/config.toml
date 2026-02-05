@@ -1,0 +1,6 @@
+# G2Pay Webhook Configuration
+# This endpoint receives payment confirmations from G2Pay's backend servers
+# No JWT required as requests come from G2Pay, not users
+
+[function.g2pay-webhook]
+verify_jwt = false

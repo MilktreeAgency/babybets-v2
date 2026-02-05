@@ -1,9 +1,64 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Webhook endpoint - receives payment confirmations from G2Pay backend
+// This provides reliability even if user closes browser after payment
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+// Verify G2Pay response signature using raw response body
+// G2Pay builds signatures from exact raw encoded string in order received
+async function verifyG2PaySignature(
+  rawBody: string,
+  signatureKey: string
+): Promise<boolean> {
+  console.log('[Webhook Signature Debug] ===== START SIGNATURE VERIFICATION =====')
+  console.log('[Webhook Signature Debug] Signature key length:', signatureKey.length)
+  console.log('[Webhook Signature Debug] Signature key:', signatureKey)
+  console.log('[Webhook Signature Debug] Raw body length:', rawBody.length)
+  console.log('[Webhook Signature Debug] FULL RAW BODY:')
+  console.log(rawBody)
+
+  // Extract signature first
+  const signatureMatch = rawBody.match(/(?:^|&)signature=([^&]+)/)
+  if (!signatureMatch) {
+    console.error('[Webhook Signature Debug] No signature found in request')
+    return false
+  }
+
+  // DO NOT decode - compare raw
+  const receivedSignature = signatureMatch[1]
+  console.log('[Webhook Signature Debug] Received signature (raw):', receivedSignature)
+
+  // Remove signature and __ fields WITHOUT altering order or encoding
+  const canonicalString = rawBody
+    .split('&')
+    .filter(pair => !pair.startsWith('signature=') && !pair.startsWith('__'))
+    .join('&')
+
+  console.log('[Webhook Signature Debug] Canonical string length:', canonicalString.length)
+  console.log('[Webhook Signature Debug] CANONICAL STRING:')
+  console.log(canonicalString)
+
+  const messageToHash = canonicalString + signatureKey
+  console.log('[Webhook Signature Debug] Message to hash length:', messageToHash.length)
+  console.log('[Webhook Signature Debug] MESSAGE TO HASH:')
+  console.log(messageToHash)
+
+  const buffer = new TextEncoder().encode(messageToHash)
+  const digest = await crypto.subtle.digest('SHA-512', buffer)
+  const expectedSignature = Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+
+  console.log('[Webhook Signature Debug] Expected signature:', expectedSignature)
+  console.log('[Webhook Signature Debug] Signatures match:', expectedSignature === receivedSignature)
+  console.log('[Webhook Signature Debug] ===== END SIGNATURE VERIFICATION =====')
+
+  return expectedSignature === receivedSignature
 }
 
 serve(async (req) => {
@@ -12,118 +67,343 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  // Only accept POST requests
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
   try {
-    // Create Supabase client with service role key for admin access
-    const supabaseClient = createClient(
+    console.log('[Webhook] Payment confirmation received from G2Pay')
+
+    // Get environment variables
+    const G2PAY_SIGNATURE_KEY = Deno.env.get('G2PAY_SIGNATURE_KEY')
+    if (!G2PAY_SIGNATURE_KEY) {
+      throw new Error('G2Pay signature key not configured')
+    }
+
+    // Create service role client for database operations
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
     )
 
-    // Get webhook payload
-    const payload = await req.json()
-    console.log('G2Pay webhook received:', payload)
+    // Parse the form-encoded webhook payload
+    const contentType = req.headers.get('content-type') || ''
+    if (!contentType.includes('application/x-www-form-urlencoded')) {
+      console.error('[Webhook] Invalid content type:', contentType)
+      return new Response(JSON.stringify({ error: 'Invalid content type' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
-    const {
-      transactionStatus,
-      transactionId,
-      clientUniqueId, // This will be our order ID
-      totalAmount,
-      currency,
-      userTokenId, // User ID
-    } = payload
+    const requestText = await req.text()
+    console.log('[Webhook] Raw payload (first 500 chars):', requestText.substring(0, 500))
 
-    // Verify required fields
-    if (!clientUniqueId || !transactionStatus) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+    // CRITICAL: Verify signature using raw body
+    const signatureVerified = await verifyG2PaySignature(requestText, G2PAY_SIGNATURE_KEY)
+
+    if (!signatureVerified) {
+      console.error('[Webhook] Signature verification failed - rejecting webhook')
+
+      // Parse data for logging only
+      const webhookData: Record<string, string> = {}
+      const pairs = requestText.split('&')
+      for (const pair of pairs) {
+        const eqIndex = pair.indexOf('=')
+        if (eqIndex > 0) {
+          const key = decodeURIComponent(pair.substring(0, eqIndex))
+          const value = decodeURIComponent(pair.substring(eqIndex + 1).replace(/\+/g, ' '))
+          webhookData[key] = value
+        }
+      }
+
+      // Log failed webhook attempt to database
+      await supabaseAdmin
+        .from('payment_transactions')
+        .insert({
+          transaction_unique: webhookData.transactionUnique,
+          status: 'webhook_signature_failed',
+          response_code: webhookData.responseCode,
+          response_message: webhookData.responseMessage,
+          signature_verified: false,
+          signature_mismatch_reason: 'Webhook signature verification failed',
+          response_data: webhookData,
+        })
+
+      // SECURITY: Reject webhook with invalid signature
+      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    console.log('[Webhook] ✅ Signature verified successfully')
+
+    // Parse webhook data for processing
+    const webhookData: Record<string, string> = {}
+    const pairs = requestText.split('&')
+    for (const pair of pairs) {
+      const eqIndex = pair.indexOf('=')
+      if (eqIndex > 0) {
+        const key = decodeURIComponent(pair.substring(0, eqIndex))
+        const value = decodeURIComponent(pair.substring(eqIndex + 1).replace(/\+/g, ' '))
+        webhookData[key] = value
+      }
+    }
+
+    console.log('[Webhook] Parsed webhook data:', {
+      responseCode: webhookData.responseCode,
+      responseMessage: webhookData.responseMessage,
+      orderRef: webhookData.orderRef,
+      transactionID: webhookData.transactionID,
+      transactionUnique: webhookData.transactionUnique,
+    })
+
+    // Extract order details
+    const orderId = webhookData.orderRef
+    const responseCode = webhookData.responseCode
+    const transactionID = webhookData.transactionID
+    const transactionUnique = webhookData.transactionUnique
+
+    if (!orderId) {
+      console.error('[Webhook] Missing orderRef in webhook data')
+      return new Response(JSON.stringify({ error: 'Missing orderRef' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Check payment status (responseCode 0 = success)
+    if (responseCode !== '0') {
+      console.log('[Webhook] Payment failed - responseCode:', responseCode)
+
+      // Log failed payment webhook
+      await supabaseAdmin
+        .from('payment_transactions')
+        .insert({
+          order_id: orderId,
+          transaction_unique: transactionUnique,
+          transaction_id: transactionID,
+          status: 'webhook_payment_failed',
+          response_code: responseCode,
+          response_message: webhookData.responseMessage,
+          signature_verified: true,
+          response_data: webhookData,
+        })
+
+      return new Response(JSON.stringify({
+        success: false,
+        message: 'Payment failed',
+        responseCode,
+      }), {
+        status: 200, // Return 200 to acknowledge webhook receipt
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    console.log('[Webhook] Payment successful - processing order:', orderId)
+
+    // Get order details
+    const { data: order, error: orderError } = await supabaseAdmin
+      .from('orders')
+      .select('id, user_id, status, total_pence')
+      .eq('id', orderId)
+      .single()
+
+    if (orderError || !order) {
+      console.error('[Webhook] Order not found:', orderId)
+
+      // Log webhook for unknown order
+      await supabaseAdmin
+        .from('payment_transactions')
+        .insert({
+          transaction_unique: transactionUnique,
+          transaction_id: transactionID,
+          status: 'webhook_order_not_found',
+          response_code: responseCode,
+          response_message: webhookData.responseMessage,
+          signature_verified: true,
+          response_data: webhookData,
+          error_message: `Order ${orderId} not found`,
+        })
+
+      return new Response(JSON.stringify({
+        success: false,
+        message: 'Order not found'
+      }), {
+        status: 200, // Return 200 to acknowledge webhook receipt
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Idempotency check: If order already paid, acknowledge but don't process again
+    if (order.status === 'paid') {
+      console.log('[Webhook] Order already completed - idempotency check passed')
+
+      // Log duplicate webhook
+      await supabaseAdmin
+        .from('payment_transactions')
+        .insert({
+          order_id: orderId,
+          user_id: order.user_id,
+          transaction_unique: transactionUnique,
+          transaction_id: transactionID,
+          amount_pence: order.total_pence,
+          status: 'webhook_duplicate',
+          response_code: responseCode,
+          response_message: 'Order already completed',
+          signature_verified: true,
+          response_data: webhookData,
+        })
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Order already completed',
+        alreadyProcessed: true,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Update order status to paid
+    console.log('[Webhook] Updating order status to paid...')
+    const { error: updateError } = await supabaseAdmin
+      .from('orders')
+      .update({
+        status: 'paid',
+        paid_at: new Date().toISOString(),
+      })
+      .eq('id', orderId)
+
+    if (updateError) {
+      console.error('[Webhook] Failed to update order status:', updateError)
+      throw new Error(`Failed to update order: ${updateError.message}`)
+    }
+
+    console.log('[Webhook] Order status updated to paid')
+
+    // Get order items to allocate tickets
+    const { data: orderItems, error: itemsError } = await supabaseAdmin
+      .from('order_items')
+      .select('*')
+      .eq('order_id', orderId)
+
+    if (itemsError) {
+      console.error('[Webhook] Failed to fetch order items:', itemsError)
+      throw new Error('Failed to fetch order items')
+    }
+
+    console.log(`[Webhook] Processing ${orderItems?.length || 0} order items`)
+
+    // Allocate tickets for each item using atomic function
+    for (const item of orderItems || []) {
+      const ticketCount = item.ticket_count
+
+      console.log(`[Webhook] Claiming ${ticketCount} tickets for competition ${item.competition_id}`)
+
+      // Get competition details
+      const { data: competition, error: compError } = await supabaseAdmin
+        .from('competitions')
+        .select('id, title, ticket_pool_locked, tickets_sold, max_tickets')
+        .eq('id', item.competition_id)
+        .single()
+
+      if (compError || !competition) {
+        console.error('[Webhook] Competition not found:', compError)
+        throw new Error('Failed to fetch competition')
+      }
+
+      if (!competition.ticket_pool_locked) {
+        throw new Error(`Ticket pool not generated for competition: ${competition.title}`)
+      }
+
+      // Atomically claim tickets using database function with row-level locking
+      console.log(`[Webhook] Claiming ${ticketCount} tickets atomically...`)
+
+      const { data: claimedTickets, error: claimError } = await supabaseAdmin.rpc(
+        'claim_tickets_atomic',
         {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          p_competition_id: item.competition_id,
+          p_user_id: order.user_id,
+          p_order_id: orderId,
+          p_ticket_count: ticketCount,
         }
       )
+
+      if (claimError) {
+        console.error('[Webhook] Failed to claim tickets:', claimError)
+        throw new Error(`Failed to claim tickets: ${claimError.message}`)
+      }
+
+      if (!claimedTickets || claimedTickets.length !== ticketCount) {
+        throw new Error(
+          `Failed to claim all tickets. Expected: ${ticketCount}, Got: ${claimedTickets?.length || 0}`
+        )
+      }
+
+      console.log(`[Webhook] Successfully claimed ${claimedTickets.length} tickets`)
+
+      // Update competition tickets_sold count
+      const { error: updateCompError } = await supabaseAdmin
+        .from('competitions')
+        .update({
+          tickets_sold: (competition.tickets_sold || 0) + ticketCount,
+        })
+        .eq('id', item.competition_id)
+
+      if (updateCompError) {
+        console.error('[Webhook] Failed to update competition:', updateCompError)
+        throw new Error('Failed to update competition tickets')
+      }
+
+      console.log(`[Webhook] Competition tickets_sold updated`)
     }
 
-    // Update order based on transaction status
-    if (transactionStatus === 'APPROVED') {
-      // Update order to paid
-      const { error: orderError } = await supabaseClient
-        .from('orders')
-        .update({
-          status: 'paid',
-          paid_at: new Date().toISOString(),
-          stripe_payment_intent_id: transactionId,
-        })
-        .eq('id', clientUniqueId)
+    // Log successful webhook processing
+    await supabaseAdmin
+      .from('payment_transactions')
+      .insert({
+        order_id: orderId,
+        user_id: order.user_id,
+        transaction_unique: transactionUnique,
+        transaction_id: transactionID,
+        amount_pence: order.total_pence,
+        status: 'webhook_success',
+        response_code: responseCode,
+        response_message: webhookData.responseMessage,
+        signature_verified: true,
+        response_data: webhookData,
+      })
 
-      if (orderError) {
-        console.error('Error updating order:', orderError)
-        throw orderError
-      }
+    console.log(`[Webhook] ✅ Order ${orderId} completed successfully via webhook`)
 
-      // Get order items to allocate tickets
-      const { data: orderItems, error: itemsError } = await supabaseClient
-        .from('order_items')
-        .select('*, orders!inner(user_id)')
-        .eq('order_id', clientUniqueId)
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Order completed and tickets allocated',
+      orderId,
+      transactionID,
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
 
-      if (itemsError) throw itemsError
-
-      // Process each item
-      for (const item of orderItems || []) {
-        const userId = item.orders.user_id
-
-        // Update competition tickets_sold count
-        const { data: competition } = await supabaseClient
-          .from('competitions')
-          .select('tickets_sold')
-          .eq('id', item.competition_id)
-          .single()
-
-        if (competition) {
-          await supabaseClient
-            .from('competitions')
-            .update({
-              tickets_sold: (competition.tickets_sold || 0) + item.ticket_count,
-            })
-            .eq('id', item.competition_id)
-        }
-
-        // Create ticket allocations
-        const ticketAllocations = Array.from({ length: item.ticket_count }, (_, i) => ({
-          competition_id: item.competition_id,
-          order_id: clientUniqueId,
-          sold_to_user_id: userId,
-          ticket_number: `${Date.now()}-${i + 1}`,
-          is_sold: true,
-          sold_at: new Date().toISOString(),
-        }))
-
-        await supabaseClient.from('ticket_allocations').insert(ticketAllocations)
-      }
-
-      console.log(`Order ${clientUniqueId} marked as paid and tickets allocated`)
-    } else if (transactionStatus === 'DECLINED' || transactionStatus === 'ERROR') {
-      // Update order to failed
-      await supabaseClient
-        .from('orders')
-        .update({
-          status: 'failed',
-        })
-        .eq('id', clientUniqueId)
-
-      console.log(`Order ${clientUniqueId} marked as failed`)
-    }
-
-    return new Response(
-      JSON.stringify({ success: true }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    )
   } catch (error) {
-    console.error('Error processing webhook:', error)
+    console.error('[Webhook] Error processing webhook:', error)
+
     return new Response(
       JSON.stringify({
+        success: false,
         error: error.message || 'Failed to process webhook',
       }),
       {
