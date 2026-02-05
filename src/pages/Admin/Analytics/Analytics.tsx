@@ -100,6 +100,7 @@ export default function Analytics() {
       const { count: ticketsCount } = await supabase
         .from('ticket_allocations')
         .select('*', { count: 'exact', head: true })
+        .eq('is_sold', true)
         .gte('created_at', startDate)
 
       // Get total users

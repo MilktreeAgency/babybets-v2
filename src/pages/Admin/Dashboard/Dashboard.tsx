@@ -55,7 +55,7 @@ export default function Dashboard() {
       if (tasksResult.error) throw tasksResult.error
 
       setStats(statsResult.data as unknown as DashboardStats)
-      setActivities((activitiesResult.data || []) as Activity[])
+      setActivities(Array.isArray(activitiesResult.data) ? activitiesResult.data as unknown as Activity[] : [])
       setPendingTasks(tasksResult.data as unknown as PendingTasks)
     } catch (err) {
       console.error('Error loading dashboard data:', err)

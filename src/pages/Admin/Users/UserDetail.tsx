@@ -213,7 +213,7 @@ export default function UserDetail() {
 
       // Delete user using RPC function (this will cascade delete from profiles and all related data)
       const { error } = await supabase.rpc('delete_user', {
-        user_id_to_delete: user.id
+        user_id: user.id
       })
 
       if (error) throw error

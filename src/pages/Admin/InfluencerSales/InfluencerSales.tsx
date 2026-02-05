@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { DashboardHeader } from '../components'
-import { DollarSign, CheckCircle, XCircle, Clock, TrendingUp } from 'lucide-react'
+import { DollarSign, CheckCircle, Clock, TrendingUp } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { Database } from '@/types/database.types'
 import {
   Select,
   SelectContent,

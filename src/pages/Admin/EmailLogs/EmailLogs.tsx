@@ -13,11 +13,11 @@ interface EmailNotification {
   type: string
   data: Record<string, unknown>
   status: 'pending' | 'sent' | 'failed'
-  recipient_email: string
-  error_message?: string
-  sent_at?: string
-  created_at: string
-  updated_at: string
+  recipient_email: string | null
+  error_message: string | null
+  sent_at: string | null
+  created_at: string | null
+  updated_at: string | null
 }
 
 const EMAIL_TYPES = [
@@ -77,7 +77,20 @@ export default function EmailLogs() {
         .limit(500)
 
       if (error) throw error
-      setEmails(data || [])
+      // Map the data to ensure data field is always an object, not null, and status is properly typed
+      const mappedData = (data || []).map(item => {
+        const validStatus: 'pending' | 'sent' | 'failed' =
+          (item.status === 'pending' || item.status === 'sent' || item.status === 'failed')
+            ? item.status
+            : 'pending'
+
+        return {
+          ...item,
+          data: (item.data && typeof item.data === 'object' && !Array.isArray(item.data)) ? item.data as Record<string, unknown> : {},
+          status: validStatus
+        }
+      })
+      setEmails(mappedData)
     } catch (error) {
       console.error('Error loading email logs:', error)
     } finally {
@@ -115,7 +128,7 @@ export default function EmailLogs() {
           break
       }
 
-      filtered = filtered.filter((email) => new Date(email.created_at) >= filterDate)
+      filtered = filtered.filter((email) => email.created_at && new Date(email.created_at) >= filterDate)
     }
 
     // Filter by search query
@@ -123,7 +136,7 @@ export default function EmailLogs() {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(
         (email) =>
-          email.recipient_email.toLowerCase().includes(query) ||
+          email.recipient_email?.toLowerCase().includes(query) ||
           email.type.toLowerCase().includes(query) ||
           email.error_message?.toLowerCase().includes(query)
       )
@@ -174,10 +187,10 @@ export default function EmailLogs() {
     const headers = ['Type', 'Recipient', 'Status', 'Error', 'Created', 'Sent']
     const rows = filteredEmails.map((email) => [
       email.type,
-      email.recipient_email,
+      email.recipient_email || 'N/A',
       email.status,
       email.error_message || 'N/A',
-      new Date(email.created_at).toLocaleString(),
+      email.created_at ? new Date(email.created_at).toLocaleString() : 'N/A',
       email.sent_at ? new Date(email.sent_at).toLocaleString() : 'N/A',
     ])
 
@@ -373,9 +386,9 @@ export default function EmailLogs() {
                             </span>
                           </td>
                           <td className="p-4">
-                            <div className="text-sm">{formatDate(email.created_at)}</div>
+                            <div className="text-sm">{email.created_at ? formatDate(email.created_at) : 'N/A'}</div>
                             <div className="text-xs text-muted-foreground">
-                              {new Date(email.created_at).toLocaleString()}
+                              {email.created_at ? new Date(email.created_at).toLocaleString() : 'N/A'}
                             </div>
                           </td>
                           <td className="p-4">
@@ -461,7 +474,7 @@ export default function EmailLogs() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="text-sm text-muted-foreground mb-1">Created</div>
-                  <div>{new Date(selectedEmail.created_at).toLocaleString()}</div>
+                  <div>{selectedEmail.created_at ? new Date(selectedEmail.created_at).toLocaleString() : 'N/A'}</div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground mb-1">Sent</div>

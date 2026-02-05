@@ -499,7 +499,6 @@ export default function Fulfillments() {
                   <tbody className="divide-y divide-border">
                     {filteredFulfillments.map((fulfillment) => {
                       const badge = getStatusBadge(fulfillment.status)
-                      const isPhysical = fulfillment.choice === 'physical' || fulfillment.choice === 'prize'
 
                       return (
                         <tr key={fulfillment.id} className="hover:bg-admin-hover-bg cursor-pointer">

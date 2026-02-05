@@ -76,13 +76,14 @@ export default function Activity() {
           subtotal_pence,
           status,
           created_at,
-          user:profiles(id, first_name, last_name, email)
+          user:profiles!orders_user_id_fkey(id, first_name, last_name, email)
         `)
         .order('created_at', { ascending: false })
         .limit(100)
 
       if (orders) {
         orders.forEach((order) => {
+          if (!order.created_at) return
           allActivities.push({
             id: `order-${order.id}`,
             type: 'order',
@@ -109,13 +110,14 @@ export default function Activity() {
           created_at,
           prize_name,
           prize_value_gbp,
-          user:profiles(id, first_name, last_name, email)
+          user:profiles!winners_user_id_fkey(id, first_name, last_name, email)
         `)
         .order('created_at', { ascending: false })
         .limit(100)
 
       if (winners) {
         winners.forEach((winner) => {
+          if (!winner.created_at) return
           allActivities.push({
             id: `win-${winner.id}`,
             type: 'win',
@@ -141,6 +143,7 @@ export default function Activity() {
 
       if (profiles) {
         profiles.forEach((profile) => {
+          if (!profile.created_at) return
           allActivities.push({
             id: `signup-${profile.id}`,
             type: 'signup',
@@ -166,13 +169,14 @@ export default function Activity() {
           created_at,
           ticket_id,
           user_id,
-          user:profiles(id, first_name, last_name, email)
+          user:profiles!prize_fulfillments_user_id_fkey(id, first_name, last_name, email)
         `)
         .order('created_at', { ascending: false })
         .limit(100)
 
       if (fulfillments) {
         fulfillments.forEach((fulfillment) => {
+          if (!fulfillment.created_at) return
           allActivities.push({
             id: `fulfillment-${fulfillment.id}`,
             type: 'fulfillment',
@@ -198,13 +202,14 @@ export default function Activity() {
           created_at,
           amount_pence,
           user_id,
-          user:profiles(id, first_name, last_name, email)
+          user:profiles!withdrawal_requests_user_id_fkey(id, first_name, last_name, email)
         `)
         .order('created_at', { ascending: false })
         .limit(100)
 
       if (withdrawals) {
         withdrawals.forEach((withdrawal) => {
+          if (!withdrawal.created_at) return
           allActivities.push({
             id: `withdrawal-${withdrawal.id}`,
             type: 'withdrawal',
@@ -238,6 +243,7 @@ export default function Activity() {
 
       if (drawLogs) {
         drawLogs.forEach((log) => {
+          if (!log.created_at) return
           allActivities.push({
             id: `draw-${log.id}`,
             type: 'draw',

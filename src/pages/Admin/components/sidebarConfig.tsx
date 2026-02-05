@@ -11,7 +11,9 @@ import {
   Package,
   UserCheck,
   Activity,
-  Mail
+  Mail,
+  User,
+  FolderOpen
 } from 'lucide-react'
 import { type ReactNode } from 'react'
 
@@ -97,6 +99,11 @@ export const sidebarConfig: NavGroup[] = [
     label: 'System',
     items: [
       {
+        label: 'Assets',
+        href: '/admin/dashboard/assets',
+        icon: <FolderOpen className="size-4" />,
+      },
+      {
         label: 'Activity',
         href: '/admin/dashboard/activity',
         icon: <Activity className="size-4" />,
@@ -112,9 +119,14 @@ export const sidebarConfig: NavGroup[] = [
     label: 'Settings',
     items: [
       {
-        label: 'Settings',
-        href: '/admin/dashboard/settings',
+        label: 'System',
+        href: '/admin/dashboard/system-settings',
         icon: <Settings className="size-4" />,
+      },
+      {
+        label: 'My Account',
+        href: '/admin/dashboard/settings',
+        icon: <User className="size-4" />,
       },
     ],
   },

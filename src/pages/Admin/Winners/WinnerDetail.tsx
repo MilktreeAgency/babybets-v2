@@ -313,7 +313,7 @@ export default function WinnerDetail() {
       const fileName = `${winner.id}-${Date.now()}.${fileExt}`
 
       const { error: uploadError } = await supabase.storage
-        .from('winner-photos')
+        .from('babybets-assets')
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: true,
@@ -322,7 +322,7 @@ export default function WinnerDetail() {
       if (uploadError) throw uploadError
 
       // Get public URL
-      const { data: urlData } = supabase.storage.from('winner-photos').getPublicUrl(fileName)
+      const { data: urlData } = supabase.storage.from('babybets-assets').getPublicUrl(fileName)
 
       // Update winner record
       const { error: updateError } = await supabase
