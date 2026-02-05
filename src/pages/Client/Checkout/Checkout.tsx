@@ -487,51 +487,28 @@ function Checkout() {
           })
         }
 
-        // Update order status
-        await supabase
-          .from('orders')
-          .update({
-            status: 'paid',
-            paid_at: new Date().toISOString(),
-          })
-          .eq('id', order.id)
+        // Complete order and allocate tickets via Edge Function (server-side)
+        // Refresh session to ensure we have a valid JWT token
+        console.log('Refreshing session before edge function call')
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
 
-        // Get order items to allocate tickets
-        const { data: orderItemsData } = await supabase
-          .from('order_items')
-          .select('*')
-          .eq('order_id', order.id)
-
-        // Process each item
-        for (const item of orderItemsData || []) {
-          // Update competition tickets_sold count
-          const { data: competition } = await supabase
-            .from('competitions')
-            .select('tickets_sold')
-            .eq('id', item.competition_id)
-            .single()
-
-          if (competition) {
-            await supabase
-              .from('competitions')
-              .update({
-                tickets_sold: (competition.tickets_sold || 0) + item.ticket_count,
-              })
-              .eq('id', item.competition_id)
-          }
-
-          // Create ticket allocations
-          const ticketAllocations = Array.from({ length: item.ticket_count }, (_, i) => ({
-            competition_id: item.competition_id,
-            order_id: order.id,
-            sold_to_user_id: authenticatedUserId,
-            ticket_number: `${Date.now()}-${i + 1}`,
-            is_sold: true,
-            sold_at: new Date().toISOString(),
-          }))
-
-          await supabase.from('ticket_allocations').insert(ticketAllocations)
+        if (refreshError || !refreshedSession) {
+          console.error('[Checkout] Session refresh error:', refreshError)
+          throw new Error('Failed to refresh session. Please try logging in again.')
         }
+
+        console.log('Calling complete-g2pay-order edge function')
+
+        const { data: completeResult, error: completeError } = await supabase.functions.invoke('complete-g2pay-order', {
+          body: { orderId: order.id, userId: authenticatedUserId },
+        })
+
+        if (completeError) {
+          console.error('[Checkout] Edge function error:', completeError)
+          throw new Error(completeError.message || 'Failed to complete order')
+        }
+
+        console.log('[Checkout] Order completed:', completeResult)
 
         // Clear cart and redirect
         clearCart()

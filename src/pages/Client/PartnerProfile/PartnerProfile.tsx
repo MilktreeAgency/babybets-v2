@@ -26,6 +26,8 @@ export default function PartnerProfile() {
   }, [slug])
 
   const loadInfluencerData = async () => {
+    if (!slug) return
+
     try {
       setLoading(true)
 

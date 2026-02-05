@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Check, TrendingUp, Users, Gift, PoundSterling, Calculator, Target, Rocket, ShieldCheck, Ticket, Star } from 'lucide-react'
+import { Check, TrendingUp, Users, Gift, PoundSterling, Target, Rocket, ShieldCheck, Ticket, Star } from 'lucide-react'
 import Header from '@/components/common/Header'
 import Footer from '@/components/common/Footer'
 import PartnerApplicationForm from '@/pages/Client/PartnerApplication/PartnerApplicationForm'
