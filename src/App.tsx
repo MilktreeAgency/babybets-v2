@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
+import { useSystemSettings } from './hooks/useSystemSettings'
 import Homepage from './pages/Client/Homepage/Homepage'
 import CompetitionsPage from './pages/Client/Competitions/Competitions'
 import CompetitionEntry from './pages/Client/CompetitionEntry/CompetitionEntry'
@@ -16,9 +17,11 @@ import Terms from './pages/Client/Legal/Terms'
 import Partners from './pages/Client/Partners/Partners'
 import PartnerProfile from './pages/Client/PartnerProfile/PartnerProfile'
 import WinnersGallery from './pages/Client/Winners/Winners'
+import MaintenanceMode from './pages/MaintenanceMode/MaintenanceMode'
 import Dashboard from './pages/Admin/Dashboard/Dashboard'
 import Influencers from './pages/Admin/Influencers'
 import Settings from './pages/Admin/Settings/Settings'
+import SystemSettings from './pages/Admin/Settings/SystemSettings'
 import Analytics from './pages/Admin/Analytics'
 import Competitions from './pages/Admin/Competitions'
 import CompetitionForm from './pages/Admin/Competitions/CompetitionForm'
@@ -32,6 +35,7 @@ import Withdrawals from './pages/Admin/Withdrawals'
 import InfluencerSales from './pages/Admin/InfluencerSales'
 import Activity from './pages/Admin/Activity'
 import EmailLogs from './pages/Admin/EmailLogs'
+import Assets from './pages/Admin/Assets/Assets'
 import { DashboardLayout } from './pages/Admin/components'
 import { AdminRoute, CartDrawer } from './components/common'
 import ScrollToTop from './components/common/ScrollToTop'
@@ -39,10 +43,28 @@ import { ReferralTracker } from './components/ReferralTracker'
 import { CookieConsent } from './components/CookieConsent'
 import InfluencerDashboard from './pages/Influencer/Dashboard'
 import ProfileEdit from './pages/Influencer/ProfileEdit'
+import { Toaster } from 'sonner'
 
 function App() {
   // Check authentication status on mount
-  useAuth()
+  const { user, isLoading: authLoading } = useAuth()
+
+  // Check system settings for maintenance mode
+  const { maintenanceMode, loading: settingsLoading } = useSystemSettings()
+
+  // Show loading while checking auth and settings
+  if (authLoading || settingsLoading) {
+    return null
+  }
+
+  // Check if in maintenance mode and user is not admin
+  const isInMaintenanceMode = maintenanceMode?.enabled === true
+  const isAdmin = user?.isAdmin === true
+
+  // If maintenance mode is on and user is not admin, show maintenance page
+  if (isInMaintenanceMode && !isAdmin) {
+    return <MaintenanceMode />
+  }
 
   return (
     <BrowserRouter>
@@ -91,13 +113,16 @@ function App() {
           <Route path="influencer-sales" element={<InfluencerSales />} />
           <Route path="fulfillments" element={<Fulfillments />} />
           <Route path="withdrawals" element={<Withdrawals />} />
+          <Route path="assets" element={<Assets />} />
           <Route path="activity" element={<Activity />} />
           <Route path="email-logs" element={<EmailLogs />} />
+          <Route path="system-settings" element={<SystemSettings />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
       <CartDrawer />
       <CookieConsent />
+      <Toaster position="top-right" richColors />
     </BrowserRouter>
   )
 }
