@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { DashboardHeader } from '../components'
 import { CheckCircle, XCircle, ExternalLink, Mail, Instagram, Youtube, UserCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useSidebarCounts } from '@/contexts/SidebarCountsContext'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
 type Influencer = Database['public']['Tables']['influencers']['Row'] & {
   profiles?: {
@@ -21,46 +22,45 @@ type Influencer = Database['public']['Tables']['influencers']['Row'] & {
 }
 
 export default function Influencers() {
-  const [influencers, setInfluencers] = useState<Influencer[]>([])
-  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('all')
   const { refreshCounts } = useSidebarCounts()
 
-  useEffect(() => {
-    loadInfluencers()
+  // Query builder for infinite scroll
+  const queryBuilder = useCallback(() => {
+    let query = supabase
+      .from('influencers')
+      .select(`
+        *,
+        profiles!influencers_user_id_fkey (
+          email,
+          first_name,
+          last_name
+        )
+      `)
+      .order('created_at', { ascending: false })
+
+    if (filter === 'pending') {
+      query = query.eq('is_active', false)
+    } else if (filter === 'active') {
+      query = query.eq('is_active', true)
+    }
+
+    return query
   }, [filter])
 
-  const loadInfluencers = async () => {
-    try {
-      setLoading(true)
-      let query = supabase
-        .from('influencers')
-        .select(`
-          *,
-          profiles!influencers_user_id_fkey (
-            email,
-            first_name,
-            last_name
-          )
-        `)
-        .order('created_at', { ascending: false })
-
-      if (filter === 'pending') {
-        query = query.eq('is_active', false)
-      } else if (filter === 'active') {
-        query = query.eq('is_active', true)
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-      setInfluencers(data || [])
-    } catch (error) {
-      console.error('Error loading influencers:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Use infinite scroll hook
+  const {
+    data: influencers,
+    loading,
+    loadingMore,
+    hasMore,
+    refresh,
+    observerRef,
+  } = useInfiniteScroll<Influencer>({
+    queryBuilder,
+    pageSize: 10,
+    dependencies: [filter],
+  })
 
   const updateInfluencerStatus = async (id: string, isActive: boolean) => {
     try {
@@ -98,7 +98,7 @@ export default function Influencers() {
       }
 
       // Reload data
-      await loadInfluencers()
+      await refresh()
       // Refresh sidebar counts
       await refreshCounts()
     } catch (error) {
@@ -122,7 +122,7 @@ export default function Influencers() {
       if (error) throw error
 
       // Reload data
-      await loadInfluencers()
+      await refresh()
       // Refresh sidebar counts
       await refreshCounts()
     } catch (error) {
@@ -157,12 +157,14 @@ export default function Influencers() {
 
       if (error) throw error
 
-      loadInfluencers()
+      refresh()
     } catch (error) {
       console.error('Error toggling ambassador status:', error)
       alert('Failed to update ambassador status')
     }
   }
+
+  const pendingCount = useMemo(() => influencers.filter(i => !i.is_active).length, [influencers])
 
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
@@ -186,8 +188,6 @@ export default function Influencers() {
       ? 'bg-admin-success-bg text-admin-success-fg'
       : 'bg-admin-warning-bg text-admin-warning-fg'
   }
-
-  const pendingCount = influencers.filter(i => !i.is_active).length
 
   return (
     <>
@@ -431,6 +431,27 @@ export default function Influencers() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Infinite Scroll Sentinel */}
+              {hasMore && (
+                <div ref={observerRef} className="p-4 text-center">
+                  {loadingMore && (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="size-5 border-2 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
+                      <span className="text-sm text-muted-foreground">Loading more...</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* End of Results Message */}
+              {!hasMore && influencers.length > 0 && (
+                <div className="p-4 text-center">
+                  <span className="text-sm text-muted-foreground">
+                    All applications loaded ({influencers.length} total)
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

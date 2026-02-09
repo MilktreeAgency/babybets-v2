@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { DashboardHeader } from '../components'
 import { Search, Eye, Download, Trophy, Gift } from 'lucide-react'
@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
 type Winner = Database['public']['Tables']['winners']['Row']
 
@@ -21,17 +22,14 @@ interface WinnerWithDetails extends Winner {
 }
 
 export default function Winners() {
-  const [winners, setWinners] = useState<WinnerWithDetails[]>([])
   const [competitions, setCompetitions] = useState<{ id: string; title: string }[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [competitionFilter, setCompetitionFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
   useEffect(() => {
     loadCompetitions()
-    loadWinners()
-  }, [competitionFilter, statusFilter])
+  }, [])
 
   const loadCompetitions = async () => {
     try {
@@ -48,89 +46,108 @@ export default function Winners() {
     }
   }
 
-  const loadWinners = async () => {
-    try {
-      setLoading(true)
-      let query = supabase
-        .from('winners')
-        .select(`
-          *,
-          competition:competitions(title),
-          user:profiles(email)
-        `)
-        .order('won_at', { ascending: false })
+  // Query builder for infinite scroll
+  const queryBuilder = useCallback(() => {
+    let query = supabase
+      .from('winners')
+      .select(`
+        *,
+        competition:competitions(title),
+        user:profiles(email)
+      `)
+      .order('won_at', { ascending: false })
 
-      if (competitionFilter !== 'all') {
-        query = query.eq('competition_id', competitionFilter)
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      // Fetch prize fulfillments separately
-      const ticketIds = (data || [])
-        .map((winner) => winner.ticket_id)
-        .filter((id): id is string => !!id)
-
-      let fulfillments: Record<string, string | null | undefined> = {}
-      if (ticketIds.length > 0) {
-        const { data: fulfillmentData } = await supabase
-          .from('prize_fulfillments')
-          .select('ticket_id, status')
-          .in('ticket_id', ticketIds)
-
-        fulfillments =
-          fulfillmentData?.reduce(
-            (acc, f) => ({
-              ...acc,
-              [f.ticket_id]: f.status,
-            }),
-            {} as Record<string, string | null | undefined>
-          ) || {}
-      }
-
-      // Transform data
-      const transformedData = (data || []).map((winner) => ({
-        ...winner,
-        competition_title: (winner.competition as unknown as { title: string })?.title,
-        user_email: (winner.user as unknown as { email: string })?.email,
-        fulfillment_status: winner.ticket_id ? fulfillments[winner.ticket_id] : undefined,
-      }))
-
-      // Apply status filter
-      let filteredData = transformedData
-      if (statusFilter === 'fulfilled') {
-        filteredData = transformedData.filter(
-          (w) => w.fulfillment_status === 'completed' || w.fulfillment_status === 'delivered'
-        )
-      } else if (statusFilter === 'pending') {
-        filteredData = transformedData.filter(
-          (w) =>
-            !w.fulfillment_status ||
-            w.fulfillment_status === 'pending' ||
-            w.fulfillment_status === 'prize_selected' ||
-            w.fulfillment_status === 'cash_selected'
-        )
-      }
-
-      setWinners(filteredData)
-    } catch (error) {
-      console.error('Error loading winners:', error)
-    } finally {
-      setLoading(false)
+    if (competitionFilter !== 'all') {
+      query = query.eq('competition_id', competitionFilter)
     }
-  }
 
-  const filteredWinners = winners.filter((winner) => {
-    const query = searchQuery.toLowerCase()
-    return (
-      winner.display_name.toLowerCase().includes(query) ||
-      winner.prize_name.toLowerCase().includes(query) ||
-      winner.user_email?.toLowerCase().includes(query) ||
-      winner.competition_title?.toLowerCase().includes(query)
-    )
+    return query
+  }, [competitionFilter])
+
+  // Transform function to enrich winner data
+  const transformWinners = useCallback(async (rawData: unknown[]): Promise<WinnerWithDetails[]> => {
+    const data = rawData as (Winner & {
+      competition?: { title: string }
+      user?: { email: string }
+    })[]
+
+    // Fetch prize fulfillments separately
+    const ticketIds = data
+      .map((winner) => winner.ticket_id)
+      .filter((id): id is string => !!id)
+
+    let fulfillments: Record<string, string | null | undefined> = {}
+    if (ticketIds.length > 0) {
+      const { data: fulfillmentData } = await supabase
+        .from('prize_fulfillments')
+        .select('ticket_id, status')
+        .in('ticket_id', ticketIds)
+
+      fulfillments =
+        fulfillmentData?.reduce(
+          (acc, f) => ({
+            ...acc,
+            [f.ticket_id]: f.status,
+          }),
+          {} as Record<string, string | null | undefined>
+        ) || {}
+    }
+
+    // Transform data
+    return data.map((winner) => ({
+      ...winner,
+      competition_title: winner.competition?.title,
+      user_email: winner.user?.email,
+      fulfillment_status: winner.ticket_id ? fulfillments[winner.ticket_id] : undefined,
+    }))
+  }, [])
+
+  // Use infinite scroll hook with transformation
+  const {
+    data: allWinners,
+    loading,
+    loadingMore,
+    hasMore,
+    observerRef,
+  } = useInfiniteScroll<Record<string, unknown>, WinnerWithDetails>({
+    queryBuilder: queryBuilder as never,
+    pageSize: 10,
+    dependencies: [competitionFilter],
+    transform: transformWinners,
   })
+
+  // Apply status filter client-side
+  const winners = useMemo(() => {
+    if (statusFilter === 'fulfilled') {
+      return allWinners.filter(
+        (w) => w.fulfillment_status === 'completed' || w.fulfillment_status === 'delivered'
+      )
+    } else if (statusFilter === 'pending') {
+      return allWinners.filter(
+        (w) =>
+          !w.fulfillment_status ||
+          w.fulfillment_status === 'pending' ||
+          w.fulfillment_status === 'prize_selected' ||
+          w.fulfillment_status === 'cash_selected'
+      )
+    }
+    return allWinners
+  }, [allWinners, statusFilter])
+
+  // Client-side search filter
+  const filteredWinners = useMemo(
+    () =>
+      winners.filter((winner) => {
+        const query = searchQuery.toLowerCase()
+        return (
+          winner.display_name.toLowerCase().includes(query) ||
+          winner.prize_name.toLowerCase().includes(query) ||
+          winner.user_email?.toLowerCase().includes(query) ||
+          winner.competition_title?.toLowerCase().includes(query)
+        )
+      }),
+    [winners, searchQuery]
+  )
 
   const getFulfillmentBadge = (status?: string | null) => {
     const badges: Record<string, { label: string; color: string }> = {
@@ -277,13 +294,13 @@ export default function Winners() {
               {/* Competition Filter */}
               <div>
                 <Select value={competitionFilter} onValueChange={setCompetitionFilter}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full cursor-pointer">
                     <SelectValue placeholder="All Competitions" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Competitions</SelectItem>
+                    <SelectItem value="all" className="cursor-pointer">All Competitions</SelectItem>
                     {competitions.map((comp) => (
-                      <SelectItem key={comp.id} value={comp.id}>
+                      <SelectItem key={comp.id} value={comp.id} className="cursor-pointer">
                         {comp.title}
                       </SelectItem>
                     ))}
@@ -294,13 +311,13 @@ export default function Winners() {
               {/* Status Filter */}
               <div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full cursor-pointer">
                     <SelectValue placeholder="All Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">Pending Fulfillment</SelectItem>
-                    <SelectItem value="fulfilled">Fulfilled</SelectItem>
+                    <SelectItem value="all" className="cursor-pointer">All Status</SelectItem>
+                    <SelectItem value="pending" className="cursor-pointer">Pending Fulfillment</SelectItem>
+                    <SelectItem value="fulfilled" className="cursor-pointer">Fulfilled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -420,6 +437,27 @@ export default function Winners() {
                     })}
                   </tbody>
                 </table>
+
+                {/* Infinite Scroll Sentinel */}
+                {hasMore && (
+                  <div ref={observerRef} className="p-4 text-center">
+                    {loadingMore && (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="size-5 border-2 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
+                        <span className="text-sm text-muted-foreground">Loading more winners...</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* End of Results Message */}
+                {!hasMore && filteredWinners.length > 0 && (
+                  <div className="p-4 text-center">
+                    <span className="text-sm text-muted-foreground">
+                      All winners loaded ({filteredWinners.length} total)
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>

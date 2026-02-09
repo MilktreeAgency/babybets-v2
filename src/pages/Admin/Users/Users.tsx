@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { DashboardHeader } from '../components'
 import { Search, Eye, Wallet, Trash2 } from 'lucide-react'
@@ -20,6 +20,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type UserRole = Database['public']['Enums']['user_role']
@@ -31,8 +32,6 @@ interface UserWithStats extends Profile {
 }
 
 export default function Users() {
-  const [users, setUsers] = useState<UserWithStats[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null)
@@ -41,78 +40,87 @@ export default function Users() {
   const [userToDelete, setUserToDelete] = useState<Profile | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => {
-    loadUsers()
+  // Query builder for infinite scroll
+  const queryBuilder = useCallback(() => {
+    let query = supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (roleFilter !== 'all') {
+      query = query.eq('role', roleFilter as UserRole)
+    }
+
+    return query
   }, [roleFilter])
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true)
-      let query = supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false })
+  // Transform function to add user stats
+  const transformUsers = useCallback(async (profiles: Profile[]): Promise<UserWithStats[]> => {
+    const usersWithStats = await Promise.all(
+      profiles.map(async (user) => {
+        // Get total orders
+        const { count: orderCount } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'paid')
 
-      if (roleFilter !== 'all') {
-        query = query.eq('role', roleFilter as UserRole)
-      }
+        // Get total spent
+        const { data: orders } = await supabase
+          .from('orders')
+          .select('subtotal_pence')
+          .eq('user_id', user.id)
+          .eq('status', 'paid')
 
-      const { data, error } = await query
+        const totalSpent = orders?.reduce((sum, order) => sum + order.subtotal_pence, 0) || 0
 
-      if (error) throw error
+        // Get wallet balance
+        const { data: walletData } = await supabase
+          .from('wallet_credits')
+          .select('remaining_pence')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
 
-      // Load stats for each user
-      const usersWithStats = await Promise.all(
-        (data || []).map(async (user) => {
-          // Get total orders
-          const { count: orderCount } = await supabase
-            .from('orders')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .eq('status', 'paid')
+        const walletBalance =
+          walletData?.reduce((sum, credit) => sum + credit.remaining_pence, 0) || 0
 
-          // Get total spent
-          const { data: orders } = await supabase
-            .from('orders')
-            .select('subtotal_pence')
-            .eq('user_id', user.id)
-            .eq('status', 'paid')
+        return {
+          ...user,
+          total_orders: orderCount || 0,
+          total_spent_pence: totalSpent,
+          wallet_balance_pence: walletBalance,
+        }
+      })
+    )
+    return usersWithStats
+  }, [])
 
-          const totalSpent = orders?.reduce((sum, order) => sum + order.subtotal_pence, 0) || 0
-
-          // Get wallet balance
-          const { data: walletData } = await supabase
-            .from('wallet_credits')
-            .select('remaining_pence')
-            .eq('user_id', user.id)
-            .eq('status', 'active')
-
-          const walletBalance =
-            walletData?.reduce((sum, credit) => sum + credit.remaining_pence, 0) || 0
-
-          return {
-            ...user,
-            total_orders: orderCount || 0,
-            total_spent_pence: totalSpent,
-            wallet_balance_pence: walletBalance,
-          }
-        })
-      )
-
-      setUsers(usersWithStats)
-    } catch (error) {
-      console.error('Error loading users:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const filteredUsers = users.filter((user) => {
-    const query = searchQuery.toLowerCase()
-    const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase()
-    const email = user.email.toLowerCase()
-    return fullName.includes(query) || email.includes(query)
+  // Use infinite scroll hook with transformation
+  const {
+    data: users,
+    loading,
+    loadingMore,
+    hasMore,
+    refresh,
+    observerRef,
+  } = useInfiniteScroll<Profile, UserWithStats>({
+    queryBuilder,
+    pageSize: 10,
+    dependencies: [roleFilter],
+    transform: transformUsers,
   })
+
+  // Client-side search filter
+  const filteredUsers = useMemo(
+    () =>
+      users.filter((user) => {
+        const query = searchQuery.toLowerCase()
+        const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase()
+        const email = user.email.toLowerCase()
+        return fullName.includes(query) || email.includes(query)
+      }),
+    [users, searchQuery]
+  )
 
   const getRoleBadgeColor = (role: UserRole | null) => {
     const colors: Record<UserRole, string> = {
@@ -140,7 +148,7 @@ export default function Users() {
       // Reload users and close dialog on success
       setShowDeleteDialog(false)
       setUserToDelete(null)
-      loadUsers()
+      refresh()
     } catch (error) {
       console.error('Error deleting user:', error)
       // Keep dialog open to show error
@@ -343,6 +351,27 @@ export default function Users() {
                     ))}
                   </tbody>
                 </table>
+
+                {/* Infinite Scroll Sentinel */}
+                {hasMore && (
+                  <div ref={observerRef} className="p-4 text-center">
+                    {loadingMore && (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="size-5 border-2 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
+                        <span className="text-sm text-muted-foreground">Loading more...</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* End of Results Message */}
+                {!hasMore && filteredUsers.length > 0 && (
+                  <div className="p-4 text-center">
+                    <span className="text-sm text-muted-foreground">
+                      All users loaded ({filteredUsers.length} total)
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -353,7 +382,7 @@ export default function Users() {
         user={selectedUser}
         open={addBalanceDialogOpen}
         onOpenChange={setAddBalanceDialogOpen}
-        onSuccess={loadUsers}
+        onSuccess={refresh}
       />
 
       {/* Delete Confirmation Dialog */}
