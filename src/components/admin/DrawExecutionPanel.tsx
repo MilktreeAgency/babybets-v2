@@ -3,8 +3,25 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy, AlertTriangle, CheckCircle, XCircle, Loader, Shield, Hash, User, Ticket, Sparkles } from 'lucide-react'
 import { useDraws } from '@/hooks/useDraws'
 import type { Competition, Draw, DrawExecutionResult } from '@/types'
-
-const confettiColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#FFD93D', '#6BCF7F']
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Button } from '@/components/ui/button'
 
 interface DrawExecutionPanelProps {
   competition: Competition
@@ -21,10 +38,13 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
   const [animationPhase, setAnimationPhase] = useState<'scanning' | 'selecting' | 'winner'>('scanning')
   const [scanningTickets, setScanningTickets] = useState<number[]>([])
   const [finalWinner, setFinalWinner] = useState<DrawExecutionResult | null>(null)
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [verificationResult, setVerificationResult] = useState<Awaited<ReturnType<typeof verifyDraw>> | null>(null)
 
   useEffect(() => {
     loadExistingDraw()
   }, [competition.id])
+
 
   const loadExistingDraw = async () => {
     try {
@@ -63,13 +83,8 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
       setDrawResult(result)
 
       // Phase 3: Show winner (user must click to close)
-
-      if (onDrawExecuted) {
-        onDrawExecuted()
-      }
-
-      // Reload the draw details
-      await loadExistingDraw()
+      // Don't call onDrawExecuted or reload draw details here
+      // They will be called when the user closes the modal
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to execute draw'
       setError(errorMessage)
@@ -78,10 +93,16 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
     }
   }
 
-  const handleCloseDrawAnimation = () => {
+  const handleCloseDrawAnimation = async () => {
     setShowDrawAnimation(false)
     setAnimationPhase('scanning')
     setFinalWinner(null)
+
+    // Reload the draw details and notify parent after closing the modal
+    await loadExistingDraw()
+    if (onDrawExecuted) {
+      onDrawExecuted()
+    }
   }
 
   const handleVerifyDraw = async () => {
@@ -89,15 +110,11 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
 
     try {
       const result = await verifyDraw(existingDraw.id)
-
-      if (result.valid) {
-        alert('✓ Draw verified successfully! All cryptographic checks passed.')
-      } else {
-        alert(`✗ Draw verification failed!\n\nDetails:\n${JSON.stringify(result.checks, null, 2)}`)
-      }
+      setVerificationResult(result)
+      setShowVerificationModal(true)
     } catch (err) {
       console.error('Error verifying draw:', err)
-      alert('Failed to verify draw')
+      setError('Failed to verify draw')
     }
   }
 
@@ -114,7 +131,8 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
   // If draw already exists, show draw results
   if (existingDraw) {
     return (
-      <div className="bg-admin-card-bg rounded-lg p-6 border border-border">
+      <>
+        <div className="bg-admin-card-bg rounded-lg p-6 border border-border">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -198,6 +216,231 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
           </button>
         </div>
       </div>
+
+      {/* Verification Result Modal */}
+      <Dialog open={showVerificationModal} onOpenChange={setShowVerificationModal}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 border-border">
+          {verificationResult && (
+            <>
+              {/* Fixed Header */}
+              <DialogHeader className="shrink-0 px-6 py-4 border-b border-border">
+                {(() => {
+                  const allChecksPassed =
+                    verificationResult.verification_checks.snapshot_hash_valid &&
+                    verificationResult.verification_checks.verification_hash_valid &&
+                    verificationResult.verification_checks.winner_index_valid
+
+                  return allChecksPassed ? (
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="size-6 text-admin-success-fg" />
+                      <div>
+                        <DialogTitle className="text-lg">Draw Verified</DialogTitle>
+                        <DialogDescription>All checks passed</DialogDescription>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <XCircle className="size-6 text-admin-error-text" />
+                      <div>
+                        <DialogTitle className="text-lg">Verification Failed</DialogTitle>
+                        <DialogDescription>One or more checks failed</DialogDescription>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </DialogHeader>
+
+              {/* Scrollable Content */}
+              <ScrollArea className="flex-1 px-6">
+                <div className="py-4 space-y-4">
+                  {/* Verification Checks */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                      Verification Checks
+                    </h4>
+                    <div className="space-y-2">
+                      {/* Snapshot Hash Check */}
+                      <div className={`flex items-center justify-between p-3 rounded border ${
+                        verificationResult.verification_checks.snapshot_hash_valid
+                          ? 'bg-admin-success-bg border-admin-success-fg'
+                          : 'bg-admin-error-bg border-admin-error-border'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          {verificationResult.verification_checks.snapshot_hash_valid ? (
+                            <CheckCircle className="size-4 text-admin-success-fg" />
+                          ) : (
+                            <XCircle className="size-4 text-admin-error-text" />
+                          )}
+                          <span className="text-sm font-medium text-foreground">Snapshot Hash</span>
+                        </div>
+                        <span className={`text-xs font-bold ${
+                          verificationResult.verification_checks.snapshot_hash_valid
+                            ? 'text-admin-success-fg'
+                            : 'text-admin-error-text'
+                        }`}>
+                          {verificationResult.verification_checks.snapshot_hash_valid ? 'VALID' : 'INVALID'}
+                        </span>
+                      </div>
+
+                      {/* Verification Hash Check */}
+                      <div className={`flex items-center justify-between p-3 rounded border ${
+                        verificationResult.verification_checks.verification_hash_valid
+                          ? 'bg-admin-success-bg border-admin-success-fg'
+                          : 'bg-admin-error-bg border-admin-error-border'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          {verificationResult.verification_checks.verification_hash_valid ? (
+                            <CheckCircle className="size-4 text-admin-success-fg" />
+                          ) : (
+                            <XCircle className="size-4 text-admin-error-text" />
+                          )}
+                          <span className="text-sm font-medium text-foreground">Verification Hash</span>
+                        </div>
+                        <span className={`text-xs font-bold ${
+                          verificationResult.verification_checks.verification_hash_valid
+                            ? 'text-admin-success-fg'
+                            : 'text-admin-error-text'
+                        }`}>
+                          {verificationResult.verification_checks.verification_hash_valid ? 'VALID' : 'INVALID'}
+                        </span>
+                      </div>
+
+                      {/* Winner Index Check */}
+                      <div className={`flex items-center justify-between p-3 rounded border ${
+                        verificationResult.verification_checks.winner_index_valid
+                          ? 'bg-admin-success-bg border-admin-success-fg'
+                          : 'bg-admin-error-bg border-admin-error-border'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          {verificationResult.verification_checks.winner_index_valid ? (
+                            <CheckCircle className="size-4 text-admin-success-fg" />
+                          ) : (
+                            <XCircle className="size-4 text-admin-error-text" />
+                          )}
+                          <span className="text-sm font-medium text-foreground">Winner Index</span>
+                        </div>
+                        <span className={`text-xs font-bold ${
+                          verificationResult.verification_checks.winner_index_valid
+                            ? 'text-admin-success-fg'
+                            : 'text-admin-error-text'
+                        }`}>
+                          {verificationResult.verification_checks.winner_index_valid ? 'VALID' : 'INVALID'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Draw Details */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                      Draw Details
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2 bg-admin-hover-bg rounded">
+                        <p className="text-xs text-muted-foreground">Total Entries</p>
+                        <p className="text-sm font-semibold text-foreground">{verificationResult.draw_details.total_entries}</p>
+                      </div>
+                      <div className="p-2 bg-admin-hover-bg rounded">
+                        <p className="text-xs text-muted-foreground">Winner Index</p>
+                        <p className="text-sm font-semibold text-foreground">{verificationResult.draw_details.winner_index}</p>
+                      </div>
+                      <div className="col-span-2 p-2 bg-admin-hover-bg rounded">
+                        <p className="text-xs text-muted-foreground">Executed At</p>
+                        <p className="text-xs font-medium text-foreground">
+                          {new Date(verificationResult.draw_details.executed_at).toLocaleString('en-GB')}
+                        </p>
+                      </div>
+                      <div className="col-span-2 p-2 bg-admin-hover-bg rounded">
+                        <p className="text-xs text-muted-foreground mb-1">Random Seed</p>
+                        <p className="text-[10px] font-mono text-foreground break-all leading-tight">{verificationResult.draw_details.random_seed}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Hash Comparison */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                      Hash Comparison
+                    </h4>
+                    <div className="space-y-2">
+                      {/* Snapshot Hash */}
+                      <div className="p-2 bg-admin-hover-bg rounded">
+                        <p className="text-xs font-medium text-foreground mb-1">Snapshot Hash</p>
+                        <div className="space-y-1">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">Stored</p>
+                            <p className="text-[10px] font-mono text-foreground break-all leading-tight">
+                              {verificationResult.computed_values.stored_snapshot_hash}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">Recomputed</p>
+                            <p className="text-[10px] font-mono text-foreground break-all leading-tight">
+                              {verificationResult.computed_values.recomputed_snapshot_hash}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Verification Hash */}
+                      <div className="p-2 bg-admin-hover-bg rounded">
+                        <p className="text-xs font-medium text-foreground mb-1">Verification Hash</p>
+                        <div className="space-y-1">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">Stored</p>
+                            <p className="text-[10px] font-mono text-foreground break-all leading-tight">
+                              {verificationResult.computed_values.stored_verification_hash}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">Recomputed</p>
+                            <p className="text-[10px] font-mono text-foreground break-all leading-tight">
+                              {verificationResult.computed_values.recomputed_verification_hash}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Winner Ticket ID */}
+                      <div className="p-2 bg-admin-hover-bg rounded">
+                        <p className="text-xs font-medium text-foreground mb-1">Winner Ticket ID</p>
+                        <div className="space-y-1">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">Expected</p>
+                            <p className="text-[10px] font-mono text-foreground break-all leading-tight">
+                              {verificationResult.computed_values.expected_winner_ticket_id}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">Actual</p>
+                            <p className="text-[10px] font-mono text-foreground break-all leading-tight">
+                              {verificationResult.computed_values.actual_winner_ticket_id}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+
+              {/* Fixed Footer */}
+              <div className="shrink-0 px-6 py-4 border-t border-border">
+                <Button
+                  onClick={() => {
+                    setShowVerificationModal(false)
+                    setVerificationResult(null)
+                  }}
+                  className="w-full cursor-pointer"
+                >
+                  Close
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+      </>
     )
   }
 
@@ -320,200 +563,193 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
       </div>
 
       {/* Confirmation Modal */}
-      <AnimatePresence>
-        {showConfirmModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-admin-card-bg rounded-lg p-6 max-w-md w-full shadow-xl border border-border"
+      <AlertDialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-admin-orange-fg" />
+              Confirm Draw Execution
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to execute the draw for this competition? This action cannot be undone
+              and will:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+            <li>Lock the competition (status → "drawing")</li>
+            <li>Create a deterministic snapshot of all tickets</li>
+            <li>Generate a cryptographically secure random seed</li>
+            <li>Select a winner using verifiable randomness</li>
+            <li>Create an immutable audit trail</li>
+            <li>Update competition status to "drawn"</li>
+          </ul>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleExecuteDraw}
+              disabled={isExecutingDraw}
+              className="cursor-pointer"
             >
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <AlertTriangle className="size-5 text-admin-orange-fg" />
-                  Confirm Draw Execution
-                </h3>
-              </div>
-
-              <p className="text-muted-foreground mb-4">
-                Are you sure you want to execute the draw for this competition? This action cannot be undone
-                and will:
-              </p>
-
-              <ul className="list-disc list-inside text-sm text-muted-foreground mb-6 space-y-1">
-                <li>Lock the competition (status → "drawing")</li>
-                <li>Create a deterministic snapshot of all tickets</li>
-                <li>Generate a cryptographically secure random seed</li>
-                <li>Select a winner using verifiable randomness</li>
-                <li>Create an immutable audit trail</li>
-                <li>Update competition status to "drawn"</li>
-              </ul>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowConfirmModal(false)}
-                  className="flex-1 py-2.5 px-4 rounded-lg font-medium border border-border bg-admin-card-bg hover:bg-admin-hover-bg text-foreground transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleExecuteDraw}
-                  disabled={isExecutingDraw}
-                  className="flex-1 py-2.5 px-4 rounded-lg font-medium text-white bg-admin-info-fg hover:bg-admin-info-text disabled:opacity-50 transition-colors cursor-pointer"
-                >
-                  {isExecutingDraw ? 'Executing...' : 'Execute Draw'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              {isExecutingDraw ? 'Executing...' : 'Execute Draw'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Draw Animation Modal */}
-      <AnimatePresence>
-        {showDrawAnimation && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="relative w-full max-w-2xl mx-4"
-            >
-              {/* Scanning Phase */}
-              {animationPhase === 'scanning' && (
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="bg-linear-to-br from-admin-info-fg to-admin-purple-fg rounded-2xl p-8 text-center"
-                >
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                    className="inline-block mb-6"
-                  >
-                    <Loader className="size-16 text-white" />
-                  </motion.div>
-                  <h2 className="text-3xl font-bold text-white mb-4">Scanning Tickets...</h2>
-                  <p className="text-white/80 text-lg mb-8">
-                    Analyzing {(competition.tickets_sold ?? 0).toLocaleString()} entries
-                  </p>
+      <Dialog open={showDrawAnimation} onOpenChange={(open) => !open && handleCloseDrawAnimation()}>
+        <DialogContent className="max-w-lg flex flex-col p-0 border-border">
+          <AnimatePresence mode="wait">
+            {/* Scanning Phase */}
+            {animationPhase === 'scanning' && (
+              <motion.div
+                key="scanning"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col"
+              >
+                <DialogHeader className="px-6 py-4 border-b border-border">
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                    >
+                      <Loader className="size-6 text-admin-info-fg" />
+                    </motion.div>
+                    <div>
+                      <DialogTitle className="text-lg">Scanning Tickets</DialogTitle>
+                      <DialogDescription>
+                        Analyzing {(competition.tickets_sold ?? 0).toLocaleString()} entries
+                      </DialogDescription>
+                    </div>
+                  </div>
+                </DialogHeader>
 
-                  {/* Animated ticket numbers */}
-                  <div className="grid grid-cols-5 gap-3 mb-6">
+                <div className="px-6 py-8">
+                  <div className="grid grid-cols-5 gap-2">
                     {scanningTickets.slice(0, 10).map((num, i) => (
                       <motion.div
                         key={i}
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: [0, 1, 0], y: 0 }}
                         transition={{ duration: 0.8, delay: i * 0.1, repeat: Infinity }}
-                        className="bg-white/20 backdrop-blur-sm rounded-lg py-3 px-2 text-white font-mono font-bold"
+                        className="bg-admin-hover-bg rounded-md py-2 px-1 text-center text-sm font-mono font-medium text-foreground"
                       >
                         #{num}
                       </motion.div>
                     ))}
                   </div>
-                </motion.div>
-              )}
+                </div>
+              </motion.div>
+            )}
 
-              {/* Selecting Phase */}
-              {animationPhase === 'selecting' && (
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="bg-linear-to-br from-admin-purple-fg to-admin-error-text rounded-2xl p-8 text-center"
-                >
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 1, repeat: Infinity }}
-                    className="inline-block mb-6"
-                  >
-                    <Sparkles className="size-16 text-white" />
-                  </motion.div>
-                  <h2 className="text-3xl font-bold text-white mb-4">Selecting Winner...</h2>
-                  <p className="text-white/80 text-lg">
-                    Using cryptographically secure randomness
-                  </p>
+            {/* Selecting Phase */}
+            {animationPhase === 'selecting' && (
+              <motion.div
+                key="selecting"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col"
+              >
+                <DialogHeader className="px-6 py-4 border-b border-border">
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 1, repeat: Infinity }}
+                    >
+                      <Sparkles className="size-6 text-admin-purple-fg" />
+                    </motion.div>
+                    <div>
+                      <DialogTitle className="text-lg">Selecting Winner</DialogTitle>
+                      <DialogDescription>
+                        Using cryptographically secure randomness
+                      </DialogDescription>
+                    </div>
+                  </div>
+                </DialogHeader>
 
-                  {/* Pulsing effect */}
-                  <div className="mt-8 flex justify-center gap-2">
+                <div className="px-6 py-12 flex justify-center">
+                  <div className="flex gap-2">
                     {[0, 1, 2].map((i) => (
                       <motion.div
                         key={i}
                         animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
                         transition={{ duration: 1, delay: i * 0.2, repeat: Infinity }}
-                        className="w-3 h-3 bg-white rounded-full"
+                        className="w-3 h-3 bg-admin-purple-fg rounded-full"
                       />
                     ))}
                   </div>
-                </motion.div>
-              )}
+                </div>
+              </motion.div>
+            )}
 
-              {/* Winner Phase */}
-              {animationPhase === 'winner' && finalWinner && (
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="bg-linear-to-br from-admin-warning-fg via-admin-orange-fg to-admin-error-text rounded-2xl p-8 text-center relative overflow-hidden"
-                >
-                  {/* Confetti */}
-                  {Array.from({ length: 30 }).map((_, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ y: -20, x: Math.random() * 600 - 300, opacity: 1 }}
-                      animate={{
-                        y: 600,
-                        rotate: Math.random() * 360,
-                        opacity: 0
-                      }}
-                      transition={{
-                        duration: 2 + Math.random() * 2,
-                        delay: Math.random() * 0.5,
-                        ease: 'easeOut'
-                      }}
-                      className="absolute w-2 h-2 rounded-full"
-                      style={{ backgroundColor: confettiColors[i % confettiColors.length] }}
-                    />
-                  ))}
+            {/* Winner Phase */}
+            {animationPhase === 'winner' && (
+              <motion.div
+                key="winner"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col"
+              >
+                <DialogHeader className="px-6 py-4 border-b border-border">
+                  <div className="flex items-center gap-3">
+                    <Trophy className="size-6 text-admin-success-fg" />
+                    <div>
+                      <DialogTitle className="text-lg">Winner Selected</DialogTitle>
+                      <DialogDescription>
+                        Draw completed successfully
+                      </DialogDescription>
+                    </div>
+                  </div>
+                </DialogHeader>
 
-                  <motion.div
-                    animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ duration: 0.5 }}
-                    className="relative z-10"
-                  >
-                    <Trophy className="size-20 text-white mx-auto mb-6" />
-                    <h2 className="text-4xl font-bold text-white mb-2">🎉 Winner Selected! 🎉</h2>
-                    <p className="text-white/90 text-lg mb-6">Congratulations to our lucky winner!</p>
-
-                    <div className="bg-white/20 backdrop-blur-md rounded-xl p-6 mb-6">
-                      <div className="text-white/80 text-sm mb-2">Winner Name</div>
-                      <div className="text-3xl font-bold text-white mb-4">{finalWinner.winner_display_name}</div>
-
-                      <div className="grid grid-cols-2 gap-4 text-white">
-                        <div className="bg-white/10 rounded-lg p-3">
-                          <div className="text-white/70 text-xs mb-1">Ticket Number</div>
-                          <div className="text-xl font-mono font-bold">#{finalWinner.winning_ticket_number}</div>
-                        </div>
-                        <div className="bg-white/10 rounded-lg p-3">
-                          <div className="text-white/70 text-xs mb-1">Winner Index</div>
-                          <div className="text-xl font-mono font-bold">{finalWinner.winner_index}</div>
-                        </div>
-                      </div>
+                <div className="px-6 py-6">
+                  <div className="space-y-4">
+                    <div className="bg-admin-hover-bg rounded-lg p-4">
+                      <p className="text-xs text-muted-foreground mb-1">Winner Name</p>
+                      <p className="text-xl font-semibold text-foreground">
+                        {finalWinner?.winner_display_name || 'Loading...'}
+                      </p>
                     </div>
 
-                    <button
-                      onClick={handleCloseDrawAnimation}
-                      className="bg-white text-admin-orange-fg px-8 py-3 rounded-lg font-bold text-lg hover:bg-white/90 transition-colors cursor-pointer"
-                    >
-                      Continue
-                    </button>
-                  </motion.div>
-                </motion.div>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-admin-hover-bg rounded-lg p-4">
+                        <p className="text-xs text-muted-foreground mb-1">Ticket Number</p>
+                        <p className="text-lg font-mono font-semibold text-foreground">
+                          #{finalWinner?.winning_ticket_number || '-'}
+                        </p>
+                      </div>
+                      <div className="bg-admin-hover-bg rounded-lg p-4">
+                        <p className="text-xs text-muted-foreground mb-1">Winner Index</p>
+                        <p className="text-lg font-mono font-semibold text-foreground">
+                          {finalWinner?.winner_index ?? '-'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-6 py-4 border-t border-border">
+                  <Button
+                    onClick={handleCloseDrawAnimation}
+                    className="w-full cursor-pointer"
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
