@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { DashboardHeader } from '../components/DashboardHeader'
 import { Input } from '@/components/ui/input'
@@ -6,10 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button'
 import { Download, ExternalLink, Search } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
+import type { Database } from '@/types/database.types'
+
+type ActivityLog = Database['public']['Tables']['activity_logs']['Row']
 
 interface Activity {
   id: string
-  type: 'order' | 'win' | 'signup' | 'fulfillment' | 'withdrawal' | 'draw'
+  type: 'order' | 'win' | 'signup' | 'fulfillment' | 'withdrawal' | 'draw' | 'user'
   title: string
   description: string
   timestamp: string
@@ -25,8 +29,8 @@ interface Activity {
 const ACTIVITY_TYPES = [
   { value: 'all', label: 'All Types' },
   { value: 'order', label: 'Orders' },
-  { value: 'win', label: 'Wins' },
-  { value: 'signup', label: 'Signups' },
+  { value: 'winner', label: 'Wins' },
+  { value: 'user', label: 'Signups' },
   { value: 'fulfillment', label: 'Fulfillments' },
   { value: 'withdrawal', label: 'Withdrawals' },
   { value: 'draw', label: 'Draws' },
@@ -35,8 +39,8 @@ const ACTIVITY_TYPES = [
 const getActivityColor = (type: string) => {
   const colors = {
     order: 'bg-admin-info-bg text-admin-info-fg',
-    win: 'bg-admin-success-bg text-admin-success-fg',
-    signup: 'bg-admin-purple-bg text-admin-purple-fg',
+    winner: 'bg-admin-success-bg text-admin-success-fg',
+    user: 'bg-admin-purple-bg text-admin-purple-fg',
     fulfillment: 'bg-admin-orange-bg text-admin-orange-fg',
     withdrawal: 'bg-admin-warning-bg text-admin-warning-fg',
     draw: 'bg-admin-gray-bg text-admin-gray-text',
@@ -45,236 +49,27 @@ const getActivityColor = (type: string) => {
 }
 
 export default function Activity() {
-  const [activities, setActivities] = useState<Activity[]>([])
-  const [filteredActivities, setFilteredActivities] = useState<Activity[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('all')
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
 
-  useEffect(() => {
-    loadActivities()
-  }, [])
+  // Query builder for infinite scroll
+  const queryBuilder = useCallback(() => {
+    let query = supabase
+      .from('activity_logs')
+      .select(`
+        *,
+        user:profiles!activity_logs_user_id_fkey(id, first_name, last_name, email, avatar_url),
+        actor:profiles!activity_logs_actor_id_fkey(id, first_name, last_name, email, avatar_url)
+      `)
+      .order('created_at', { ascending: false })
 
-  useEffect(() => {
-    filterActivities()
-  }, [activities, searchQuery, typeFilter, dateFilter])
-
-  const loadActivities = async () => {
-    try {
-      setLoading(true)
-
-      const allActivities: Activity[] = []
-
-      // Fetch orders
-      const { data: orders } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          subtotal_pence,
-          status,
-          created_at,
-          user:profiles!orders_user_id_fkey(id, first_name, last_name, email)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (orders) {
-        orders.forEach((order) => {
-          if (!order.created_at) return
-          allActivities.push({
-            id: `order-${order.id}`,
-            type: 'order',
-            title: 'New Order',
-            description: `Order £${(order.subtotal_pence / 100).toFixed(2)} - ${order.status}`,
-            timestamp: order.created_at,
-            user: order.user ? {
-              id: order.user.id,
-              name: `${order.user.first_name || ''} ${order.user.last_name || ''}`.trim() || 'Unknown User',
-              email: order.user.email,
-            } : undefined,
-            metadata: { orderId: order.id, status: order.status, amount: order.subtotal_pence },
-          })
-        })
-      }
-
-      // Fetch winners
-      const { data: winners } = await supabase
-        .from('winners')
-        .select(`
-          id,
-          user_id,
-          competition_id,
-          created_at,
-          prize_name,
-          prize_value_gbp,
-          user:profiles!winners_user_id_fkey(id, first_name, last_name, email)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (winners) {
-        winners.forEach((winner) => {
-          if (!winner.created_at) return
-          allActivities.push({
-            id: `win-${winner.id}`,
-            type: 'win',
-            title: 'Competition Won',
-            description: `Won ${winner.prize_name || 'prize'} (£${winner.prize_value_gbp || 0})`,
-            timestamp: winner.created_at,
-            user: winner.user ? {
-              id: winner.user.id,
-              name: `${winner.user.first_name || ''} ${winner.user.last_name || ''}`.trim() || 'Unknown User',
-              email: winner.user.email,
-            } : undefined,
-            metadata: { winnerId: winner.id, competitionId: winner.competition_id, prizeName: winner.prize_name },
-          })
-        })
-      }
-
-      // Fetch signups
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, email, first_name, last_name, created_at')
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (profiles) {
-        profiles.forEach((profile) => {
-          if (!profile.created_at) return
-          allActivities.push({
-            id: `signup-${profile.id}`,
-            type: 'signup',
-            title: 'New User Signup',
-            description: `${profile.email} created an account`,
-            timestamp: profile.created_at,
-            user: {
-              id: profile.id,
-              name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Unknown User',
-              email: profile.email,
-            },
-            metadata: { userId: profile.id },
-          })
-        })
-      }
-
-      // Fetch fulfillments
-      const { data: fulfillments } = await supabase
-        .from('prize_fulfillments')
-        .select(`
-          id,
-          status,
-          created_at,
-          ticket_id,
-          user_id,
-          user:profiles!prize_fulfillments_user_id_fkey(id, first_name, last_name, email)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (fulfillments) {
-        fulfillments.forEach((fulfillment) => {
-          if (!fulfillment.created_at) return
-          allActivities.push({
-            id: `fulfillment-${fulfillment.id}`,
-            type: 'fulfillment',
-            title: 'Prize Fulfillment',
-            description: `Fulfillment ${fulfillment.status}`,
-            timestamp: fulfillment.created_at,
-            user: fulfillment.user ? {
-              id: fulfillment.user.id,
-              name: `${fulfillment.user.first_name || ''} ${fulfillment.user.last_name || ''}`.trim() || 'Unknown User',
-              email: fulfillment.user.email,
-            } : undefined,
-            metadata: { fulfillmentId: fulfillment.id, status: fulfillment.status },
-          })
-        })
-      }
-
-      // Fetch withdrawals
-      const { data: withdrawals } = await supabase
-        .from('withdrawal_requests')
-        .select(`
-          id,
-          status,
-          created_at,
-          amount_pence,
-          user_id,
-          user:profiles!withdrawal_requests_user_id_fkey(id, first_name, last_name, email)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (withdrawals) {
-        withdrawals.forEach((withdrawal) => {
-          if (!withdrawal.created_at) return
-          allActivities.push({
-            id: `withdrawal-${withdrawal.id}`,
-            type: 'withdrawal',
-            title: 'Withdrawal Request',
-            description: `£${(withdrawal.amount_pence / 100).toFixed(2)} - ${withdrawal.status}`,
-            timestamp: withdrawal.created_at,
-            user: withdrawal.user ? {
-              id: withdrawal.user.id,
-              name: `${withdrawal.user.first_name || ''} ${withdrawal.user.last_name || ''}`.trim() || 'Unknown User',
-              email: withdrawal.user.email,
-            } : undefined,
-            metadata: { withdrawalId: withdrawal.id, amount: withdrawal.amount_pence, status: withdrawal.status },
-          })
-        })
-      }
-
-      // Fetch draw audit logs
-      const { data: drawLogs } = await supabase
-        .from('draw_audit_log')
-        .select(`
-          id,
-          draw_id,
-          competition_id,
-          action,
-          actor_id,
-          details,
-          created_at
-        `)
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (drawLogs) {
-        drawLogs.forEach((log) => {
-          if (!log.created_at) return
-          allActivities.push({
-            id: `draw-${log.id}`,
-            type: 'draw',
-            title: 'Draw Action',
-            description: `${log.action}: ${log.details || 'No details'}`,
-            timestamp: log.created_at,
-            metadata: { drawId: log.draw_id, competitionId: log.competition_id, action: log.action },
-          })
-        })
-      }
-
-      // Sort all activities by timestamp
-      allActivities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-
-      setActivities(allActivities)
-    } catch (error) {
-      console.error('Error loading activities:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const filterActivities = () => {
-    let filtered = [...activities]
-
-    // Filter by type
     if (typeFilter !== 'all') {
-      filtered = filtered.filter((activity) => activity.type === typeFilter)
+      query = query.eq('type', typeFilter)
     }
 
-    // Filter by date
     if (dateFilter !== 'all') {
       const now = new Date()
       const filterDate = new Date()
@@ -291,22 +86,71 @@ export default function Activity() {
           break
       }
 
-      filtered = filtered.filter((activity) => new Date(activity.timestamp) >= filterDate)
+      query = query.gte('created_at', filterDate.toISOString())
     }
 
-    // Filter by search query
-    if (searchQuery) {
+    return query
+  }, [typeFilter, dateFilter])
+
+  // Transform activity logs to Activity interface
+  const transformActivities = useCallback(async (logs: ActivityLog[]): Promise<Activity[]> => {
+    return logs.map((log) => ({
+      id: log.id,
+      type: log.type as Activity['type'],
+      title: formatActivityTitle(log.type, log.action),
+      description: log.description,
+      timestamp: log.created_at,
+      user: log.user ? {
+        id: log.user.id,
+        name: `${log.user.first_name || ''} ${log.user.last_name || ''}`.trim() || 'Unknown User',
+        email: log.user.email,
+        avatar: log.user.avatar_url || undefined,
+      } : undefined,
+      metadata: log.metadata as Record<string, unknown>,
+    }))
+  }, [])
+
+  // Use infinite scroll hook with transformation
+  const {
+    data: activities,
+    loading,
+    loadingMore,
+    hasMore,
+    observerRef,
+  } = useInfiniteScroll<ActivityLog, Activity>({
+    queryBuilder,
+    pageSize: 10,
+    dependencies: [typeFilter, dateFilter],
+    transform: transformActivities,
+  })
+
+  // Client-side search filter
+  const filteredActivities = useMemo(
+    () => {
+      if (!searchQuery) return activities
+
       const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(
+      return activities.filter(
         (activity) =>
           activity.title.toLowerCase().includes(query) ||
           activity.description.toLowerCase().includes(query) ||
           activity.user?.name.toLowerCase().includes(query) ||
           activity.user?.email?.toLowerCase().includes(query)
       )
-    }
+    },
+    [activities, searchQuery]
+  )
 
-    setFilteredActivities(filtered)
+  const formatActivityTitle = (type: string, action: string) => {
+    const titles: Record<string, string> = {
+      'order': 'New Order',
+      'winner': 'Competition Won',
+      'user': 'New User Signup',
+      'fulfillment': 'Prize Fulfillment',
+      'withdrawal': 'Withdrawal Request',
+      'draw': 'Draw Action',
+    }
+    return titles[type] || `${type} - ${action}`
   }
 
   const exportToCSV = () => {
@@ -394,13 +238,13 @@ export default function Activity() {
             <div className="bg-admin-card-bg border border-border rounded-lg p-4">
               <div className="text-sm text-muted-foreground">Wins</div>
               <div className="text-2xl font-semibold mt-1">
-                {filteredActivities.filter((a) => a.type === 'win').length}
+                {filteredActivities.filter((a) => a.type === 'winner').length}
               </div>
             </div>
             <div className="bg-admin-card-bg border border-border rounded-lg p-4">
               <div className="text-sm text-muted-foreground">Signups</div>
               <div className="text-2xl font-semibold mt-1">
-                {filteredActivities.filter((a) => a.type === 'signup').length}
+                {filteredActivities.filter((a) => a.type === 'user').length}
               </div>
             </div>
           </div>
@@ -446,8 +290,9 @@ export default function Activity() {
           {/* Activities Table */}
           <div className="bg-admin-card-bg border border-border rounded-lg overflow-hidden">
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-muted-foreground">Loading activities...</div>
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="size-8 border-4 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
+                <p className="mt-4 text-muted-foreground">Loading activities...</p>
               </div>
             ) : filteredActivities.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
@@ -520,6 +365,27 @@ export default function Activity() {
                     ))}
                   </tbody>
                 </table>
+
+                {/* Infinite Scroll Sentinel */}
+                {hasMore && (
+                  <div ref={observerRef} className="p-4 text-center">
+                    {loadingMore && (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="size-5 border-2 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
+                        <span className="text-sm text-muted-foreground">Loading more activities...</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* End of Results Message */}
+                {!hasMore && filteredActivities.length > 0 && (
+                  <div className="p-4 text-center">
+                    <span className="text-sm text-muted-foreground">
+                      All activities loaded ({filteredActivities.length} total)
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>
