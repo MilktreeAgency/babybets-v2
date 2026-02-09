@@ -161,24 +161,26 @@ export type DrawExecutionResult = {
 }
 
 export type DrawVerificationResult = {
-  valid: boolean
   draw_id: string
   competition_id: string
-  checks: {
+  verification_checks: {
     snapshot_hash_valid: boolean
     verification_hash_valid: boolean
     winner_index_valid: boolean
   }
-  details: {
+  computed_values: {
+    recomputed_snapshot_hash: string
+    stored_snapshot_hash: string
+    recomputed_verification_hash: string
+    stored_verification_hash: string
+    expected_winner_ticket_id: string
+    actual_winner_ticket_id: string
+  }
+  draw_details: {
     total_entries: number
     winner_index: number
-    stored_snapshot_hash: string
-    computed_snapshot_hash: string
-    stored_verification_hash: string
-    computed_verification_hash: string
-    winning_ticket_id: string
-    expected_ticket_id: string
+    random_seed: string
     executed_at: string
+    executed_by: string
   }
-  error?: string
 }
