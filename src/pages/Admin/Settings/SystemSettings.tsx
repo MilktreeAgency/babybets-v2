@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { Construction, Radio } from 'lucide-react'
+import { Construction, Radio, Landmark } from 'lucide-react'
 
 export default function SystemSettings() {
   const { settings, updateSetting, loading } = useSystemSettings()
@@ -17,6 +17,8 @@ export default function SystemSettings() {
   const [liveTickerEnabled, setLiveTickerEnabled] = useState(false)
   const [liveTickerUrl, setLiveTickerUrl] = useState('')
   const [liveTickerText, setLiveTickerText] = useState('Watch Live Now')
+  const [minWithdrawalAmount, setMinWithdrawalAmount] = useState('100.00')
+  const [maxWithdrawalAmount, setMaxWithdrawalAmount] = useState('10000.00')
 
   const [saving, setSaving] = useState(false)
 
@@ -28,6 +30,12 @@ export default function SystemSettings() {
       setLiveTickerEnabled(settings.live_ticker.enabled)
       setLiveTickerUrl(settings.live_ticker.url)
       setLiveTickerText(settings.live_ticker.text)
+
+      // Load withdrawal limits if they exist
+      if (settings.withdrawal_limits) {
+        setMinWithdrawalAmount((settings.withdrawal_limits.min_amount_pence / 100).toFixed(2))
+        setMaxWithdrawalAmount((settings.withdrawal_limits.max_amount_pence / 100).toFixed(2))
+      }
     }
   }, [settings])
 
@@ -90,6 +98,41 @@ export default function SystemSettings() {
     } catch (error) {
       console.error('Error updating live ticker:', error)
       toast.error('Failed to update live ticker settings')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSaveWithdrawalLimits = async () => {
+    try {
+      // Validate amounts
+      const minPence = Math.round(parseFloat(minWithdrawalAmount) * 100)
+      const maxPence = Math.round(parseFloat(maxWithdrawalAmount) * 100)
+
+      if (isNaN(minPence) || isNaN(maxPence)) {
+        toast.error('Please enter valid amounts')
+        return
+      }
+
+      if (minPence <= 0 || maxPence <= 0) {
+        toast.error('Amounts must be greater than zero')
+        return
+      }
+
+      if (minPence >= maxPence) {
+        toast.error('Minimum amount must be less than maximum amount')
+        return
+      }
+
+      setSaving(true)
+      await updateSetting('withdrawal_limits', {
+        min_amount_pence: minPence,
+        max_amount_pence: maxPence
+      })
+      toast.success('Withdrawal limits updated')
+    } catch (error) {
+      console.error('Error updating withdrawal limits:', error)
+      toast.error('Failed to update withdrawal limits')
     } finally {
       setSaving(false)
     }
@@ -255,6 +298,88 @@ export default function SystemSettings() {
                 className="cursor-pointer"
               >
                 Save URL & Button Text
+              </Button>
+            </div>
+          </div>
+
+          {/* Withdrawal Limits Section */}
+          <div className="bg-admin-card-bg border border-border rounded-lg p-6 space-y-6">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Landmark className="size-5 text-green-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold">Withdrawal Limits</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Configure minimum and maximum withdrawal amounts for users (UK bank accounts only)
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="min-withdrawal" className="cursor-pointer">
+                    Minimum Withdrawal Amount
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      £
+                    </span>
+                    <Input
+                      id="min-withdrawal"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={minWithdrawalAmount}
+                      onChange={(e) => setMinWithdrawalAmount(e.target.value)}
+                      placeholder="100.00"
+                      className="pl-7"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Typical range: £50 - £500
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="max-withdrawal" className="cursor-pointer">
+                    Maximum Withdrawal Amount
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      £
+                    </span>
+                    <Input
+                      id="max-withdrawal"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={maxWithdrawalAmount}
+                      onChange={(e) => setMaxWithdrawalAmount(e.target.value)}
+                      placeholder="10000.00"
+                      className="pl-7"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Typical range: £5000 - £20000
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                <p className="text-sm text-blue-900">
+                  <strong>Note:</strong> Users can only request withdrawals between these amounts.
+                  Withdrawals are processed to UK bank accounts within 3-5 business days.
+                </p>
+              </div>
+
+              <Button
+                onClick={handleSaveWithdrawalLimits}
+                disabled={saving || loading}
+                className="cursor-pointer"
+              >
+                Save Withdrawal Limits
               </Button>
             </div>
           </div>
