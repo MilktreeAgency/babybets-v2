@@ -46,7 +46,7 @@ export default function Dashboard() {
       // Call all RPC functions in parallel
       const [statsResult, activitiesResult, tasksResult] = await Promise.all([
         supabase.rpc('get_dashboard_stats'),
-        supabase.rpc('get_recent_activities', { limit_count: 10 }),
+        supabase.rpc('get_recent_activities', { limit_count: 5 }),
         supabase.rpc('get_pending_tasks'),
       ])
 
