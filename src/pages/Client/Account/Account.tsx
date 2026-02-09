@@ -10,6 +10,7 @@ import { usePrizeFulfillments } from '@/hooks/usePrizeFulfillments'
 import { UserPrizeClaimModal } from '@/components/UserPrizeClaimModal'
 import { authService } from '@/services/auth.service'
 import type { PrizeTemplate } from '@/types'
+import { showErrorToast } from '@/lib/toast'
 
 type Section = 'dashboard' | 'tickets' | 'prizes' | 'wallet' | 'addresses' | 'account-details' | 'communication' | 'logout'
 
@@ -66,8 +67,19 @@ function Account() {
     const tabParam = searchParams.get('tab') as Section | null
     if (tabParam && ['dashboard', 'tickets', 'prizes', 'wallet', 'addresses', 'account-details', 'communication'].includes(tabParam)) {
       setActiveSection(tabParam)
+
+      // Scroll to top when switching tabs
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+
+      // If coming from a successful purchase, remove the purchase param
+      if (searchParams.get('purchase') === 'success') {
+        // Remove the purchase param after acknowledging
+        const newParams = new URLSearchParams(searchParams)
+        newParams.delete('purchase')
+        setSearchParams(newParams, { replace: true })
+      }
     }
-  }, [searchParams])
+  }, [searchParams, setSearchParams])
 
   // Load address data when profile is available
   useEffect(() => {
@@ -195,7 +207,7 @@ function Account() {
       }
     } catch (error) {
       console.error('Error revealing tickets:', error)
-      alert('Failed to reveal some tickets. Please try again.')
+      showErrorToast('Failed to reveal some tickets. Please try again.')
     } finally {
       setIsBulkRevealing(false)
       setRevealingTicketId(null)
@@ -808,6 +820,33 @@ function Account() {
                                 <span className="px-2 py-1 rounded text-xs font-semibold" style={{ backgroundColor: '#dcfce7', color: '#166534' }}>
                                   ✓ Completed
                                 </span>
+
+                                {/* Voucher/Gift Card Information */}
+                                {(fulfillment.prize?.type === 'Voucher' || fulfillment.prize?.type === 'GiftCard') &&
+                                  (fulfillment as { voucher_code?: string; voucher_description?: string }).voucher_code && (
+                                    <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: '#fef3c7', border: '2px solid #fbbf24' }}>
+                                      <div className="space-y-2">
+                                        <div>
+                                          <span className="text-xs font-semibold uppercase tracking-wide block mb-1" style={{ color: '#92400e' }}>
+                                            Your Voucher Code
+                                          </span>
+                                          <p className="font-mono text-base font-bold" style={{ color: '#78350f' }}>
+                                            {(fulfillment as { voucher_code?: string }).voucher_code}
+                                          </p>
+                                        </div>
+                                        {(fulfillment as { voucher_description?: string }).voucher_description && (
+                                          <div>
+                                            <span className="text-xs font-semibold uppercase tracking-wide block mb-1" style={{ color: '#92400e' }}>
+                                              How to Redeem
+                                            </span>
+                                            <p className="text-sm" style={{ color: '#78350f' }}>
+                                              {(fulfillment as { voucher_description?: string }).voucher_description}
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
                               </div>
                             </div>
                           </div>

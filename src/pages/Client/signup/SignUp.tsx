@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { authService } from '@/services/auth.service'
 import { useAuthStore } from '@/store/authStore'
+import { showErrorToast } from '@/lib/toast'
 
 export default function SignUp() {
   const navigate = useNavigate()
@@ -15,16 +15,14 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
 
   const handleGoogleSignIn = async () => {
     try {
-      setError('')
       await authService.signInWithGoogle()
     } catch (error) {
       console.error('Sign-in failed:', error)
-      setError('Failed to sign in with Google')
+      showErrorToast('Failed to sign in with Google')
     }
   }
 
@@ -32,23 +30,22 @@ export default function SignUp() {
     e.preventDefault()
 
     if (!email || !password || !confirmPassword) {
-      setError('Please fill in all required fields')
+      showErrorToast('Please fill in all required fields')
       return
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+      showErrorToast('Password must be at least 6 characters')
       return
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      showErrorToast('Passwords do not match')
       return
     }
 
     try {
       setLoading(true)
-      setError('')
       await authService.signUpWithEmail(email, password, firstName, lastName)
       setSuccess(true)
       // Wait 2 seconds before redirecting to show success message
@@ -64,7 +61,7 @@ export default function SignUp() {
     } catch (error) {
       console.error('Sign-up failed:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to create account'
-      setError(errorMessage)
+      showErrorToast(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -72,17 +69,42 @@ export default function SignUp() {
 
   if (success) {
     return (
-      <div className="antialiased relative min-h-screen" style={{ color: '#2D251E', backgroundColor: '#FFFCF9' }}>
-        <div className="flex min-h-screen items-center justify-center px-6 py-8">
-          <div className="w-full max-w-sm border border-[#E2D9CE] rounded-lg p-6 text-center" style={{ backgroundColor: '#FFFCF9' }}>
-            <div className="size-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-              <svg className="size-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      <div className="antialiased relative min-h-screen" style={{ color: '#151e20', backgroundColor: '#fffbf7' }}>
+        {/* Background decorative elements */}
+        <div
+          className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-[600px] h-[600px] rounded-full blur-3xl -z-10"
+          style={{ backgroundColor: 'rgba(254, 208, 185, 0.3)' }}
+        />
+        <div
+          className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-[500px] h-[500px] rounded-full blur-3xl -z-10"
+          style={{ backgroundColor: 'rgba(225, 234, 236, 0.3)' }}
+        />
+
+        <div className="flex min-h-screen items-center justify-center px-6 py-12">
+          <div
+            className="w-full max-w-md rounded-2xl p-10 text-center"
+            style={{
+              backgroundColor: '#fffbf7',
+              borderWidth: '2px',
+              borderColor: '#e7e5e4'
+            }}
+          >
+            <div
+              className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+              style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}
+            >
+              <svg className="w-10 h-10" style={{ color: '#22c55e' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold mb-2">Account Created!</h2>
-            <p className="text-muted-foreground">
-              Your account has been successfully created. Redirecting you to the dashboard...
+            <h2
+              className="text-3xl font-bold mb-3"
+              style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
+            >
+              Account Created!
+            </h2>
+            <p className="text-base" style={{ color: '#78716c' }}>
+              Your account has been successfully created. Redirecting you to the homepage...
             </p>
           </div>
         </div>
@@ -91,55 +113,85 @@ export default function SignUp() {
   }
 
   return (
-    <div className="antialiased relative min-h-screen" style={{ color: '#2D251E', backgroundColor: '#FFFCF9' }}>
+    <div className="antialiased relative min-h-screen" style={{ color: '#151e20', backgroundColor: '#fffbf7' }}>
+      {/* Background decorative elements */}
+      <div
+        className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-[600px] h-[600px] rounded-full blur-3xl -z-10"
+        style={{ backgroundColor: 'rgba(254, 208, 185, 0.3)' }}
+      />
+      <div
+        className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-[500px] h-[500px] rounded-full blur-3xl -z-10"
+        style={{ backgroundColor: 'rgba(225, 234, 236, 0.3)' }}
+      />
+
       {/* Back button */}
-      <div className="fixed top-5 left-5 z-50">
+      <div className="fixed top-6 left-6 z-50">
         <button
           onClick={() => navigate('/login')}
-          className="size-8 rounded-full hover:bg-black/4 flex items-center justify-center transition-colors"
+          className="p-2.5 rounded-xl hover:bg-white/80 flex items-center justify-center transition-all cursor-pointer"
+          style={{ backgroundColor: 'rgba(255, 255, 255, 0.6)', color: '#151e20', backdropFilter: 'blur(8px)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.6)'
+          }}
         >
-          <ArrowLeft className="size-4" />
+          <ArrowLeft className="w-5 h-5" />
         </button>
       </div>
 
       {/* Main content */}
-      <div className="flex min-h-screen items-center justify-center px-6 py-8">
-        <div className="w-full max-w-sm border border-[#E2D9CE] rounded-lg p-6" style={{ backgroundColor: '#FFFCF9' }}>
+      <div className="flex min-h-screen items-center justify-center px-6 py-12">
+        <div
+          className="w-full max-w-md rounded-2xl p-8 md:p-10"
+          style={{
+            backgroundColor: '#fffbf7',
+            borderWidth: '2px',
+            borderColor: '#e7e5e4'
+          }}
+        >
           {/* Header */}
-          <div className="mb-5">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <div
-                className="size-6 rounded-md"
-                style={{ backgroundColor: '#f25100' }}
-                aria-hidden="true"
+          <div className="mb-8 text-center">
+            <div className="flex items-center justify-center mb-6">
+              <img
+                src="/babybets-logo.png"
+                alt="BabyBets Logo"
+                className="h-12"
               />
-              <span className="font-semibold text-[17px] tracking-tight">
-                babybets
-              </span>
             </div>
-            <h1 className="text-lg font-semibold text-left">Create account</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Join babybets and start winning today!
+            <h1
+              className="text-3xl font-bold mb-3"
+              style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
+            >
+              Create account
+            </h1>
+            <p className="text-base" style={{ color: '#78716c' }}>
+              Join babybets and start winning today
             </p>
           </div>
 
-          {/* Error message */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
-              {error}
-            </div>
-          )}
-
           {/* Sign-up form */}
-          <div className="space-y-4">
+          <div className="space-y-5">
             {/* Google Sign-in button */}
-            <Button
-              variant="outline"
-              className="w-full h-9 gap-2.5 border-[#E2D9CE] hover:bg-black/[0.02] text-[14px] cursor-pointer"
+            <button
+              className="w-full px-6 py-4 rounded-xl font-bold text-base transition-all cursor-pointer flex items-center justify-center gap-3"
+              style={{
+                backgroundColor: 'transparent',
+                color: '#151e20',
+                borderWidth: '2px',
+                borderColor: '#e7e5e4'
+              }}
               onClick={handleGoogleSignIn}
               disabled={loading}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#f5f5f4'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent'
+              }}
             >
-              <svg className="size-4" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -157,24 +209,26 @@ export default function SignUp() {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-              <span className="font-medium">Sign up with Google</span>
-            </Button>
+              <span>Sign up with Google</span>
+            </button>
 
             {/* Divider */}
-            <div className="relative my-4">
+            <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#E2D9CE]"></div>
+                <div className="w-full" style={{ borderTop: '1px solid #e7e5e4' }}></div>
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-[#FFFCF9] px-2 text-muted-foreground">Or sign up with email</span>
+              <div className="relative flex justify-center text-xs uppercase font-bold">
+                <span className="px-3 text-sm" style={{ backgroundColor: '#fffbf7', color: '#78716c' }}>
+                  Or sign up with email
+                </span>
               </div>
             </div>
 
             {/* Email/Password Form */}
-            <form onSubmit={handleSignUp} className="space-y-3">
+            <form onSubmit={handleSignUp} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium mb-1.5">
+                  <label htmlFor="firstName" className="block text-sm font-bold mb-2" style={{ color: '#151e20' }}>
                     First name
                   </label>
                   <input
@@ -183,12 +237,26 @@ export default function SignUp() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="John"
-                    className="w-full h-9 px-3 border border-[#E2D9CE] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f25100] focus:border-transparent text-[14px]"
+                    className="w-full px-4 py-3 rounded-xl text-base transition-all cursor-pointer"
+                    style={{
+                      borderWidth: '2px',
+                      borderColor: '#e7e5e4',
+                      backgroundColor: '#fffbf7',
+                      color: '#151e20'
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#496B71'
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(73, 107, 113, 0.1)'
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#e7e5e4'
+                      e.currentTarget.style.boxShadow = 'none'
+                    }}
                     disabled={loading}
                   />
                 </div>
                 <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium mb-1.5">
+                  <label htmlFor="lastName" className="block text-sm font-bold mb-2" style={{ color: '#151e20' }}>
                     Last name
                   </label>
                   <input
@@ -197,15 +265,29 @@ export default function SignUp() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="Doe"
-                    className="w-full h-9 px-3 border border-[#E2D9CE] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f25100] focus:border-transparent text-[14px]"
+                    className="w-full px-4 py-3 rounded-xl text-base transition-all cursor-pointer"
+                    style={{
+                      borderWidth: '2px',
+                      borderColor: '#e7e5e4',
+                      backgroundColor: '#fffbf7',
+                      color: '#151e20'
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#496B71'
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(73, 107, 113, 0.1)'
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#e7e5e4'
+                      e.currentTarget.style.boxShadow = 'none'
+                    }}
                     disabled={loading}
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium mb-1.5">
-                  Email <span className="text-red-500">*</span>
+                <label htmlFor="email" className="block text-sm font-bold mb-2" style={{ color: '#151e20' }}>
+                  Email <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
                   id="email"
@@ -213,15 +295,29 @@ export default function SignUp() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="john@example.com"
-                  className="w-full h-9 px-3 border border-[#E2D9CE] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f25100] focus:border-transparent text-[14px]"
+                  className="w-full px-4 py-3 rounded-xl text-base transition-all cursor-pointer"
+                  style={{
+                    borderWidth: '2px',
+                    borderColor: '#e7e5e4',
+                    backgroundColor: '#fffbf7',
+                    color: '#151e20'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#496B71'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(73, 107, 113, 0.1)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#e7e5e4'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                   disabled={loading}
                   required
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium mb-1.5">
-                  Password <span className="text-red-500">*</span>
+                <label htmlFor="password" className="block text-sm font-bold mb-2" style={{ color: '#151e20' }}>
+                  Password <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -230,24 +326,41 @@ export default function SignUp() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="At least 6 characters"
-                    className="w-full h-9 px-3 pr-10 border border-[#E2D9CE] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f25100] focus:border-transparent text-[14px]"
+                    className="w-full px-4 py-3 pr-12 rounded-xl text-base transition-all cursor-pointer"
+                    style={{
+                      borderWidth: '2px',
+                      borderColor: '#e7e5e4',
+                      backgroundColor: '#fffbf7',
+                      color: '#151e20'
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#496B71'
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(73, 107, 113, 0.1)'
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#e7e5e4'
+                      e.currentTarget.style.boxShadow = 'none'
+                    }}
                     disabled={loading}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
+                    style={{ color: '#78716c' }}
                     tabIndex={-1}
+                    onMouseEnter={(e) => e.currentTarget.style.color = '#151e20'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = '#78716c'}
                   >
-                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1.5">
-                  Confirm password <span className="text-red-500">*</span>
+                <label htmlFor="confirmPassword" className="block text-sm font-bold mb-2" style={{ color: '#151e20' }}>
+                  Confirm password <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -256,34 +369,70 @@ export default function SignUp() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter password"
-                    className="w-full h-9 px-3 pr-10 border border-[#E2D9CE] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f25100] focus:border-transparent text-[14px]"
+                    className="w-full px-4 py-3 pr-12 rounded-xl text-base transition-all cursor-pointer"
+                    style={{
+                      borderWidth: '2px',
+                      borderColor: '#e7e5e4',
+                      backgroundColor: '#fffbf7',
+                      color: '#151e20'
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#496B71'
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(73, 107, 113, 0.1)'
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#e7e5e4'
+                      e.currentTarget.style.boxShadow = 'none'
+                    }}
                     disabled={loading}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
+                    style={{ color: '#78716c' }}
                     tabIndex={-1}
+                    onMouseEnter={(e) => e.currentTarget.style.color = '#151e20'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = '#78716c'}
                   >
-                    {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
 
-              <Button
+              <button
                 type="submit"
-                className="w-full h-9 bg-[#f25100] hover:bg-[#d94600] text-white text-[14px] cursor-pointer"
-                disabled={loading}
+                className="w-full px-6 py-4 rounded-xl font-bold text-base transition-all"
+                style={{
+                  backgroundColor: !email || !password || !confirmPassword ? '#d1d5db' : '#496B71',
+                  color: 'white',
+                  cursor: !email || !password || !confirmPassword || loading ? 'not-allowed' : 'pointer',
+                  opacity: !email || !password || !confirmPassword ? 0.6 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (email && password && confirmPassword && !loading) {
+                    e.currentTarget.style.backgroundColor = '#3a565a'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (email && password && confirmPassword) {
+                    e.currentTarget.style.backgroundColor = '#496B71'
+                  }
+                }}
+                disabled={loading || !email || !password || !confirmPassword}
               >
                 {loading ? 'Creating account...' : 'Create account'}
-              </Button>
+              </button>
 
-              <div className="text-center text-sm">
-                <span className="text-muted-foreground">Already have an account? </span>
+              <div className="text-center text-base pt-2">
+                <span style={{ color: '#78716c' }}>Already have an account? </span>
                 <Link
                   to="/login"
-                  className="text-[#f25100] hover:underline font-medium"
+                  className="font-bold cursor-pointer"
+                  style={{ color: '#496B71' }}
+                  onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                  onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
                 >
                   Sign in
                 </Link>
@@ -291,13 +440,21 @@ export default function SignUp() {
             </form>
 
             {/* Terms and Privacy */}
-            <p className="text-[11px] text-muted-foreground text-center mt-4 max-w-[280px] mx-auto">
+            <p className="text-xs text-center mt-6" style={{ color: '#78716c' }}>
               By creating an account, you agree to our{' '}
-              <a href="/terms" className="underline hover:text-foreground transition-colors">
+              <a
+                href="/terms"
+                className="font-bold underline cursor-pointer"
+                style={{ color: '#496B71' }}
+              >
                 Terms of Service
               </a>{' '}
               and{' '}
-              <a href="/privacy" className="underline hover:text-foreground transition-colors">
+              <a
+                href="/privacy"
+                className="font-bold underline cursor-pointer"
+                style={{ color: '#496B71' }}
+              >
                 Privacy Policy
               </a>
               .

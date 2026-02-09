@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Gift, DollarSign, Check } from 'lucide-react'
 import type { PrizeChoice, PrizeTemplate } from '@/types'
 import { usePrizeFulfillments } from '@/hooks/usePrizeFulfillments'
+import { showErrorToast } from '@/lib/toast'
 
 interface DeliveryAddress extends Record<string, string | undefined> {
   fullName: string
@@ -53,7 +54,7 @@ export function UserPrizeClaimModal({
     // Validate address if needed
     if (needsDeliveryAddress) {
       if (!address.fullName || !address.addressLine1 || !address.city || !address.postcode || !address.phoneNumber) {
-        alert('Please fill in all required address fields')
+        showErrorToast('Please fill in all required address fields')
         return
       }
     }
@@ -73,7 +74,7 @@ export function UserPrizeClaimModal({
       }, 2000)
     } catch (error) {
       console.error('Failed to claim prize:', error)
-      alert('Failed to claim prize. Please try again.')
+      showErrorToast('Failed to claim prize. Please try again.')
     }
   }
 

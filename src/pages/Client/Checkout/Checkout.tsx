@@ -9,6 +9,7 @@ import { processG2PayPayment, parseCardExpiry, validateCardNumber } from '@/lib/
 import { supabase } from '@/lib/supabase'
 import { ShoppingCart, Trash2, Wallet, ShieldCheck, Tag, X, Check, Users } from 'lucide-react'
 import { getReferral, clearReferral, setReferral } from '@/lib/referralTracking'
+import { showErrorToast, showWarningToast, showSuccessToast } from '@/lib/toast'
 
 function Checkout() {
   const navigate = useNavigate()
@@ -16,13 +17,10 @@ function Checkout() {
   const { isAuthenticated, isLoading: authLoading, isInitialized } = useAuthStore()
   const { summary } = useWallet()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [cartWarning, setCartWarning] = useState<string | null>(null)
 
   // Referral tracking state (handles both link referrals and manual codes)
   const [activeReferral, setActiveReferral] = useState<{ slug: string; influencerId: string; displayName?: string } | null>(null)
   const [influencerCode, setInfluencerCode] = useState('')
-  const [codeError, setCodeError] = useState<string | null>(null)
   const [checkingCode, setCheckingCode] = useState(false)
 
   // Card details state
@@ -36,7 +34,6 @@ function Checkout() {
   const [promoCodeType, setPromoCodeType] = useState<'percentage' | 'fixed_value' | null>(null)
   const [promoCodeValue, setPromoCodeValue] = useState(0)
   const [promoDiscount, setPromoDiscount] = useState(0)
-  const [promoError, setPromoError] = useState<string | null>(null)
   const [useWalletCredit, setUseWalletCredit] = useState(false)
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [isUKResident, setIsUKResident] = useState(false)
@@ -100,7 +97,7 @@ function Checkout() {
     const validateCartOnLoad = async () => {
       const result = await validateCart()
       if (result.removedCount > 0) {
-        setCartWarning(
+        showWarningToast(
           `${result.removedCount} item(s) removed from cart: ${result.reasons.join(', ')}`
         )
       }
@@ -113,13 +110,12 @@ function Checkout() {
     const code = influencerCode.trim().toLowerCase()
 
     if (!code) {
-      setCodeError('Please enter an influencer code')
+      showErrorToast('Please enter an influencer code')
       return
     }
 
     try {
       setCheckingCode(true)
-      setCodeError(null)
 
       // Fetch influencer by slug
       const { data: influencer, error: influencerError } = await supabase
@@ -130,7 +126,7 @@ function Checkout() {
         .single()
 
       if (influencerError || !influencer) {
-        setCodeError('Invalid influencer code')
+        showErrorToast('Invalid influencer code')
         return
       }
 
@@ -142,10 +138,9 @@ function Checkout() {
         displayName: influencer.display_name
       })
       setInfluencerCode('')
-      setCodeError(null)
     } catch (err) {
       console.error('Error validating influencer code:', err)
-      setCodeError('Failed to validate code')
+      showErrorToast('Failed to validate code')
     } finally {
       setCheckingCode(false)
     }
@@ -156,20 +151,17 @@ function Checkout() {
     clearReferral()
     setActiveReferral(null)
     setInfluencerCode('')
-    setCodeError(null)
   }
 
   const handleApplyPromoCode = async () => {
     const code = promoCode.toUpperCase().trim()
 
     if (!code) {
-      setPromoError('Please enter a promo code')
+      showErrorToast('Please enter a promo code')
       return
     }
 
     try {
-      setPromoError(null)
-
       // Fetch promo code from backend
       const { data: promoCodeData, error: promoCodeError } = await supabase
         .from('promo_codes')
@@ -179,7 +171,7 @@ function Checkout() {
         .single()
 
       if (promoCodeError || !promoCodeData) {
-        setPromoError('Invalid promo code')
+        showErrorToast('Invalid promo code')
         return
       }
 
@@ -189,18 +181,18 @@ function Checkout() {
       const validUntil = promoCodeData.valid_until ? new Date(promoCodeData.valid_until) : null
 
       if (validFrom && now < validFrom) {
-        setPromoError('This promo code is not yet valid')
+        showErrorToast('This promo code is not yet valid')
         return
       }
 
       if (validUntil && now > validUntil) {
-        setPromoError('This promo code has expired')
+        showErrorToast('This promo code has expired')
         return
       }
 
       // Check usage limits
       if (promoCodeData.max_uses && (promoCodeData.current_uses ?? 0) >= promoCodeData.max_uses) {
-        setPromoError('This promo code has reached its usage limit')
+        showErrorToast('This promo code has reached its usage limit')
         return
       }
 
@@ -208,7 +200,7 @@ function Checkout() {
       const totalPence = Math.round(totalPrice * 100)
       if (promoCodeData.min_order_pence && totalPence < promoCodeData.min_order_pence) {
         const minOrderGBP = promoCodeData.min_order_pence / 100
-        setPromoError(`Minimum order value of £${minOrderGBP.toFixed(2)} required`)
+        showErrorToast(`Minimum order value of £${minOrderGBP.toFixed(2)} required`)
         return
       }
 
@@ -219,8 +211,7 @@ function Checkout() {
         setPromoCodeType('percentage')
         setPromoCodeValue(promoCodeData.value)
         setPromoDiscount(promoCodeData.value / 100)
-        setPromoError(null)
-        setPromoCode('')
+    setPromoCode('')
       } else if (promoCodeData.type === 'fixed_value') {
         // Fixed value in pence, convert to GBP and calculate as discount ratio
         const fixedDiscountGBP = promoCodeData.value / 100
@@ -229,8 +220,7 @@ function Checkout() {
         setPromoCodeType('fixed_value')
         setPromoCodeValue(promoCodeData.value)
         setPromoDiscount(discountRatio)
-        setPromoError(null)
-        setPromoCode('')
+    setPromoCode('')
       } else if (promoCodeData.type === 'free_tickets') {
         // Calculate discount based on average ticket price and free tickets value
         const totalTickets = items.reduce((sum, item) => sum + item.quantity, 0)
@@ -242,14 +232,13 @@ function Checkout() {
         setPromoCodeType('fixed_value') // Display as fixed value discount
         setPromoCodeValue(Math.round(freeTicketsValue * 100)) // Store as pence
         setPromoDiscount(discountRatio)
-        setPromoError(null)
-        setPromoCode('')
+    setPromoCode('')
       } else {
-        setPromoError('This promo code type is not supported for checkout')
+        showErrorToast('This promo code type is not supported for checkout')
       }
     } catch (err) {
       console.error('Error validating promo code:', err)
-      setPromoError('Failed to validate promo code')
+      showErrorToast('Failed to validate promo code')
     }
   }
 
@@ -258,7 +247,6 @@ function Checkout() {
     setPromoCodeType(null)
     setPromoCodeValue(0)
     setPromoDiscount(0)
-    setPromoError(null)
   }
 
   const handleWalletToggle = (enabled: boolean) => {
@@ -273,7 +261,6 @@ function Checkout() {
   const handlePayment = async () => {
     try {
       setLoading(true)
-      setError(null)
 
       // Validate cart is not empty
       if (items.length === 0) {
@@ -409,9 +396,10 @@ function Checkout() {
           throw new Error('Failed to process wallet payment')
         }
 
-        // Clear cart and redirect
+        // Clear cart and redirect with success indicator
         clearCart()
-        navigate('/account?tab=tickets')
+        showSuccessToast('Order completed successfully! Your tickets are ready.')
+        navigate('/account?tab=tickets&purchase=success')
         return
       }
 
@@ -474,9 +462,10 @@ function Checkout() {
           throw new Error(completeError.message || 'Failed to complete order')
         }
 
-        // Clear cart and redirect
+        // Clear cart and redirect with success indicator
         clearCart()
-        navigate('/account?tab=tickets')
+        showSuccessToast('Payment successful! Your tickets are ready.')
+        navigate('/account?tab=tickets&purchase=success')
       } else {
         // Payment declined or failed
         throw new Error(paymentResult.message || 'Payment was declined')
@@ -484,7 +473,7 @@ function Checkout() {
     } catch (err) {
       console.error('Error processing payment:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to process payment'
-      setError(errorMessage)
+      showErrorToast(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -539,21 +528,6 @@ function Checkout() {
                     ({items.length} {items.length === 1 ? 'item' : 'items'})
                   </span>
                 </h2>
-
-                {/* Cart Validation Warning */}
-                {cartWarning && (
-                  <div
-                    className="mb-6 p-4 rounded-lg border-2"
-                    style={{
-                      backgroundColor: '#fef3c7',
-                      borderColor: '#f59e0b',
-                    }}
-                  >
-                    <p className="text-sm font-medium" style={{ color: '#92400e' }}>
-                      ⚠️ {cartWarning}
-                    </p>
-                  </div>
-                )}
 
                 <div className="space-y-6">
                   {items.map((item) => (
@@ -649,8 +623,7 @@ function Checkout() {
                         value={promoCode}
                         onChange={(e) => {
                           setPromoCode(e.target.value)
-                          setPromoError(null)
-                        }}
+                                      }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             handleApplyPromoCode()
@@ -686,9 +659,6 @@ function Checkout() {
                         Apply
                       </button>
                     </div>
-                  )}
-                  {promoError && (
-                    <p className="text-rose-500 text-sm mt-2">{promoError}</p>
                   )}
                 </div>
 
@@ -752,7 +722,6 @@ function Checkout() {
                           value={influencerCode}
                           onChange={(e) => {
                             setInfluencerCode(e.target.value)
-                            setCodeError(null)
                           }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
@@ -793,9 +762,6 @@ function Checkout() {
                           {checkingCode ? 'Checking...' : 'Apply'}
                         </button>
                       </div>
-                      {codeError && (
-                        <p className="text-rose-500 text-sm mt-2">{codeError}</p>
-                      )}
                       <p className="text-xs mt-2" style={{ color: '#78716c' }}>
                         Have a partner code? Enter it here to support your favorite influencer.
                       </p>
@@ -1015,19 +981,6 @@ function Checkout() {
                   >
                     Payment Details
                   </h2>
-
-                  {error && (
-                    <div
-                      className="rounded-lg p-4 mb-6"
-                      style={{
-                        backgroundColor: '#fef2f2',
-                        borderWidth: '1px',
-                        borderColor: '#fecaca',
-                      }}
-                    >
-                      <p className="text-red-800 text-sm">{error}</p>
-                    </div>
-                  )}
 
                   {/* Card Details Form */}
                   <div className="space-y-4 mb-6">
@@ -1264,19 +1217,6 @@ function Checkout() {
                   >
                     Complete Order
                   </h2>
-
-                  {error && (
-                    <div
-                      className="rounded-lg p-4 mb-6"
-                      style={{
-                        backgroundColor: '#fef2f2',
-                        borderWidth: '1px',
-                        borderColor: '#fecaca',
-                      }}
-                    >
-                      <p className="text-red-800 text-sm">{error}</p>
-                    </div>
-                  )}
 
                   <div
                     className="p-6 rounded-xl mb-6"
