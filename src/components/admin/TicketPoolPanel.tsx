@@ -3,6 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Ticket, Lock, Unlock, RefreshCw, CheckCircle, XCircle, AlertTriangle, Loader, BarChart3, Gift } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Competition } from '@/types'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface TicketPoolStats {
   competition_id: string
@@ -293,57 +303,42 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
       </div>
 
       {/* Confirmation Modal */}
-      <AnimatePresence>
-        {showConfirmModal && (
-          <div className="fixed inset-0 w-screen h-screen z-50 flex items-center justify-center p-4 bg-black/50">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-admin-card-bg rounded-lg p-6 max-w-md w-full shadow-xl border border-border"
+      <AlertDialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-admin-orange-fg" />
+              Confirm Pool Generation
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to generate the ticket pool? This action will:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+            <li>Generate {competition.max_tickets.toLocaleString()} tickets with unique 7-digit codes</li>
+            <li>Randomly distribute instant win prizes across the pool</li>
+            <li>Lock the pool (becomes immutable)</li>
+            <li>Cannot be regenerated once locked</li>
+          </ul>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleGeneratePool}
+              disabled={isGenerating}
+              className="cursor-pointer"
             >
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <AlertTriangle className="size-5 text-admin-orange-fg" />
-                  Confirm Pool Generation
-                </h3>
-              </div>
-
-              <p className="text-muted-foreground mb-4">
-                Are you sure you want to generate the ticket pool? This action will:
-              </p>
-
-              <ul className="list-disc list-inside text-sm text-muted-foreground mb-6 space-y-1">
-                <li>Generate {competition.max_tickets.toLocaleString()} tickets with unique 7-digit codes</li>
-                <li>Randomly distribute instant win prizes across the pool</li>
-                <li>Lock the pool (becomes immutable)</li>
-                <li>Cannot be regenerated once locked</li>
-              </ul>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowConfirmModal(false)}
-                  className="flex-1 py-2.5 px-4 rounded-lg font-medium border border-border bg-admin-card-bg hover:bg-admin-hover-bg text-foreground transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleGeneratePool}
-                  disabled={isGenerating}
-                  className="flex-1 py-2.5 px-4 rounded-lg font-medium text-white bg-admin-info-fg hover:bg-admin-info-text disabled:opacity-50 transition-colors cursor-pointer"
-                >
-                  {isGenerating ? 'Generating...' : 'Generate Pool'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              {isGenerating ? 'Generating...' : 'Generate Pool'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Generation Animation Modal */}
       <AnimatePresence>
         {showGenerationAnimation && (
-          <div className="fixed inset-0 w-screen h-screen z-100 flex items-center justify-center bg-black/50">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm h-screen w-screen">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
