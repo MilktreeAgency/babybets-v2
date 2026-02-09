@@ -8,7 +8,6 @@ import {
   Trophy,
   Ticket,
   Calendar,
-  BarChart3,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
@@ -30,11 +29,6 @@ interface AnalyticsData {
   competitionsChange: number
   averageOrderValue: number
   conversionRate: number
-}
-
-interface RevenueDataPoint {
-  date: string
-  revenue: number
 }
 
 interface TopCompetition {
@@ -61,7 +55,6 @@ export default function Analytics() {
     averageOrderValue: 0,
     conversionRate: 0,
   })
-  const [revenueData, setRevenueData] = useState<RevenueDataPoint[]>([])
   const [topCompetitions, setTopCompetitions] = useState<TopCompetition[]>([])
 
   useEffect(() => {
@@ -125,20 +118,6 @@ export default function Analytics() {
         ? (ticketsCount / (usersCount * 10)) * 100
         : 0
 
-      // Get revenue data for chart (grouped by day)
-      const revenueByDay = (ordersData || []).reduce((acc: Record<string, number>, order) => {
-        const date = new Date(order.created_at!).toLocaleDateString('en-GB')
-        acc[date] = (acc[date] || 0) + order.subtotal_pence
-        return acc
-      }, {})
-
-      const revenueDataPoints = Object.entries(revenueByDay)
-        .map(([date, revenue]) => ({
-          date,
-          revenue: revenue / 100,
-        }))
-        .slice(-30) // Last 30 days
-
       // Get top competitions
       const { data: competitionsData } = await supabase
         .from('competitions')
@@ -167,7 +146,6 @@ export default function Analytics() {
         conversionRate,
       })
 
-      setRevenueData(revenueDataPoints)
       setTopCompetitions(topCompetitionsData)
     } catch (error) {
       console.error('Error loading analytics:', error)
@@ -318,41 +296,6 @@ export default function Analytics() {
                   </p>
                   <p className="text-sm text-muted-foreground mt-2">Estimated user conversion</p>
                 </div>
-              </div>
-
-              {/* Revenue Chart */}
-              <div className="bg-admin-card-bg border border-border rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-                  <BarChart3 className="size-5 text-admin-info-fg" />
-                  Revenue Trend
-                </h3>
-                {revenueData.length > 0 ? (
-                  <div className="space-y-4">
-                    {revenueData.slice(-10).map((dataPoint, index) => {
-                      const maxRevenue = Math.max(...revenueData.map((d) => d.revenue))
-                      const widthPercent = (dataPoint.revenue / maxRevenue) * 100
-
-                      return (
-                        <div key={index} className="space-y-1">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">{dataPoint.date}</span>
-                            <span className="font-medium text-foreground">
-                              £{dataPoint.revenue.toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="w-full bg-admin-gray-bg rounded-full h-2">
-                            <div
-                              className="bg-admin-info-fg h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${widthPercent}%` }}
-                            />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">No revenue data available</p>
-                )}
               </div>
 
               {/* Top Competitions */}
