@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 
 interface Activity {
   id: string
-  type: 'order' | 'win' | 'signup' | 'fulfillment' | 'withdrawal'
+  type: 'order' | 'win' | 'signup' | 'fulfillment' | 'withdrawal' | 'wallet' | 'draw'
   title: string
   description: string
   timestamp: Date
@@ -18,20 +18,24 @@ interface ActivityFeedProps {
   loading?: boolean
 }
 
-const activityColors = {
+const activityColors: Record<string, string> = {
   order: 'bg-admin-info-bg text-admin-info-fg',
   win: 'bg-admin-success-bg text-admin-success-fg',
   signup: 'bg-admin-purple-bg text-admin-purple-fg',
   fulfillment: 'bg-admin-orange-bg text-admin-orange-fg',
   withdrawal: 'bg-admin-warning-bg text-admin-warning-fg',
+  wallet: 'bg-green-100 text-green-800',
+  draw: 'bg-admin-gray-bg text-admin-gray-text',
 }
 
-const activityLabels = {
+const activityLabels: Record<string, string> = {
   order: 'Order',
   win: 'Win',
   signup: 'Signup',
   fulfillment: 'Fulfillment',
   withdrawal: 'Withdrawal',
+  wallet: 'Wallet',
+  draw: 'Draw',
 }
 
 export default function ActivityFeed({ activities, loading = false }: ActivityFeedProps) {
@@ -97,10 +101,10 @@ export default function ActivityFeed({ activities, loading = false }: ActivityFe
               <div className="flex items-center gap-2 mb-1">
                 <span
                   className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                    activityColors[activity.type]
+                    activityColors[activity.type] || 'bg-admin-gray-bg text-admin-gray-text'
                   }`}
                 >
-                  {activityLabels[activity.type]}
+                  {activityLabels[activity.type] || activity.type}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {formatDistanceToNow(activity.timestamp, { addSuffix: true })}

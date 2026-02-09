@@ -14,7 +14,7 @@ interface DashboardStats {
 
 interface Activity {
   id: string
-  type: 'order' | 'win' | 'signup' | 'fulfillment' | 'withdrawal'
+  type: 'order' | 'win' | 'signup' | 'fulfillment' | 'withdrawal' | 'wallet' | 'draw'
   title: string
   description: string
   timestamp: string
@@ -43,19 +43,91 @@ export default function Dashboard() {
       setLoading(true)
       setError(null)
 
-      // Call all RPC functions in parallel
-      const [statsResult, activitiesResult, tasksResult] = await Promise.all([
+      // Fetch recent activities from activity_logs table
+      const { data: activityLogs, error: activityError } = await supabase
+        .from('activity_logs')
+        .select(`
+          id,
+          type,
+          action,
+          description,
+          created_at,
+          user:profiles!activity_logs_user_id_fkey(first_name, last_name, avatar_url)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      if (activityError) throw activityError
+
+      // Transform activity logs to Activity format
+      const transformedActivities: Activity[] = (activityLogs || []).map((log: any) => {
+        // Map activity_logs type to ActivityFeed type
+        let activityType: Activity['type'] = 'order'
+        if (log.type === 'winner') activityType = 'win'
+        else if (log.type === 'user') activityType = 'signup'
+        else if (log.type === 'order') activityType = 'order'
+        else if (log.type === 'fulfillment') activityType = 'fulfillment'
+        else if (log.type === 'withdrawal') activityType = 'withdrawal'
+        else if (log.type === 'wallet') activityType = 'wallet'
+        else if (log.type === 'draw') activityType = 'draw'
+
+        // Format title from type and action
+        let title = log.description
+        if (log.type === 'order' && log.action === 'created') {
+          title = 'New Order'
+        } else if (log.type === 'winner') {
+          title = 'Competition Won'
+        } else if (log.type === 'user') {
+          title = 'New User Signup'
+        } else if (log.type === 'wallet') {
+          title = 'Wallet Credit Added'
+        } else if (log.type === 'fulfillment') {
+          if (log.action === 'prize_claimed') title = 'Prize Claimed (Physical)'
+          else if (log.action === 'cash_claimed') title = 'Prize Claimed (Cash)'
+          else if (log.action === 'processing') title = 'Prize Processing'
+          else if (log.action === 'dispatched') title = 'Prize Dispatched'
+          else if (log.action === 'delivered') title = 'Prize Delivered'
+          else if (log.action === 'completed') title = 'Prize Completed'
+          else title = 'Prize Fulfillment'
+        } else if (log.type === 'withdrawal') {
+          if (log.action === 'requested') title = 'Withdrawal Requested'
+          else if (log.action === 'approved') title = 'Withdrawal Approved'
+          else if (log.action === 'rejected') title = 'Withdrawal Rejected'
+          else if (log.action === 'paid') title = 'Withdrawal Paid'
+          else title = 'Withdrawal Activity'
+        } else if (log.type === 'draw') {
+          if (log.action === 'draw_executed') title = 'Draw Executed'
+          else if (log.action === 'draw_verified') title = 'Draw Verified'
+          else if (log.action === 'draw_cancelled') title = 'Draw Cancelled'
+          else title = 'Draw Action'
+        }
+
+        return {
+          id: log.id,
+          type: activityType,
+          title,
+          description: log.description,
+          timestamp: log.created_at,
+          user: log.user
+            ? {
+                name: `${log.user.first_name || ''} ${log.user.last_name || ''}`.trim() || 'Unknown User',
+                avatar: log.user.avatar_url || undefined,
+              }
+            : { name: 'System' },
+        }
+      })
+
+      // Call RPC functions in parallel
+      const [statsResult, tasksResult] = await Promise.all([
         supabase.rpc('get_dashboard_stats'),
-        supabase.rpc('get_recent_activities', { limit_count: 5 }),
         supabase.rpc('get_pending_tasks'),
       ])
 
       if (statsResult.error) throw statsResult.error
-      if (activitiesResult.error) throw activitiesResult.error
       if (tasksResult.error) throw tasksResult.error
 
       setStats(statsResult.data as unknown as DashboardStats)
-      setActivities(Array.isArray(activitiesResult.data) ? activitiesResult.data as unknown as Activity[] : [])
+      setActivities(transformedActivities)
       setPendingTasks(tasksResult.data as unknown as PendingTasks)
     } catch (err) {
       console.error('Error loading dashboard data:', err)

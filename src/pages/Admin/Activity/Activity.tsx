@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { DashboardHeader } from '../components/DashboardHeader'
 import { Input } from '@/components/ui/input'
@@ -7,20 +7,52 @@ import { Button } from '@/components/ui/button'
 import { Download, ExternalLink, Search } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
-import type { Database } from '@/types/database.types'
 
-type ActivityLog = Database['public']['Tables']['activity_logs']['Row']
+// Manual type definition for activity_logs (types need regeneration)
+interface ActivityLog {
+  id: string
+  user_id: string | null
+  actor_id: string | null
+  type: string
+  action: string
+  entity_type: string
+  entity_id: string
+  description: string
+  metadata: Record<string, unknown> | null
+  created_at: string
+  user?: {
+    id: string
+    first_name: string | null
+    last_name: string | null
+    email: string | null
+    avatar_url: string | null
+  }
+  actor?: {
+    id: string
+    first_name: string | null
+    last_name: string | null
+    email: string | null
+    avatar_url: string | null
+  }
+}
+
+interface ActivityStats {
+  total: number
+  orders: number
+  winners: number
+  signups: number
+}
 
 interface Activity {
   id: string
-  type: 'order' | 'win' | 'signup' | 'fulfillment' | 'withdrawal' | 'draw' | 'user'
+  type: 'order' | 'winner' | 'signup' | 'fulfillment' | 'withdrawal' | 'draw' | 'user' | 'wallet'
   title: string
   description: string
   timestamp: string
   user?: {
     id?: string
     name: string
-    email?: string
+    email?: string | null
     avatar?: string
   }
   metadata?: Record<string, unknown>
@@ -33,6 +65,7 @@ const ACTIVITY_TYPES = [
   { value: 'user', label: 'Signups' },
   { value: 'fulfillment', label: 'Fulfillments' },
   { value: 'withdrawal', label: 'Withdrawals' },
+  { value: 'wallet', label: 'Wallet Credits' },
   { value: 'draw', label: 'Draws' },
 ]
 
@@ -43,6 +76,7 @@ const getActivityColor = (type: string) => {
     user: 'bg-admin-purple-bg text-admin-purple-fg',
     fulfillment: 'bg-admin-orange-bg text-admin-orange-fg',
     withdrawal: 'bg-admin-warning-bg text-admin-warning-fg',
+    wallet: 'bg-green-100 text-green-800',
     draw: 'bg-admin-gray-bg text-admin-gray-text',
   }
   return colors[type as keyof typeof colors] || 'bg-admin-gray-bg text-admin-gray-text'
@@ -54,6 +88,12 @@ export default function Activity() {
   const [dateFilter, setDateFilter] = useState('all')
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+  const [stats, setStats] = useState<ActivityStats>({
+    total: 0,
+    orders: 0,
+    winners: 0,
+    signups: 0,
+  })
 
   // Query builder for infinite scroll
   const queryBuilder = useCallback(() => {
@@ -124,6 +164,62 @@ export default function Activity() {
     transform: transformActivities,
   })
 
+  // Fetch stats from database (all records matching filters, not just loaded ones)
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Helper to build base query with date filter
+        const buildQuery = (type?: string) => {
+          let query = supabase.from('activity_logs').select('*', { count: 'exact', head: true })
+
+          if (type) {
+            query = query.eq('type', type)
+          }
+
+          if (dateFilter !== 'all') {
+            const now = new Date()
+            const filterDate = new Date()
+
+            switch (dateFilter) {
+              case 'today':
+                filterDate.setHours(0, 0, 0, 0)
+                break
+              case 'week':
+                filterDate.setDate(now.getDate() - 7)
+                break
+              case 'month':
+                filterDate.setMonth(now.getMonth() - 1)
+                break
+            }
+
+            query = query.gte('created_at', filterDate.toISOString())
+          }
+
+          return query
+        }
+
+        // Fetch counts in parallel
+        const [totalResult, ordersResult, winnersResult, signupsResult] = await Promise.all([
+          buildQuery(),
+          buildQuery('order'),
+          buildQuery('winner'),
+          buildQuery('user'),
+        ])
+
+        setStats({
+          total: totalResult.count || 0,
+          orders: ordersResult.count || 0,
+          winners: winnersResult.count || 0,
+          signups: signupsResult.count || 0,
+        })
+      } catch (error) {
+        console.error('Error fetching stats:', error)
+      }
+    }
+
+    fetchStats()
+  }, [dateFilter])
+
   // Client-side search filter
   const filteredActivities = useMemo(
     () => {
@@ -142,13 +238,49 @@ export default function Activity() {
   )
 
   const formatActivityTitle = (type: string, action: string) => {
+    // Handle withdrawal-specific actions
+    if (type === 'withdrawal') {
+      const withdrawalTitles: Record<string, string> = {
+        'requested': 'Withdrawal Requested',
+        'approved': 'Withdrawal Approved',
+        'rejected': 'Withdrawal Rejected',
+        'paid': 'Withdrawal Paid',
+        'status_changed': 'Withdrawal Updated',
+      }
+      return withdrawalTitles[action] || 'Withdrawal Activity'
+    }
+
+    // Handle fulfillment-specific actions
+    if (type === 'fulfillment') {
+      const fulfillmentTitles: Record<string, string> = {
+        'created': 'Prize Fulfillment Created',
+        'prize_claimed': 'Prize Claimed (Physical)',
+        'cash_claimed': 'Prize Claimed (Cash)',
+        'processing': 'Prize Processing',
+        'dispatched': 'Prize Dispatched',
+        'delivered': 'Prize Delivered',
+        'completed': 'Prize Completed',
+        'expired': 'Prize Claim Expired',
+        'status_changed': 'Prize Fulfillment Updated',
+      }
+      return fulfillmentTitles[action] || 'Prize Fulfillment'
+    }
+
+    // Handle draw-specific actions
+    if (type === 'draw') {
+      const drawTitles: Record<string, string> = {
+        'draw_executed': 'Draw Executed',
+        'draw_verified': 'Draw Verified',
+        'draw_cancelled': 'Draw Cancelled',
+      }
+      return drawTitles[action] || 'Draw Action'
+    }
+
     const titles: Record<string, string> = {
       'order': 'New Order',
       'winner': 'Competition Won',
       'user': 'New User Signup',
-      'fulfillment': 'Prize Fulfillment',
-      'withdrawal': 'Withdrawal Request',
-      'draw': 'Draw Action',
+      'wallet': 'Wallet Credit Added',
     }
     return titles[type] || `${type} - ${action}`
   }
@@ -227,24 +359,24 @@ export default function Activity() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-admin-card-bg border border-border rounded-lg p-4">
               <div className="text-sm text-muted-foreground">Total Activities</div>
-              <div className="text-2xl font-semibold mt-1">{filteredActivities.length}</div>
+              <div className="text-2xl font-semibold mt-1">{stats.total}</div>
             </div>
             <div className="bg-admin-card-bg border border-border rounded-lg p-4">
               <div className="text-sm text-muted-foreground">Orders</div>
               <div className="text-2xl font-semibold mt-1">
-                {filteredActivities.filter((a) => a.type === 'order').length}
+                {stats.orders}
               </div>
             </div>
             <div className="bg-admin-card-bg border border-border rounded-lg p-4">
               <div className="text-sm text-muted-foreground">Wins</div>
               <div className="text-2xl font-semibold mt-1">
-                {filteredActivities.filter((a) => a.type === 'winner').length}
+                {stats.winners}
               </div>
             </div>
             <div className="bg-admin-card-bg border border-border rounded-lg p-4">
               <div className="text-sm text-muted-foreground">Signups</div>
               <div className="text-2xl font-semibold mt-1">
-                {filteredActivities.filter((a) => a.type === 'user').length}
+                {stats.signups}
               </div>
             </div>
           </div>
