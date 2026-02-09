@@ -12,6 +12,7 @@ import {
   Wallet,
   Eye,
   User,
+  Loader2,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
@@ -28,8 +29,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { showSuccessToast, showErrorToast } from '@/lib/toast'
+import { useSidebarCounts } from '@/contexts/SidebarCountsContext'
 
 type PrizeFulfillment = Database['public']['Tables']['prize_fulfillments']['Row']
 type FulfillmentStatus = Database['public']['Enums']['fulfillment_status']
@@ -43,8 +48,19 @@ interface FulfillmentWithDetails extends PrizeFulfillment {
   prize_value_gbp?: number
 }
 
+interface ConfirmDialogState {
+  open: boolean
+  title: string
+  description: string
+  onConfirm: () => void | Promise<void>
+  confirmText?: string
+  variant?: 'default' | 'destructive'
+  loading?: boolean
+}
+
 export default function Fulfillments() {
   const { user } = useAuthStore()
+  const { refreshCounts } = useSidebarCounts()
   const [fulfillments, setFulfillments] = useState<FulfillmentWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -53,6 +69,17 @@ export default function Fulfillments() {
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [selectedFulfillment, setSelectedFulfillment] = useState<FulfillmentWithDetails | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
+    open: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  })
+  const [trackingNumberInput, setTrackingNumberInput] = useState('')
+  const [trackingDialogOpen, setTrackingDialogOpen] = useState(false)
+  const [voucherCodeInput, setVoucherCodeInput] = useState('')
+  const [voucherDescriptionInput, setVoucherDescriptionInput] = useState('')
+  const [voucherDialogOpen, setVoucherDialogOpen] = useState(false)
 
   useEffect(() => {
     loadFulfillments()
@@ -228,7 +255,7 @@ export default function Fulfillments() {
       if (error) throw error
 
       if (data) {
-        alert(
+        showSuccessToast(
           `Cash alternative approved! £${data.amount_gbp} added to user's wallet. Expires: ${new Date(
             data.expires_at
           ).toLocaleDateString()}`
@@ -236,10 +263,11 @@ export default function Fulfillments() {
       }
 
       await loadFulfillments()
+      await refreshCounts()
       setDetailsOpen(false)
     } catch (error) {
       console.error('Error approving cash alternative:', error)
-      alert('Failed to approve cash alternative. Please try again.')
+      showErrorToast('Failed to approve cash alternative. Please try again.')
     } finally {
       setProcessingId(null)
     }
@@ -276,12 +304,53 @@ export default function Fulfillments() {
       if (error) throw error
 
       await loadFulfillments()
-      if (selectedFulfillment?.id === id) {
+      await refreshCounts()
+
+      // Close details dialog if the fulfillment is completed
+      if (newStatus === 'completed') {
+        setDetailsOpen(false)
+        showSuccessToast('Fulfillment marked as completed')
+      } else if (selectedFulfillment?.id === id) {
         const updated = fulfillments.find(f => f.id === id)
         if (updated) setSelectedFulfillment(updated)
       }
     } catch (error) {
       console.error('Error updating fulfillment status:', error)
+      showErrorToast('Failed to update fulfillment status')
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  const handleProvideVoucherCode = async (
+    id: string,
+    voucherCode: string,
+    description?: string
+  ) => {
+    try {
+      setProcessingId(id)
+
+      const updates: any = {
+        status: 'completed',
+        voucher_code: voucherCode,
+        voucher_description: description || null,
+        updated_at: new Date().toISOString(),
+      }
+
+      const { error } = await supabase
+        .from('prize_fulfillments')
+        .update(updates)
+        .eq('id', id)
+
+      if (error) throw error
+
+      await loadFulfillments()
+      await refreshCounts()
+      setDetailsOpen(false)
+      showSuccessToast('Voucher code provided successfully')
+    } catch (error) {
+      console.error('Error providing voucher code:', error)
+      showErrorToast('Failed to provide voucher code')
     } finally {
       setProcessingId(null)
     }
@@ -501,7 +570,11 @@ export default function Fulfillments() {
                       const badge = getStatusBadge(fulfillment.status)
 
                       return (
-                        <tr key={fulfillment.id} className="hover:bg-admin-hover-bg cursor-pointer">
+                        <tr
+                          key={fulfillment.id}
+                          className="hover:bg-admin-hover-bg cursor-pointer"
+                          onClick={() => openDetails(fulfillment)}
+                        >
                           <td className="px-6 py-4">
                             <div className="text-sm font-medium text-foreground">
                               {fulfillment.user_name}
@@ -570,7 +643,10 @@ export default function Fulfillments() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <button
-                              onClick={() => openDetails(fulfillment)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openDetails(fulfillment)
+                              }}
                               className="inline-flex items-center gap-1.5 text-admin-info-fg hover:text-admin-info-text font-medium text-sm cursor-pointer"
                             >
                               <Eye className="size-4" />
@@ -638,9 +714,17 @@ export default function Fulfillments() {
                     <div>
                       <span className="text-gray-600">Type:</span>
                       <p className="font-medium text-gray-900">
-                        {selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize'
-                          ? 'Physical Prize'
-                          : 'Cash Alternative'}
+                        {selectedFulfillment.choice === 'cash'
+                          ? 'Cash Alternative'
+                          : selectedFulfillment.prize_type === 'Voucher'
+                          ? 'Voucher'
+                          : selectedFulfillment.prize_type === 'GiftCard'
+                          ? 'Gift Card'
+                          : selectedFulfillment.prize_type === 'SiteCredit'
+                          ? 'Site Credit'
+                          : selectedFulfillment.prize_type === 'Cash'
+                          ? 'Cash Prize'
+                          : 'Physical Prize'}
                       </p>
                     </div>
                     <div>
@@ -664,8 +748,9 @@ export default function Fulfillments() {
                   </div>
                 </div>
 
-                {/* Delivery Address */}
-                {(selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize') &&
+                {/* Delivery Address - Only for physical prizes */}
+                {selectedFulfillment.prize_type !== 'Cash' &&
+                  (selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize') &&
                   selectedFulfillment.delivery_address && (
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-900">
@@ -678,16 +763,29 @@ export default function Fulfillments() {
                             <p className="font-medium text-gray-900">
                               {(selectedFulfillment.delivery_address as { fullName?: string }).fullName}
                             </p>
-                            <p className="text-gray-700">{(selectedFulfillment.delivery_address as { line1?: string }).line1}</p>
-                            {(selectedFulfillment.delivery_address as { line2?: string }).line2 && (
-                              <p className="text-gray-700">{(selectedFulfillment.delivery_address as { line2?: string }).line2}</p>
+                            <p className="text-gray-700">
+                              {(selectedFulfillment.delivery_address as { addressLine1?: string; line1?: string }).addressLine1 ||
+                               (selectedFulfillment.delivery_address as { addressLine1?: string; line1?: string }).line1}
+                            </p>
+                            {((selectedFulfillment.delivery_address as { addressLine2?: string; line2?: string }).addressLine2 ||
+                              (selectedFulfillment.delivery_address as { addressLine2?: string; line2?: string }).line2) && (
+                              <p className="text-gray-700">
+                                {(selectedFulfillment.delivery_address as { addressLine2?: string; line2?: string }).addressLine2 ||
+                                 (selectedFulfillment.delivery_address as { addressLine2?: string; line2?: string }).line2}
+                              </p>
                             )}
                             <p className="text-gray-700">
-                              {(selectedFulfillment.delivery_address as { city?: string }).city},{' '}
+                              {(selectedFulfillment.delivery_address as { city?: string }).city}
+                            </p>
+                            <p className="text-gray-700">
                               {(selectedFulfillment.delivery_address as { postcode?: string }).postcode}
                             </p>
-                            <p className="text-gray-600 pt-2">
-                              {(selectedFulfillment.delivery_address as { phone?: string }).phone}
+                            <p className="text-gray-700">
+                              {(selectedFulfillment.delivery_address as { country?: string }).country || 'United Kingdom'}
+                            </p>
+                            <p className="text-gray-600 pt-2 font-medium">
+                              Phone: {(selectedFulfillment.delivery_address as { phoneNumber?: string; phone?: string }).phoneNumber ||
+                                      (selectedFulfillment.delivery_address as { phoneNumber?: string; phone?: string }).phone}
                             </p>
                           </>
                         ) : (
@@ -697,14 +795,50 @@ export default function Fulfillments() {
                     </div>
                   )}
 
-                {/* Tracking Number */}
-                {selectedFulfillment.tracking_number && (
+                {/* Tracking Number - Only for physical prizes */}
+                {selectedFulfillment.prize_type !== 'Cash' && selectedFulfillment.tracking_number && (
                   <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-900">
                       <Truck className="size-4" />
                       Tracking Information
                     </h4>
                     <p className="font-mono text-sm text-gray-900">{selectedFulfillment.tracking_number}</p>
+                  </div>
+                )}
+
+                {/* Cash Prize Info */}
+                {selectedFulfillment.prize_type === 'Cash' && selectedFulfillment.status !== 'completed' && (
+                  <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
+                    <h4 className="font-semibold mb-2 flex items-center gap-2 text-gray-900">
+                      <Wallet className="size-4" />
+                      Cash Prize
+                    </h4>
+                    <p className="text-sm text-gray-700">
+                      Mark as paid to complete this cash prize fulfillment of £
+                      {selectedFulfillment.prize_value_gbp?.toFixed(2)}.
+                    </p>
+                  </div>
+                )}
+
+                {/* Completed Cash Prize */}
+                {selectedFulfillment.prize_type === 'Cash' && selectedFulfillment.status === 'completed' && (
+                  <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-900">
+                      <CheckCircle className="size-4" />
+                      Cash Prize Paid
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Amount:</span>
+                        <p className="font-semibold text-gray-900">
+                          £{selectedFulfillment.prize_value_gbp?.toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Status:</span>
+                        <p className="font-medium text-gray-900">Paid</p>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -746,6 +880,32 @@ export default function Fulfillments() {
                   </div>
                 )}
 
+                {/* Voucher/Gift Card Information */}
+                {(selectedFulfillment.prize_type === 'Voucher' || selectedFulfillment.prize_type === 'GiftCard') &&
+                  selectedFulfillment.status === 'completed' &&
+                  (selectedFulfillment as any).voucher_code && (
+                    <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-900">
+                        <Gift className="size-4" />
+                        Voucher/Gift Card Details
+                      </h4>
+                      <div className="space-y-3 text-sm">
+                        <div>
+                          <span className="text-gray-600">Code:</span>
+                          <p className="font-mono text-base font-semibold text-gray-900 mt-1">
+                            {(selectedFulfillment as any).voucher_code}
+                          </p>
+                        </div>
+                        {(selectedFulfillment as any).voucher_description && (
+                          <div>
+                            <span className="text-gray-600">Instructions:</span>
+                            <p className="text-gray-700 mt-1">{(selectedFulfillment as any).voucher_description}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                 {/* Notes */}
                 {selectedFulfillment.notes && (
                   <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
@@ -758,26 +918,61 @@ export default function Fulfillments() {
 
                 {/* Actions */}
                 <div className="flex gap-2 flex-wrap pt-4 border-t border-gray-200">
-                  {selectedFulfillment.status === 'prize_selected' &&
+                  {/* Cash Prize - Simple Paid button */}
+                  {selectedFulfillment.prize_type === 'Cash' && selectedFulfillment.status !== 'completed' && (
+                    <Button
+                      onClick={() => {
+                        setConfirmDialog({
+                          open: true,
+                          title: 'Mark as Paid',
+                          description: `Mark £${selectedFulfillment.prize_value_gbp?.toFixed(2)} cash prize as paid for ${selectedFulfillment.user_email}?`,
+                          confirmText: 'Mark as Paid',
+                          onConfirm: async () => {
+                            setConfirmDialog(prev => ({ ...prev, open: false }))
+                            await handleUpdateStatus(selectedFulfillment.id, 'completed')
+                          }
+                        })
+                      }}
+                      disabled={processingId === selectedFulfillment.id}
+                      className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer disabled:opacity-50"
+                    >
+                      {processingId === selectedFulfillment.id ? (
+                        <Loader2 className="size-4 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircle className="size-4 mr-2" />
+                      )}
+                      Mark as Paid
+                    </Button>
+                  )}
+
+                  {/* Physical Prize Flow */}
+                  {selectedFulfillment.prize_type !== 'Cash' &&
+                    selectedFulfillment.prize_type !== 'Voucher' &&
+                    selectedFulfillment.prize_type !== 'GiftCard' &&
+                    selectedFulfillment.status === 'prize_selected' &&
                     (selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize') && (
                       <Button
                         onClick={() => handleUpdateStatus(selectedFulfillment.id, 'processing')}
                         disabled={processingId === selectedFulfillment.id}
-                        className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer"
+                        className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer disabled:opacity-50"
                       >
-                        <Package className="size-4 mr-2" />
+                        {processingId === selectedFulfillment.id ? (
+                          <Loader2 className="size-4 mr-2 animate-spin" />
+                        ) : (
+                          <Package className="size-4 mr-2" />
+                        )}
                         Start Processing
                       </Button>
                     )}
 
-                  {selectedFulfillment.status === 'processing' &&
-                    (selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize') && (
+                  {selectedFulfillment.prize_type !== 'Cash' && selectedFulfillment.status === 'processing' &&
+                    (selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize') &&
+                    selectedFulfillment.prize_type !== 'Voucher' &&
+                    selectedFulfillment.prize_type !== 'GiftCard' && (
                       <Button
                         onClick={() => {
-                          const tracking = prompt('Enter tracking number:')
-                          if (tracking) {
-                            handleUpdateStatus(selectedFulfillment.id, 'dispatched', tracking)
-                          }
+                          setTrackingNumberInput('')
+                          setTrackingDialogOpen(true)
                         }}
                         disabled={processingId === selectedFulfillment.id}
                         className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer"
@@ -787,48 +982,86 @@ export default function Fulfillments() {
                       </Button>
                     )}
 
+                  {/* Voucher/Gift Card Flow */}
+                  {(selectedFulfillment.prize_type === 'Voucher' || selectedFulfillment.prize_type === 'GiftCard') &&
+                    (selectedFulfillment.status === 'prize_selected' || selectedFulfillment.status === 'processing') &&
+                    (selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize') && (
+                      <Button
+                        onClick={() => {
+                          setVoucherCodeInput('')
+                          setVoucherDescriptionInput('')
+                          setVoucherDialogOpen(true)
+                        }}
+                        disabled={processingId === selectedFulfillment.id}
+                        className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer disabled:opacity-50"
+                      >
+                        {processingId === selectedFulfillment.id ? (
+                          <Loader2 className="size-4 mr-2 animate-spin" />
+                        ) : (
+                          <Gift className="size-4 mr-2" />
+                        )}
+                        Provide Voucher Code
+                      </Button>
+                    )}
+
+                  {/* Cash Alternative Flow (when user chose cash instead of physical) */}
                   {(selectedFulfillment.status === 'cash_selected' ||
                     selectedFulfillment.status === 'processing') &&
                     selectedFulfillment.choice === 'cash' &&
                     user?.id && (
                       <Button
                         onClick={() => {
-                          if (
-                            confirm(
-                              `Add £${selectedFulfillment.prize_value_gbp?.toFixed(2)} to ${
-                                selectedFulfillment.user_email
-                              }'s wallet?`
-                            )
-                          ) {
-                            handleApproveCashAlternative(selectedFulfillment.id, user.id)
-                          }
+                          setConfirmDialog({
+                            open: true,
+                            title: 'Approve Wallet Credit',
+                            description: `Add £${selectedFulfillment.prize_value_gbp?.toFixed(2)} to ${selectedFulfillment.user_email}'s wallet?`,
+                            confirmText: 'Approve',
+                            onConfirm: async () => {
+                              setConfirmDialog(prev => ({ ...prev, open: false }))
+                              if (user?.id) {
+                                await handleApproveCashAlternative(selectedFulfillment.id, user.id)
+                              }
+                            }
+                          })
                         }}
                         disabled={processingId === selectedFulfillment.id}
-                        className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer"
+                        className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer disabled:opacity-50"
                       >
-                        <Wallet className="size-4 mr-2" />
+                        {processingId === selectedFulfillment.id ? (
+                          <Loader2 className="size-4 mr-2 animate-spin" />
+                        ) : (
+                          <Wallet className="size-4 mr-2" />
+                        )}
                         Approve Wallet Credit
                       </Button>
                     )}
 
-                  {selectedFulfillment.status === 'dispatched' && (
+                  {selectedFulfillment.prize_type !== 'Cash' && selectedFulfillment.status === 'dispatched' && (
                     <Button
                       onClick={() => handleUpdateStatus(selectedFulfillment.id, 'delivered')}
                       disabled={processingId === selectedFulfillment.id}
-                      className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer"
+                      className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer disabled:opacity-50"
                     >
-                      <CheckCircle className="size-4 mr-2" />
+                      {processingId === selectedFulfillment.id ? (
+                        <Loader2 className="size-4 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircle className="size-4 mr-2" />
+                      )}
                       Mark Delivered
                     </Button>
                   )}
 
-                  {selectedFulfillment.status === 'delivered' && (
+                  {selectedFulfillment.prize_type !== 'Cash' && selectedFulfillment.status === 'delivered' && (
                     <Button
                       onClick={() => handleUpdateStatus(selectedFulfillment.id, 'completed')}
                       disabled={processingId === selectedFulfillment.id}
-                      className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer"
+                      className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer disabled:opacity-50"
                     >
-                      <CheckCircle className="size-4 mr-2" />
+                      {processingId === selectedFulfillment.id ? (
+                        <Loader2 className="size-4 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircle className="size-4 mr-2" />
+                      )}
                       Complete
                     </Button>
                   )}
@@ -836,6 +1069,167 @@ export default function Fulfillments() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Dialog */}
+      <Dialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmDialog.title}</DialogTitle>
+            <DialogDescription>{confirmDialog.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDialog({ ...confirmDialog, open: false })}
+              className="cursor-pointer"
+              disabled={confirmDialog.loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                setConfirmDialog(prev => ({ ...prev, loading: true }))
+                try {
+                  await confirmDialog.onConfirm()
+                } finally {
+                  setConfirmDialog(prev => ({ ...prev, loading: false }))
+                }
+              }}
+              disabled={confirmDialog.loading}
+              className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer disabled:opacity-50"
+            >
+              {confirmDialog.loading && <Loader2 className="size-4 mr-2 animate-spin" />}
+              {confirmDialog.confirmText || 'Confirm'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tracking Number Dialog */}
+      <Dialog open={trackingDialogOpen} onOpenChange={setTrackingDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Tracking Number</DialogTitle>
+            <DialogDescription>
+              Enter the tracking number for this shipment
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <input
+              type="text"
+              value={trackingNumberInput}
+              onChange={(e) => setTrackingNumberInput(e.target.value)}
+              placeholder="Enter tracking number"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-admin-info-fg"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && trackingNumberInput.trim() && selectedFulfillment) {
+                  handleUpdateStatus(selectedFulfillment.id, 'dispatched', trackingNumberInput.trim())
+                  setTrackingDialogOpen(false)
+                  setTrackingNumberInput('')
+                  showSuccessToast('Tracking number added and marked as dispatched')
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setTrackingDialogOpen(false)
+                setTrackingNumberInput('')
+              }}
+              className="cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (trackingNumberInput.trim() && selectedFulfillment) {
+                  setTrackingDialogOpen(false)
+                  await handleUpdateStatus(selectedFulfillment.id, 'dispatched', trackingNumberInput.trim())
+                  setTrackingNumberInput('')
+                  showSuccessToast('Tracking number added and marked as dispatched')
+                }
+              }}
+              disabled={!trackingNumberInput.trim()}
+              className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer"
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Voucher Code Dialog */}
+      <Dialog open={voucherDialogOpen} onOpenChange={setVoucherDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Provide Voucher Code</DialogTitle>
+            <DialogDescription>
+              Enter the gift card or voucher code and optional instructions
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2 text-foreground">
+                Voucher Code <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={voucherCodeInput}
+                onChange={(e) => setVoucherCodeInput(e.target.value)}
+                placeholder="Enter voucher code"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-admin-info-fg"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2 text-foreground">
+                Instructions (Optional)
+              </label>
+              <textarea
+                value={voucherDescriptionInput}
+                onChange={(e) => setVoucherDescriptionInput(e.target.value)}
+                placeholder="How to redeem this voucher..."
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-admin-info-fg resize-none"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setVoucherDialogOpen(false)
+                setVoucherCodeInput('')
+                setVoucherDescriptionInput('')
+              }}
+              className="cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (voucherCodeInput.trim() && selectedFulfillment) {
+                  setVoucherDialogOpen(false)
+                  await handleProvideVoucherCode(
+                    selectedFulfillment.id,
+                    voucherCodeInput.trim(),
+                    voucherDescriptionInput.trim() || undefined
+                  )
+                  setVoucherCodeInput('')
+                  setVoucherDescriptionInput('')
+                }
+              }}
+              disabled={!voucherCodeInput.trim()}
+              className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer disabled:opacity-50"
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

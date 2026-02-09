@@ -2,7 +2,7 @@ import { SidebarHeader } from './SidebarHeader'
 import { SidebarNavGroup } from './SidebarNavGroup'
 import { SidebarFooter } from './SidebarFooter'
 import { sidebarConfig } from './sidebarConfig'
-import { useSidebarCounts } from '@/hooks/useSidebarCounts'
+import { useSidebarCounts } from '@/contexts/SidebarCountsContext'
 import type { NavGroup } from './sidebarConfig'
 
 export function Sidebar() {

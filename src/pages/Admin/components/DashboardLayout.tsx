@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext'
+import { SidebarCountsProvider } from '@/contexts/SidebarCountsContext'
 import { ConfirmDialogProvider } from '@/contexts/ConfirmDialogContext'
 
 function DashboardLayoutContent() {
@@ -29,9 +30,11 @@ function DashboardLayoutContent() {
 export default function DashboardLayout() {
   return (
     <SidebarProvider>
-      <ConfirmDialogProvider>
-        <DashboardLayoutContent />
-      </ConfirmDialogProvider>
+      <SidebarCountsProvider>
+        <ConfirmDialogProvider>
+          <DashboardLayoutContent />
+        </ConfirmDialogProvider>
+      </SidebarCountsProvider>
     </SidebarProvider>
   )
 }

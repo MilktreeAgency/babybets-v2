@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useSidebarCounts } from '@/contexts/SidebarCountsContext'
 
 type Influencer = Database['public']['Tables']['influencers']['Row'] & {
   profiles?: {
@@ -23,6 +24,7 @@ export default function Influencers() {
   const [influencers, setInfluencers] = useState<Influencer[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('all')
+  const { refreshCounts } = useSidebarCounts()
 
   useEffect(() => {
     loadInfluencers()
@@ -96,7 +98,9 @@ export default function Influencers() {
       }
 
       // Reload data
-      loadInfluencers()
+      await loadInfluencers()
+      // Refresh sidebar counts
+      await refreshCounts()
     } catch (error) {
       console.error('Error updating influencer status:', error)
       alert('Failed to update status')
@@ -118,7 +122,9 @@ export default function Influencers() {
       if (error) throw error
 
       // Reload data
-      loadInfluencers()
+      await loadInfluencers()
+      // Refresh sidebar counts
+      await refreshCounts()
     } catch (error) {
       console.error('Error rejecting influencer:', error)
       alert('Failed to reject application')
