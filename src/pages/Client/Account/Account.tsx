@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { LogOut, MapPin, User, Bell, LayoutDashboard, X, Save, Wallet, Clock, TrendingUp, Gift, Ticket, Trophy, ChevronDown, ChevronUp, UserCheck } from 'lucide-react'
+import { LogOut, MapPin, User, Bell, LayoutDashboard, X, Save, Wallet, Clock, TrendingUp, Gift, Ticket, Trophy, ChevronDown, ChevronUp, UserCheck, ArrowDownToLine, CheckCircle, XCircle, AlertCircle as AlertCircleIcon } from 'lucide-react'
 import Header from '@/components/common/Header'
 import { useAuthStore } from '@/store/authStore'
 import { useTickets } from '@/hooks/useTickets'
@@ -8,11 +8,16 @@ import { useProfile } from '@/hooks/useProfile'
 import { useWallet } from '@/hooks/useWallet'
 import { usePrizeFulfillments } from '@/hooks/usePrizeFulfillments'
 import { UserPrizeClaimModal } from '@/components/UserPrizeClaimModal'
+import { WithdrawalRequestModal } from '@/components/WithdrawalRequestModal'
 import { authService } from '@/services/auth.service'
 import type { PrizeTemplate } from '@/types'
 import { showErrorToast } from '@/lib/toast'
+import { supabase } from '@/lib/supabase'
+import type { Database } from '@/types/database.types'
 
 type Section = 'dashboard' | 'tickets' | 'prizes' | 'wallet' | 'addresses' | 'account-details' | 'communication' | 'logout'
+
+type WithdrawalRequest = Database['public']['Tables']['withdrawal_requests']['Row']
 
 function Account() {
   const navigate = useNavigate()
@@ -55,6 +60,9 @@ function Account() {
   const [expandedCompetitions, setExpandedCompetitions] = useState<Set<string>>(new Set())
   const [revealingTicketId, setRevealingTicketId] = useState<string | null>(null)
   const [revealProgress, setRevealProgress] = useState({ current: 0, total: 0 })
+  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false)
+  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([])
+  const [loadingWithdrawals, setLoadingWithdrawals] = useState(false)
 
   useEffect(() => {
     if (!isLoading && isInitialized && !isAuthenticated) {
@@ -162,6 +170,32 @@ function Account() {
       setCommunicationPrefs(prev => ({ ...prev, [field]: !newValue }))
     }
   }
+
+  const loadWithdrawalRequests = async () => {
+    if (!user) return
+    try {
+      setLoadingWithdrawals(true)
+      const { data, error } = await supabase
+        .from('withdrawal_requests')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setWithdrawalRequests(data || [])
+    } catch (error) {
+      console.error('Error loading withdrawal requests:', error)
+    } finally {
+      setLoadingWithdrawals(false)
+    }
+  }
+
+  // Load withdrawal requests when wallet section is active
+  useEffect(() => {
+    if (activeSection === 'wallet' && user) {
+      loadWithdrawalRequests()
+    }
+  }, [activeSection, user])
 
   const toggleCompetitionExpanded = (competitionId: string) => {
     setExpandedCompetitions(prev => {
@@ -878,11 +912,23 @@ function Account() {
                 <div className="space-y-6">
                   {/* Wallet Summary */}
                   <div className="bg-white rounded-xl p-6">
-                    <div className="flex items-center gap-3 mb-6">
-                      <Wallet size={24} style={{ color: '#335761' }} />
-                      <h2 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
-                        My Wallet
-                      </h2>
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <Wallet size={24} style={{ color: '#335761' }} />
+                        <h2 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                          My Wallet
+                        </h2>
+                      </div>
+                      {summary.availableBalance >= 10000 && (
+                        <button
+                          onClick={() => setShowWithdrawalModal(true)}
+                          className="px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90 cursor-pointer flex items-center gap-2"
+                          style={{ backgroundColor: '#335761' }}
+                        >
+                          <ArrowDownToLine size={18} />
+                          Request Withdrawal
+                        </button>
+                      )}
                     </div>
 
                     {isLoadingWallet ? (
@@ -1069,6 +1115,135 @@ function Account() {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Withdrawal Requests */}
+                  <div className="bg-white rounded-xl p-6">
+                    <h3 className="text-xl font-bold mb-4" style={{ color: '#1a1a1a' }}>
+                      Withdrawal Requests
+                    </h3>
+                    {loadingWithdrawals ? (
+                      <div className="text-center py-8">
+                        <div className="inline-block size-8 border-4 border-gray-200 border-t-[#335761] rounded-full animate-spin"></div>
+                        <p className="mt-2 text-sm" style={{ color: '#666' }}>Loading withdrawal requests...</p>
+                      </div>
+                    ) : withdrawalRequests.length === 0 ? (
+                      <div className="text-center py-8" style={{ color: '#666' }}>
+                        <p>No withdrawal requests yet.</p>
+                        {summary.availableBalance >= 10000 && (
+                          <button
+                            onClick={() => setShowWithdrawalModal(true)}
+                            className="mt-4 px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90 cursor-pointer"
+                            style={{ backgroundColor: '#335761' }}
+                          >
+                            Request Your First Withdrawal
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {withdrawalRequests.map((request) => {
+                          const getStatusConfig = (status: string | null) => {
+                            switch (status) {
+                              case 'pending':
+                                return {
+                                  label: 'Pending Review',
+                                  color: '#f59e0b',
+                                  bgColor: '#fef3c7',
+                                  icon: Clock
+                                }
+                              case 'approved':
+                                return {
+                                  label: 'Approved - Processing',
+                                  color: '#3b82f6',
+                                  bgColor: '#dbeafe',
+                                  icon: AlertCircleIcon
+                                }
+                              case 'paid':
+                                return {
+                                  label: 'Paid',
+                                  color: '#22c55e',
+                                  bgColor: '#dcfce7',
+                                  icon: CheckCircle
+                                }
+                              case 'rejected':
+                                return {
+                                  label: 'Rejected',
+                                  color: '#ef4444',
+                                  bgColor: '#fee2e2',
+                                  icon: XCircle
+                                }
+                              default:
+                                return {
+                                  label: 'Unknown',
+                                  color: '#666',
+                                  bgColor: '#f3f4f6',
+                                  icon: Clock
+                                }
+                            }
+                          }
+
+                          const statusConfig = getStatusConfig(request.status)
+                          const StatusIcon = statusConfig.icon
+
+                          return (
+                            <div
+                              key={request.id}
+                              className="p-4 border rounded-lg"
+                              style={{ borderColor: '#e5e7eb' }}
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span
+                                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg"
+                                      style={{
+                                        backgroundColor: statusConfig.bgColor,
+                                        color: statusConfig.color
+                                      }}
+                                    >
+                                      <StatusIcon className="size-3" />
+                                      {statusConfig.label}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm font-medium mb-1" style={{ color: '#666' }}>
+                                    Requested: {new Date(request.created_at!).toLocaleDateString('en-GB', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric'
+                                    })}
+                                  </p>
+                                  {request.paid_at && (
+                                    <p className="text-sm font-medium" style={{ color: '#22c55e' }}>
+                                      Paid: {new Date(request.paid_at).toLocaleDateString('en-GB', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric'
+                                      })}
+                                    </p>
+                                  )}
+                                  {request.status === 'rejected' && request.rejection_reason && (
+                                    <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#fee2e2' }}>
+                                      <p className="text-xs font-semibold" style={{ color: '#dc2626' }}>
+                                        Reason: {request.rejection_reason}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-xl font-bold" style={{ color: '#1a1a1a' }}>
+                                    £{(request.amount_pence / 100).toFixed(2)}
+                                  </p>
+                                  <p className="text-xs" style={{ color: '#666' }}>
+                                    ***{request.bank_account_number?.slice(-4)}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
@@ -1512,6 +1687,14 @@ function Account() {
           }}
         />
       )}
+
+      {/* Withdrawal Request Modal */}
+      <WithdrawalRequestModal
+        isOpen={showWithdrawalModal}
+        onClose={() => setShowWithdrawalModal(false)}
+        availableBalance={summary.availableBalance}
+        onSuccess={loadWithdrawalRequests}
+      />
     </div>
   )
 }
