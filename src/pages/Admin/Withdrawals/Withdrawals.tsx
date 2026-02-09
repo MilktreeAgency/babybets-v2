@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { DashboardHeader } from '../components'
 import {
   Search,
@@ -41,6 +41,7 @@ export default function Withdrawals() {
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectingWithdrawal, setRejectingWithdrawal] = useState<WithdrawalWithUser | null>(null)
+  const [statusCounts, setStatusCounts] = useState({ pending: 0, approved: 0, paid: 0 })
   const { confirm } = useConfirm()
   const { refreshCounts } = useSidebarCounts()
 
@@ -99,6 +100,29 @@ export default function Withdrawals() {
     transform: transformWithdrawals,
   })
 
+  // Fetch status counts from database
+  const fetchStatusCounts = useCallback(async () => {
+    try {
+      const [pendingResult, approvedResult, paidResult] = await Promise.all([
+        supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'approved'),
+        supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'paid'),
+      ])
+
+      setStatusCounts({
+        pending: pendingResult.count || 0,
+        approved: approvedResult.count || 0,
+        paid: paidResult.count || 0,
+      })
+    } catch (error) {
+      console.error('Error fetching status counts:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchStatusCounts()
+  }, [])
+
   // Client-side search filter
   const filteredWithdrawals = useMemo(
     () =>
@@ -153,6 +177,7 @@ export default function Withdrawals() {
       toast.success('Withdrawal request approved')
       await refresh()
       await refreshCounts()
+      await fetchStatusCounts()
     } catch (error) {
       console.error('Error approving withdrawal:', error)
       toast.error('Failed to approve withdrawal request')
@@ -186,6 +211,7 @@ export default function Withdrawals() {
       toast.success('Withdrawal processed successfully')
       await refresh()
       await refreshCounts()
+      await fetchStatusCounts()
     } catch (error) {
       console.error('Error marking withdrawal as paid:', error)
       toast.error(
@@ -225,6 +251,7 @@ export default function Withdrawals() {
       setRejectingWithdrawal(null)
       await refresh()
       await refreshCounts()
+      await fetchStatusCounts()
     } catch (error) {
       console.error('Error rejecting withdrawal:', error)
       toast.error('Failed to reject withdrawal request')
@@ -242,10 +269,6 @@ export default function Withdrawals() {
     if (!sortCode) return 'N/A'
     return `**-**-${sortCode.slice(-2)}`
   }
-
-  const pendingCount = withdrawals.filter((w) => w.status === 'pending').length
-  const approvedCount = withdrawals.filter((w) => w.status === 'approved').length
-  const paidCount = withdrawals.filter((w) => w.status === 'paid').length
 
   const handleExport = () => {
     const csv = [
@@ -315,13 +338,13 @@ export default function Withdrawals() {
           </div>
 
           {/* Info Banner */}
-          {approvedCount > 0 && (
+          {statusCounts.approved > 0 && (
             <div className="bg-admin-info-bg border border-admin-info-fg rounded-lg p-4">
               <div className="flex items-center gap-3">
                 <AlertCircle className="size-5 text-admin-info-fg shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    {approvedCount} withdrawal{approvedCount !== 1 ? 's' : ''} approved and awaiting
+                    {statusCounts.approved} withdrawal{statusCounts.approved !== 1 ? 's' : ''} approved and awaiting
                     payment
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -341,7 +364,7 @@ export default function Withdrawals() {
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Pending</div>
-                  <div className="text-2xl font-semibold">{pendingCount}</div>
+                  <div className="text-2xl font-semibold">{statusCounts.pending}</div>
                 </div>
               </div>
             </div>
@@ -352,7 +375,7 @@ export default function Withdrawals() {
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">To Pay</div>
-                  <div className="text-2xl font-semibold">{approvedCount}</div>
+                  <div className="text-2xl font-semibold">{statusCounts.approved}</div>
                 </div>
               </div>
             </div>
@@ -363,7 +386,7 @@ export default function Withdrawals() {
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Paid</div>
-                  <div className="text-2xl font-semibold">{paidCount}</div>
+                  <div className="text-2xl font-semibold">{statusCounts.paid}</div>
                 </div>
               </div>
             </div>

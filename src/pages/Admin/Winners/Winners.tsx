@@ -26,10 +26,15 @@ export default function Winners() {
   const [searchQuery, setSearchQuery] = useState('')
   const [competitionFilter, setCompetitionFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [stats, setStats] = useState({ total: 0, fulfilled: 0, pending: 0 })
 
   useEffect(() => {
     loadCompetitions()
   }, [])
+
+  useEffect(() => {
+    fetchStats()
+  }, [competitionFilter])
 
   const loadCompetitions = async () => {
     try {
@@ -43,6 +48,83 @@ export default function Winners() {
       setCompetitions(data || [])
     } catch (error) {
       console.error('Error loading competitions:', error)
+    }
+  }
+
+  const fetchStats = async () => {
+    try {
+      // Build base query with competition filter
+      let baseQuery = supabase.from('winners').select('*', { count: 'exact', head: true })
+
+      if (competitionFilter !== 'all') {
+        baseQuery = baseQuery.eq('competition_id', competitionFilter)
+      }
+
+      // Get total count
+      const { count: totalCount } = await baseQuery
+
+      // Get all winners with fulfillment status to count by status
+      let dataQuery = supabase
+        .from('winners')
+        .select('ticket_id')
+
+      if (competitionFilter !== 'all') {
+        dataQuery = dataQuery.eq('competition_id', competitionFilter)
+      }
+
+      const { data: winnersData } = await dataQuery
+
+      if (winnersData && winnersData.length > 0) {
+        const ticketIds = winnersData.map((w) => w.ticket_id).filter((id): id is string => !!id)
+
+        if (ticketIds.length > 0) {
+          const { data: fulfillments } = await supabase
+            .from('prize_fulfillments')
+            .select('ticket_id, status')
+            .in('ticket_id', ticketIds)
+
+          const fulfillmentMap: Record<string, string | null> = {}
+          fulfillments?.forEach((f) => {
+            if (f.ticket_id) {
+              fulfillmentMap[f.ticket_id] = f.status
+            }
+          })
+
+          let fulfilledCount = 0
+          let pendingCount = 0
+
+          winnersData.forEach((winner) => {
+            const status = fulfillmentMap[winner.ticket_id]
+            if (status === 'completed' || status === 'delivered') {
+              fulfilledCount++
+            } else if (
+              !status ||
+              status === 'pending' ||
+              status === 'prize_selected' ||
+              status === 'cash_selected' ||
+              status === 'processing'
+            ) {
+              pendingCount++
+            }
+          })
+
+          setStats({
+            total: totalCount || 0,
+            fulfilled: fulfilledCount,
+            pending: pendingCount,
+          })
+          return
+        }
+      }
+
+      // If no winners or no ticket IDs, all are pending
+      setStats({
+        total: totalCount || 0,
+        fulfilled: 0,
+        pending: totalCount || 0,
+      })
+    } catch (error) {
+      console.error('Error fetching winner stats:', error)
     }
   }
 
@@ -227,7 +309,7 @@ export default function Winners() {
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Total Winners</div>
-                  <div className="text-2xl font-semibold">{winners.length}</div>
+                  <div className="text-2xl font-semibold">{stats.total}</div>
                 </div>
               </div>
             </div>
@@ -239,13 +321,7 @@ export default function Winners() {
                 <div>
                   <div className="text-sm text-muted-foreground">Fulfilled</div>
                   <div className="text-2xl font-semibold">
-                    {
-                      winners.filter(
-                        (w) =>
-                          w.fulfillment_status === 'completed' ||
-                          w.fulfillment_status === 'delivered'
-                      ).length
-                    }
+                    {stats.fulfilled}
                   </div>
                 </div>
               </div>
@@ -258,16 +334,7 @@ export default function Winners() {
                 <div>
                   <div className="text-sm text-muted-foreground">Pending</div>
                   <div className="text-2xl font-semibold">
-                    {
-                      winners.filter(
-                        (w) =>
-                          !w.fulfillment_status ||
-                          w.fulfillment_status === 'pending' ||
-                          w.fulfillment_status === 'prize_selected' ||
-                          w.fulfillment_status === 'cash_selected' ||
-                          w.fulfillment_status === 'processing'
-                      ).length
-                    }
+                    {stats.pending}
                   </div>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { DashboardHeader } from '../components'
 import { Search, Eye, Wallet, Trash2 } from 'lucide-react'
@@ -39,6 +39,7 @@ export default function Users() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [userToDelete, setUserToDelete] = useState<Profile | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [totalUsers, setTotalUsers] = useState(0)
 
   // Query builder for infinite scroll
   const queryBuilder = useCallback(() => {
@@ -110,6 +111,29 @@ export default function Users() {
     transform: transformUsers,
   })
 
+  // Fetch total users count from database
+  useEffect(() => {
+    const fetchTotalUsers = async () => {
+      try {
+        let query = supabase.from('profiles').select('*', { count: 'exact', head: true })
+
+        if (roleFilter !== 'all') {
+          query = query.eq('role', roleFilter as UserRole)
+        }
+
+        const { count, error } = await query
+
+        if (error) throw error
+
+        setTotalUsers(count || 0)
+      } catch (error) {
+        console.error('Error fetching total users:', error)
+      }
+    }
+
+    fetchTotalUsers()
+  }, [roleFilter])
+
   // Client-side search filter
   const filteredUsers = useMemo(
     () =>
@@ -174,7 +198,7 @@ export default function Users() {
               </p>
             </div>
             <div className="text-sm text-muted-foreground">
-              Total Users: <span className="font-semibold text-foreground">{users.length}</span>
+              Total Users: <span className="font-semibold text-foreground">{totalUsers}</span>
             </div>
           </div>
 

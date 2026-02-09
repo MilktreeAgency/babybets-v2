@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { DashboardHeader } from '../components'
 import {
   Search,
@@ -79,6 +79,7 @@ export default function Fulfillments() {
   const [voucherCodeInput, setVoucherCodeInput] = useState('')
   const [voucherDescriptionInput, setVoucherDescriptionInput] = useState('')
   const [voucherDialogOpen, setVoucherDialogOpen] = useState(false)
+  const [statusCounts, setStatusCounts] = useState({ pending: 0, processing: 0, dispatched: 0 })
 
   // Query builder for infinite scroll
   const queryBuilder = useCallback(() => {
@@ -218,6 +219,39 @@ export default function Fulfillments() {
     transform: transformFulfillments,
   })
 
+  // Fetch status counts from database
+  const fetchStatusCounts = useCallback(async () => {
+    try {
+      // Fetch pending count (includes pending, prize_selected, cash_selected)
+      const { count: pendingCount } = await supabase
+        .from('prize_fulfillments')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['pending', 'prize_selected', 'cash_selected'])
+
+      const { count: processingCount } = await supabase
+        .from('prize_fulfillments')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'processing')
+
+      const { count: dispatchedCount } = await supabase
+        .from('prize_fulfillments')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'dispatched')
+
+      setStatusCounts({
+        pending: pendingCount || 0,
+        processing: processingCount || 0,
+        dispatched: dispatchedCount || 0,
+      })
+    } catch (error) {
+      console.error('Error fetching status counts:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchStatusCounts()
+  }, [fetchStatusCounts])
+
   // Client-side search filter
   const filteredFulfillments = useMemo(
     () =>
@@ -269,6 +303,7 @@ export default function Fulfillments() {
 
       await refresh()
       await refreshCounts()
+      await fetchStatusCounts()
       setDetailsOpen(false)
     } catch (error) {
       console.error('Error approving cash alternative:', error)
@@ -310,6 +345,7 @@ export default function Fulfillments() {
 
       await refresh()
       await refreshCounts()
+      await fetchStatusCounts()
 
       // Close details dialog if the fulfillment is completed
       if (newStatus === 'completed') {
@@ -351,6 +387,7 @@ export default function Fulfillments() {
 
       await refresh()
       await refreshCounts()
+      await fetchStatusCounts()
       setDetailsOpen(false)
       showSuccessToast('Voucher code provided successfully')
     } catch (error) {
@@ -360,12 +397,6 @@ export default function Fulfillments() {
       setProcessingId(null)
     }
   }
-
-  const pendingCount = fulfillments.filter(
-    (f) => f.status === 'pending' || f.status === 'prize_selected' || f.status === 'cash_selected'
-  ).length
-  const processingCount = fulfillments.filter((f) => f.status === 'processing').length
-  const dispatchedCount = fulfillments.filter((f) => f.status === 'dispatched').length
 
   const handleExport = () => {
     const csv = [
@@ -449,7 +480,7 @@ export default function Fulfillments() {
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Pending</div>
-                  <div className="text-2xl font-semibold">{pendingCount}</div>
+                  <div className="text-2xl font-semibold">{statusCounts.pending}</div>
                 </div>
               </div>
             </div>
@@ -460,7 +491,7 @@ export default function Fulfillments() {
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Processing</div>
-                  <div className="text-2xl font-semibold">{processingCount}</div>
+                  <div className="text-2xl font-semibold">{statusCounts.processing}</div>
                 </div>
               </div>
             </div>
@@ -471,7 +502,7 @@ export default function Fulfillments() {
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Dispatched</div>
-                  <div className="text-2xl font-semibold">{dispatchedCount}</div>
+                  <div className="text-2xl font-semibold">{statusCounts.dispatched}</div>
                 </div>
               </div>
             </div>
