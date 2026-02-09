@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
 // G2Pay Payment Gateway Configuration
@@ -35,64 +36,84 @@ interface PaymentResponse {
 export const processG2PayPayment = async (
   paymentRequest: PaymentRequest
 ): Promise<PaymentResponse> => {
-  console.log('[G2Pay] Starting payment processing...')
-
-  // Get current session
+  // Get current session (this gets the session from localStorage/memory)
   const {
     data: { session: currentSession },
+    error: getSessionError
   } = await supabase.auth.getSession()
 
-  console.log('[G2Pay] Current session:', {
-    hasSession: !!currentSession,
-    userId: currentSession?.user?.id,
-  })
+  if (getSessionError) {
+    console.error('[G2Pay] Error getting session:', getSessionError)
+    throw new Error('Failed to get authentication session')
+  }
 
-  if (!currentSession) {
-    throw new Error('Not authenticated')
+  if (!currentSession?.access_token) {
+    console.error('[G2Pay] No valid session or access token')
+    throw new Error('Not authenticated. Please log in.')
   }
 
   // Check if token is about to expire (within 5 minutes)
   const expiresAt = currentSession.expires_at
   const now = Math.floor(Date.now() / 1000)
-  const shouldRefresh = expiresAt && expiresAt - now < 300
+  const timeUntilExpiry = expiresAt ? expiresAt - now : 0
+  const shouldRefresh = expiresAt && timeUntilExpiry < 300
 
   // Refresh if needed
   if (shouldRefresh) {
-    console.log('[G2Pay] Refreshing session...')
     const {
       data: { session: refreshedSession },
       error: refreshError,
     } = await supabase.auth.refreshSession()
 
-    if (refreshError || !refreshedSession) {
-      console.error('[G2Pay] Session refresh failed:', refreshError)
-      throw new Error('Session expired. Please log in again.')
+    if (refreshError) {
+      console.error('[G2Pay] Session refresh error:', refreshError)
+      throw new Error(`Session refresh failed: ${refreshError.message}. Please log in again.`)
     }
 
-    console.log('[G2Pay] Session refreshed successfully')
+    if (!refreshedSession?.access_token) {
+      console.error('[G2Pay] No valid session after refresh')
+      throw new Error('Failed to refresh session. Please log in again.')
+    }
   }
 
-  console.log('[G2Pay] Making payment request:', {
-    amount: paymentRequest.amount,
-    currencyCode: paymentRequest.currencyCode,
-    orderRef: paymentRequest.orderRef,
-  })
+  // Get the latest session to ensure we have the most current JWT token
+  const {
+    data: { session: latestSession },
+  } = await supabase.auth.getSession()
 
-  // Use Supabase client's invoke method which handles JWT authentication automatically
-  const { data, error } = await supabase.functions.invoke('create-g2pay-session', {
+  if (!latestSession?.access_token) {
+    throw new Error('No access token available. Please log in again.')
+  }
+
+  // Create a new Supabase client instance with the specific JWT token
+  // This prevents race conditions when multiple tabs make concurrent requests
+  const supabaseWithAuth = createClient(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_ANON_KEY,
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${latestSession.access_token}`,
+        },
+      },
+    }
+  )
+
+  // Call Edge Function - uses the isolated client with explicit JWT
+  const { data, error } = await supabaseWithAuth.functions.invoke('create-g2pay-session', {
     body: paymentRequest,
   })
 
   if (error) {
     console.error('[G2Pay] Edge function error:', error)
+
+    // Handle JWT-specific errors
+    if (error.message?.includes('JWT') || error.message?.includes('401')) {
+      throw new Error('Session expired. Please refresh the page and log in again.')
+    }
+
     throw new Error(error.message || 'Failed to process payment')
   }
-
-  console.log('[G2Pay] Payment response:', {
-    success: data.success,
-    transactionID: data.transactionID,
-    message: data.message,
-  })
 
   return data
 }
