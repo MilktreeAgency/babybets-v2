@@ -23,6 +23,9 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/contexts/ConfirmDialogContext'
+import { useSidebarCounts } from '@/contexts/SidebarCountsContext'
+import { toast } from 'sonner'
+import { RejectWithdrawalModal } from '@/components/RejectWithdrawalModal'
 
 type WithdrawalRequest = Database['public']['Tables']['withdrawal_requests']['Row']
 
@@ -37,7 +40,10 @@ export default function Withdrawals() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [processingId, setProcessingId] = useState<string | null>(null)
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [rejectingWithdrawal, setRejectingWithdrawal] = useState<WithdrawalWithUser | null>(null)
   const { confirm } = useConfirm()
+  const { refreshCounts } = useSidebarCounts()
 
   useEffect(() => {
     loadWithdrawals()
@@ -133,9 +139,12 @@ export default function Withdrawals() {
 
       if (error) throw error
 
+      toast.success('Withdrawal request approved')
       await loadWithdrawals()
+      await refreshCounts()
     } catch (error) {
       console.error('Error approving withdrawal:', error)
+      toast.error('Failed to approve withdrawal request')
     } finally {
       setProcessingId(null)
     }
@@ -144,7 +153,7 @@ export default function Withdrawals() {
   const handleMarkAsPaid = async (id: string) => {
     const confirmed = await confirm({
       title: 'Mark Withdrawal as Paid?',
-      description: 'This will mark the withdrawal as completed and paid.',
+      description: 'This will deduct the amount from the user\'s wallet and mark the withdrawal as completed and paid.',
       confirmText: 'Mark as Paid',
       cancelText: 'Cancel',
       variant: 'default',
@@ -154,40 +163,41 @@ export default function Withdrawals() {
 
     try {
       setProcessingId(id)
-      const { error } = await supabase
-        .from('withdrawal_requests')
-        .update({
-          status: 'paid',
-          paid_at: new Date().toISOString(),
-        })
-        .eq('id', id)
+
+      // Call the database function to process the withdrawal payment
+      // This will deduct from wallet and mark as paid atomically
+      const { error } = await supabase.rpc('process_withdrawal_payment', {
+        p_withdrawal_id: id
+      })
 
       if (error) throw error
 
+      toast.success('Withdrawal processed successfully')
       await loadWithdrawals()
+      await refreshCounts()
     } catch (error) {
       console.error('Error marking withdrawal as paid:', error)
+      toast.error(
+        `Failed to process withdrawal: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
     } finally {
       setProcessingId(null)
     }
   }
 
   const handleReject = async (id: string) => {
-    const reason = prompt('Please enter a rejection reason:')
-    if (!reason) return
+    const withdrawal = withdrawals.find(w => w.id === id)
+    if (!withdrawal) return
 
-    const confirmed = await confirm({
-      title: 'Reject Withdrawal Request?',
-      description: 'This action cannot be undone. The user will be notified of the rejection.',
-      confirmText: 'Reject',
-      cancelText: 'Cancel',
-      variant: 'destructive',
-    })
+    setRejectingWithdrawal(withdrawal)
+    setShowRejectModal(true)
+  }
 
-    if (!confirmed) return
+  const handleConfirmReject = async (reason: string) => {
+    if (!rejectingWithdrawal) return
 
     try {
-      setProcessingId(id)
+      setProcessingId(rejectingWithdrawal.id)
       const { error } = await supabase
         .from('withdrawal_requests')
         .update({
@@ -195,13 +205,18 @@ export default function Withdrawals() {
           reviewed_at: new Date().toISOString(),
           rejection_reason: reason,
         })
-        .eq('id', id)
+        .eq('id', rejectingWithdrawal.id)
 
       if (error) throw error
 
+      toast.success('Withdrawal request rejected')
+      setShowRejectModal(false)
+      setRejectingWithdrawal(null)
       await loadWithdrawals()
+      await refreshCounts()
     } catch (error) {
       console.error('Error rejecting withdrawal:', error)
+      toast.error('Failed to reject withdrawal request')
     } finally {
       setProcessingId(null)
     }
@@ -397,7 +412,7 @@ export default function Withdrawals() {
                 return (
                   <div
                     key={withdrawal.id}
-                    className="bg-admin-card-bg rounded-lg border border-border p-6 hover:shadow-lg transition-shadow"
+                    className="bg-admin-card-bg rounded-lg border border-border p-6"
                   >
                     {/* Header */}
                     <div className="flex items-start justify-between mb-4">
@@ -497,6 +512,7 @@ export default function Withdrawals() {
                             variant="destructive"
                             onClick={() => handleReject(withdrawal.id)}
                             disabled={processingId === withdrawal.id}
+                            className="text-white"
                           >
                             <XCircle className="size-4 mr-1" />
                             Reject
@@ -521,6 +537,18 @@ export default function Withdrawals() {
           </div>
         </div>
       </div>
+
+      {/* Reject Withdrawal Modal */}
+      <RejectWithdrawalModal
+        isOpen={showRejectModal}
+        onClose={() => {
+          setShowRejectModal(false)
+          setRejectingWithdrawal(null)
+        }}
+        onConfirm={handleConfirmReject}
+        withdrawalAmount={rejectingWithdrawal?.amount_pence || 0}
+        isSubmitting={processingId === rejectingWithdrawal?.id}
+      />
     </>
   )
 }
