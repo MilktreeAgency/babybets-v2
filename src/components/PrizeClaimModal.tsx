@@ -59,7 +59,7 @@ export function PrizeClaimModal({ isOpen, onClose, prize, ticketId, onClaimed }:
           throw claimError
         }
 
-        console.log('Cash alternative claimed:', claimData)
+        
       }
 
       setSuccess(true)

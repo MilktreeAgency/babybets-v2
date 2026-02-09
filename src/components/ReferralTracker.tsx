@@ -17,7 +17,7 @@ export function ReferralTracker() {
     if (refParam) {
       // Check consent first (GDPR compliance)
       if (!hasAffiliateTrackingConsent()) {
-        console.log('Affiliate tracking requires user consent. Ref parameter detected but not tracked yet.')
+        
         // Store ref param temporarily to track after consent
         sessionStorage.setItem('pending_ref', refParam)
         return
@@ -26,7 +26,7 @@ export function ReferralTracker() {
       // Set referral from slug in URL
       setReferralFromSlug(refParam).then((success) => {
         if (success) {
-          console.log('Referral tracked:', refParam)
+        
           // Clear pending ref
           sessionStorage.removeItem('pending_ref')
         }
@@ -38,7 +38,6 @@ export function ReferralTracker() {
     if (pendingRef && hasAffiliateTrackingConsent()) {
       setReferralFromSlug(pendingRef).then((success) => {
         if (success) {
-          console.log('Pending referral tracked:', pendingRef)
           sessionStorage.removeItem('pending_ref')
         }
       })
