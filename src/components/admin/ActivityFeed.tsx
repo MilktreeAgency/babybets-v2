@@ -1,4 +1,5 @@
 import { formatDistanceToNow } from 'date-fns'
+import { Link } from 'react-router-dom'
 
 interface Activity {
   id: string
@@ -113,9 +114,12 @@ export default function ActivityFeed({ activities, loading = false }: ActivityFe
           </div>
         ))}
       </div>
-      <button className="w-full mt-4 text-sm text-admin-info-text hover:text-admin-info-fg font-medium cursor-pointer">
+      <Link
+        to="/admin/dashboard/activity"
+        className="block w-full mt-4 text-sm text-admin-info-text hover:text-admin-info-fg font-medium text-center cursor-pointer"
+      >
         View all activity
-      </button>
+      </Link>
     </div>
   )
 }
