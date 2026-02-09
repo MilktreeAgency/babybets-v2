@@ -41,7 +41,8 @@ export default function Prizes() {
       query = query.eq('type', typeFilter as PrizeType)
     }
 
-    return query
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return query as any
   }, [statusFilter, typeFilter])
 
   // Use infinite scroll hook
@@ -61,7 +62,7 @@ export default function Prizes() {
   // Client-side search filter
   const filteredPrizes = useMemo(
     () =>
-      prizes.filter((prize) =>
+      prizes.filter((prize: PrizeTemplate) =>
         prize.name.toLowerCase().includes(searchQuery.toLowerCase())
       ),
     [prizes, searchQuery]

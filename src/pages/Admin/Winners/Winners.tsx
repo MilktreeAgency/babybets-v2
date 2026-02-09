@@ -94,7 +94,7 @@ export default function Winners() {
           let pendingCount = 0
 
           winnersData.forEach((winner) => {
-            const status = fulfillmentMap[winner.ticket_id]
+            const status = winner.ticket_id ? fulfillmentMap[winner.ticket_id] : null
             if (status === 'completed' || status === 'delivered') {
               fulfilledCount++
             } else if (

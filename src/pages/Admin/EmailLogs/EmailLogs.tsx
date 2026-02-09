@@ -8,17 +8,13 @@ import { Download, RefreshCw, Eye, Search } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useConfirm } from '@/contexts/ConfirmDialogContext'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
+import type { Database } from '@/types/database.types'
 
-interface EmailNotification {
-  id: string
-  type: string
+type EmailNotificationRow = Database['public']['Tables']['email_notifications']['Row']
+
+interface EmailNotification extends Omit<EmailNotificationRow, 'data' | 'status'> {
   data: Record<string, unknown>
   status: 'pending' | 'sent' | 'failed'
-  recipient_email: string | null
-  error_message: string | null
-  sent_at: string | null
-  created_at: string | null
-  updated_at: string | null
 }
 
 const EMAIL_TYPES = [
@@ -58,7 +54,7 @@ export default function EmailLogs() {
   const { confirm } = useConfirm()
 
   // Transform function to ensure data field is always an object
-  const transformEmails = useCallback((items: EmailNotification[]) => {
+  const transformEmails = useCallback(async (items: EmailNotificationRow[]): Promise<EmailNotification[]> => {
     return items.map(item => {
       const validStatus: 'pending' | 'sent' | 'failed' =
         (item.status === 'pending' || item.status === 'sent' || item.status === 'failed')
@@ -75,10 +71,11 @@ export default function EmailLogs() {
 
   // Query builder for infinite scroll
   const queryBuilder = useCallback(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return supabase
       .from('email_notifications')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false }) as any
   }, [])
 
   // Use infinite scroll hook
@@ -89,7 +86,7 @@ export default function EmailLogs() {
     hasMore,
     refresh,
     observerRef,
-  } = useInfiniteScroll<EmailNotification>({
+  } = useInfiniteScroll<EmailNotificationRow, EmailNotification>({
     queryBuilder,
     pageSize: 10,
     dependencies: [],

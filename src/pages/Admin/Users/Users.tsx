@@ -52,7 +52,8 @@ export default function Users() {
       query = query.eq('role', roleFilter as UserRole)
     }
 
-    return query
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return query as any
   }, [roleFilter])
 
   // Transform function to add user stats

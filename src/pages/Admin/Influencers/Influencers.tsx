@@ -2,7 +2,6 @@ import { useState, useCallback, useMemo } from 'react'
 import { DashboardHeader } from '../components'
 import { CheckCircle, XCircle, ExternalLink, Mail, Instagram, Youtube, UserCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { Database } from '@/types/database.types'
 import {
   Select,
   SelectContent,
@@ -13,12 +12,31 @@ import {
 import { useSidebarCounts } from '@/contexts/SidebarCountsContext'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
-type Influencer = Database['public']['Tables']['influencers']['Row'] & {
+interface Influencer extends Record<string, unknown> {
+  id: string
+  user_id: string
+  display_name: string
+  slug: string
+  bio: string | null
+  page_bio: string | null
+  social_profile_url: string | null
+  profile_image_url: string | null
+  page_image_url: string | null
+  is_active: boolean | null
+  is_ambassador: boolean | null
+  commission_tier: number | null
+  primary_platform: string | null
+  total_followers: string | null
+  total_sales_pence: number | null
+  total_commission_pence: number | null
+  monthly_sales_pence: number | null
+  created_at: string | null
+  updated_at: string | null
   profiles?: {
     email: string
     first_name: string | null
     last_name: string | null
-  }
+  } | null
 }
 
 export default function Influencers() {
@@ -45,7 +63,8 @@ export default function Influencers() {
       query = query.eq('is_active', true)
     }
 
-    return query
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return query as any
   }, [filter])
 
   // Use infinite scroll hook

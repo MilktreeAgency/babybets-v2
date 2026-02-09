@@ -8,8 +8,8 @@ import { Download, ExternalLink, Search } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
-// Manual type definition for activity_logs (types need regeneration)
-interface ActivityLog {
+// Manual type definition for activity_logs with joined data
+interface ActivityLog extends Record<string, unknown> {
   id: string
   user_id: string | null
   actor_id: string | null
@@ -18,7 +18,7 @@ interface ActivityLog {
   entity_type: string
   entity_id: string
   description: string
-  metadata: Record<string, unknown> | null
+  metadata: unknown | null
   created_at: string
   user?: {
     id: string
@@ -26,14 +26,14 @@ interface ActivityLog {
     last_name: string | null
     email: string | null
     avatar_url: string | null
-  }
+  } | null
   actor?: {
     id: string
     first_name: string | null
     last_name: string | null
     email: string | null
     avatar_url: string | null
-  }
+  } | null
 }
 
 interface ActivityStats {
@@ -129,7 +129,8 @@ export default function Activity() {
       query = query.gte('created_at', filterDate.toISOString())
     }
 
-    return query
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return query as any
   }, [typeFilter, dateFilter])
 
   // Transform activity logs to Activity interface

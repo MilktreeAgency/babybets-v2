@@ -35,7 +35,8 @@ export default function Competitions() {
       query = query.eq('category', categoryFilter as Database['public']['Enums']['competition_category'])
     }
 
-    return query
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return query as any
   }, [statusFilter, categoryFilter])
 
   // Use infinite scroll hook
@@ -54,7 +55,7 @@ export default function Competitions() {
   // Client-side search filter
   const filteredCompetitions = useMemo(
     () =>
-      competitions.filter((comp) =>
+      competitions.filter((comp: Competition) =>
         comp.title.toLowerCase().includes(searchQuery.toLowerCase())
       ),
     [competitions, searchQuery]
@@ -199,7 +200,7 @@ export default function Competitions() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {filteredCompetitions.map((competition, index) => (
+                    {filteredCompetitions.map((competition) => (
                       <tr key={competition.id} className="hover:bg-admin-hover-bg cursor-pointer">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">

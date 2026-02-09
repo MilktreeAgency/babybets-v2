@@ -41,7 +41,8 @@ export default function PromoCodes() {
       query = query.eq('type', typeFilter as PromoCodeType)
     }
 
-    return query
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return query as any
   }, [statusFilter, typeFilter])
 
   // Use infinite scroll hook
@@ -61,7 +62,7 @@ export default function PromoCodes() {
   // Client-side search filter
   const filteredPromoCodes = useMemo(
     () =>
-      promoCodes.filter((promo) =>
+      promoCodes.filter((promo: PromoCode) =>
         promo.code.toLowerCase().includes(searchQuery.toLowerCase())
       ),
     [promoCodes, searchQuery]
@@ -95,7 +96,7 @@ export default function PromoCodes() {
   }
 
   const getTypeBadge = (type: PromoCodeType) => {
-    const badges = {
+    const badges: Record<PromoCodeType, { label: string; color: string }> = {
       percentage: { label: 'Percentage Off', color: 'bg-admin-info-bg text-admin-info-fg' },
       fixed_value: { label: 'Fixed Amount', color: 'bg-admin-success-bg text-admin-success-fg' },
       free_tickets: { label: 'Free Tickets', color: 'bg-admin-purple-bg text-admin-purple-fg' },
