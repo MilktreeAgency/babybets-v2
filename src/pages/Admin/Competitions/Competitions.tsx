@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { DashboardHeader } from '../components'
 import { Plus, Search } from 'lucide-react'
@@ -11,49 +11,53 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
 type Competition = Database['public']['Tables']['competitions']['Row']
 
 export default function Competitions() {
-  const [competitions, setCompetitions] = useState<Competition[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
-  useEffect(() => {
-    loadCompetitions()
+  // Query builder for infinite scroll
+  const queryBuilder = useCallback(() => {
+    let query = supabase
+      .from('competitions')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (statusFilter !== 'all') {
+      query = query.eq('status', statusFilter as Database['public']['Enums']['competition_status'])
+    }
+
+    if (categoryFilter !== 'all') {
+      query = query.eq('category', categoryFilter as Database['public']['Enums']['competition_category'])
+    }
+
+    return query
   }, [statusFilter, categoryFilter])
 
-  const loadCompetitions = async () => {
-    try {
-      setLoading(true)
-      let query = supabase
-        .from('competitions')
-        .select('*')
-        .order('created_at', { ascending: false })
+  // Use infinite scroll hook
+  const {
+    data: competitions,
+    loading,
+    loadingMore,
+    hasMore,
+    observerRef,
+  } = useInfiniteScroll<Competition>({
+    queryBuilder,
+    pageSize: 10,
+    dependencies: [statusFilter, categoryFilter],
+  })
 
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter as Database['public']['Enums']['competition_status'])
-      }
-
-      if (categoryFilter !== 'all') {
-        query = query.eq('category', categoryFilter as Database['public']['Enums']['competition_category'])
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-      setCompetitions(data || [])
-    } catch (error) {
-      console.error('Error loading competitions:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const filteredCompetitions = competitions.filter((comp) =>
-    comp.title.toLowerCase().includes(searchQuery.toLowerCase())
+  // Client-side search filter
+  const filteredCompetitions = useMemo(
+    () =>
+      competitions.filter((comp) =>
+        comp.title.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [competitions, searchQuery]
   )
 
   const getStatusBadgeColor = (status: string) => {
@@ -195,7 +199,7 @@ export default function Competitions() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {filteredCompetitions.map((competition) => (
+                    {filteredCompetitions.map((competition, index) => (
                       <tr key={competition.id} className="hover:bg-admin-hover-bg cursor-pointer">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -258,6 +262,27 @@ export default function Competitions() {
                     ))}
                   </tbody>
                 </table>
+
+                {/* Infinite Scroll Sentinel */}
+                {hasMore && (
+                  <div ref={observerRef} className="p-4 text-center">
+                    {loadingMore && (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="size-5 border-2 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
+                        <span className="text-sm text-muted-foreground">Loading more...</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* End of Results Message */}
+                {!hasMore && filteredCompetitions.length > 0 && (
+                  <div className="p-4 text-center">
+                    <span className="text-sm text-muted-foreground">
+                      All competitions loaded ({filteredCompetitions.length} total)
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>

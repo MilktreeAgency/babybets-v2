@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { DashboardHeader } from '../components'
 import { Plus, Search, Edit, Trash2, ToggleLeft, ToggleRight, Package } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -11,13 +11,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { PrizeDialog } from './PrizeDialog'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
 type PrizeTemplate = Database['public']['Tables']['prize_templates']['Row']
 type PrizeType = Database['public']['Enums']['prize_type']
 
 export default function Prizes() {
-  const [prizes, setPrizes] = useState<PrizeTemplate[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -25,41 +24,47 @@ export default function Prizes() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
-  useEffect(() => {
-    loadPrizes()
+  // Query builder for infinite scroll
+  const queryBuilder = useCallback(() => {
+    let query = supabase
+      .from('prize_templates')
+      .select('*')
+      .order('value_gbp', { ascending: false })
+
+    if (statusFilter === 'active') {
+      query = query.eq('is_active', true)
+    } else if (statusFilter === 'inactive') {
+      query = query.eq('is_active', false)
+    }
+
+    if (typeFilter !== 'all') {
+      query = query.eq('type', typeFilter as PrizeType)
+    }
+
+    return query
   }, [statusFilter, typeFilter])
 
-  const loadPrizes = async () => {
-    try {
-      setLoading(true)
-      let query = supabase
-        .from('prize_templates')
-        .select('*')
-        .order('value_gbp', { ascending: false })
+  // Use infinite scroll hook
+  const {
+    data: prizes,
+    loading,
+    loadingMore,
+    hasMore,
+    refresh,
+    observerRef,
+  } = useInfiniteScroll<PrizeTemplate>({
+    queryBuilder,
+    pageSize: 10,
+    dependencies: [statusFilter, typeFilter],
+  })
 
-      if (statusFilter === 'active') {
-        query = query.eq('is_active', true)
-      } else if (statusFilter === 'inactive') {
-        query = query.eq('is_active', false)
-      }
-
-      if (typeFilter !== 'all') {
-        query = query.eq('type', typeFilter as PrizeType)
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-      setPrizes(data || [])
-    } catch (error) {
-      console.error('Error loading prizes:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const filteredPrizes = prizes.filter((prize) =>
-    prize.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Client-side search filter
+  const filteredPrizes = useMemo(
+    () =>
+      prizes.filter((prize) =>
+        prize.name.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [prizes, searchQuery]
   )
 
   const handleCreateNew = () => {
@@ -82,7 +87,7 @@ export default function Prizes() {
         .eq('id', prize.id)
 
       if (error) throw error
-      loadPrizes()
+      refresh()
     } catch (error) {
       console.error('Error toggling prize status:', error)
       alert('Failed to update prize status')
@@ -113,7 +118,7 @@ export default function Prizes() {
         .eq('id', prize.id)
 
       if (error) throw error
-      loadPrizes()
+      refresh()
     } catch (error) {
       console.error('Error deleting prize:', error)
       alert('Failed to delete prize')
@@ -335,6 +340,27 @@ export default function Prizes() {
                 </table>
               </div>
             )}
+
+            {/* Infinite Scroll Sentinel */}
+            {hasMore && (
+              <div ref={observerRef} className="p-4 text-center">
+                {loadingMore && (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="size-5 border-2 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
+                    <span className="text-sm text-muted-foreground">Loading more...</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* End of Results Message */}
+            {!hasMore && filteredPrizes.length > 0 && (
+              <div className="p-4 text-center">
+                <span className="text-sm text-muted-foreground">
+                  All prizes loaded ({filteredPrizes.length} total)
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -344,7 +370,7 @@ export default function Prizes() {
         open={dialogOpen}
         isCreating={isCreating}
         onOpenChange={setDialogOpen}
-        onSuccess={loadPrizes}
+        onSuccess={refresh}
       />
     </>
   )

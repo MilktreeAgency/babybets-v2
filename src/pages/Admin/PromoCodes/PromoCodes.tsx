@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { DashboardHeader } from '../components'
 import { Plus, Search, Edit, ToggleLeft, ToggleRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -11,13 +11,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { PromoCodeDialog } from './PromoCodeDialog'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
 type PromoCode = Database['public']['Tables']['promo_codes']['Row']
 type PromoCodeType = Database['public']['Enums']['promo_code_type']
 
 export default function PromoCodes() {
-  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -25,41 +24,47 @@ export default function PromoCodes() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
-  useEffect(() => {
-    loadPromoCodes()
+  // Query builder for infinite scroll
+  const queryBuilder = useCallback(() => {
+    let query = supabase
+      .from('promo_codes')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (statusFilter === 'active') {
+      query = query.eq('is_active', true)
+    } else if (statusFilter === 'inactive') {
+      query = query.eq('is_active', false)
+    }
+
+    if (typeFilter !== 'all') {
+      query = query.eq('type', typeFilter as PromoCodeType)
+    }
+
+    return query
   }, [statusFilter, typeFilter])
 
-  const loadPromoCodes = async () => {
-    try {
-      setLoading(true)
-      let query = supabase
-        .from('promo_codes')
-        .select('*')
-        .order('created_at', { ascending: false })
+  // Use infinite scroll hook
+  const {
+    data: promoCodes,
+    loading,
+    loadingMore,
+    hasMore,
+    refresh,
+    observerRef,
+  } = useInfiniteScroll<PromoCode>({
+    queryBuilder,
+    pageSize: 10,
+    dependencies: [statusFilter, typeFilter],
+  })
 
-      if (statusFilter === 'active') {
-        query = query.eq('is_active', true)
-      } else if (statusFilter === 'inactive') {
-        query = query.eq('is_active', false)
-      }
-
-      if (typeFilter !== 'all') {
-        query = query.eq('type', typeFilter as PromoCodeType)
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-      setPromoCodes(data || [])
-    } catch (error) {
-      console.error('Error loading promo codes:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const filteredPromoCodes = promoCodes.filter((promo) =>
-    promo.code.toLowerCase().includes(searchQuery.toLowerCase())
+  // Client-side search filter
+  const filteredPromoCodes = useMemo(
+    () =>
+      promoCodes.filter((promo) =>
+        promo.code.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [promoCodes, searchQuery]
   )
 
   const handleCreateNew = () => {
@@ -82,7 +87,7 @@ export default function PromoCodes() {
         .eq('id', promoCode.id)
 
       if (error) throw error
-      loadPromoCodes()
+      refresh()
     } catch (error) {
       console.error('Error toggling promo code:', error)
       alert('Failed to update promo code status')
@@ -350,6 +355,27 @@ export default function PromoCodes() {
                 </table>
               </div>
             )}
+
+            {/* Infinite Scroll Sentinel */}
+            {hasMore && (
+              <div ref={observerRef} className="p-4 text-center">
+                {loadingMore && (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="size-5 border-2 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
+                    <span className="text-sm text-muted-foreground">Loading more...</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* End of Results Message */}
+            {!hasMore && filteredPromoCodes.length > 0 && (
+              <div className="p-4 text-center">
+                <span className="text-sm text-muted-foreground">
+                  All promo codes loaded ({filteredPromoCodes.length} total)
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -359,7 +385,7 @@ export default function PromoCodes() {
         open={dialogOpen}
         isCreating={isCreating}
         onOpenChange={setDialogOpen}
-        onSuccess={loadPromoCodes}
+        onSuccess={refresh}
       />
     </>
   )

@@ -49,9 +49,7 @@ export default function CompetitionForm() {
   const [endDate, setEndDate] = useState<Date | undefined>(undefined)
   const [drawDate, setDrawDate] = useState<Date | undefined>(undefined)
 
-  const [tieredPricing, setTieredPricing] = useState<TieredPrice[]>([
-    { minQty: 1, maxQty: 9, pricePerTicketPence: 100 },
-  ])
+  const [tieredPricing, setTieredPricing] = useState<TieredPrice[]>([])
 
   const [useCurrentStartDate, setUseCurrentStartDate] = useState(false)
   const [isTicketPoolLocked, setIsTicketPoolLocked] = useState(false)
@@ -744,8 +742,13 @@ export default function CompetitionForm() {
                       </button>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    {tieredPricing.map((tier, index) => (
+                  {tieredPricing.length === 0 ? (
+                    <div className="text-sm text-muted-foreground p-3 bg-admin-gray-bg rounded-lg">
+                      No tiered pricing configured. Base ticket price will apply to all tickets.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {tieredPricing.map((tier, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <input
                           type="number"
@@ -789,7 +792,7 @@ export default function CompetitionForm() {
                         <span className="text-sm text-muted-foreground">
                           £{(tier.pricePerTicketPence / 100).toFixed(2)}
                         </span>
-                        {tieredPricing.length > 1 && !isTicketPoolLocked && (
+                        {!isTicketPoolLocked && (
                           <button
                             type="button"
                             onClick={() => removeTieredPrice(index)}
@@ -800,7 +803,8 @@ export default function CompetitionForm() {
                         )}
                       </div>
                     ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
