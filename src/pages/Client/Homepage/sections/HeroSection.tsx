@@ -267,7 +267,7 @@ export default function HeroSection() {
                   {/* Carousel Indicators */}
                   {heroImages.length > 1 && (
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                      {heroImages.map((_, index) => (
+                      {heroImages.map((_img, index) => (
                         <button
                           key={index}
                           onClick={() => setCurrentImageIndex(index)}

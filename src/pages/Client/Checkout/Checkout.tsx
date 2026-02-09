@@ -386,7 +386,7 @@ function Checkout() {
       // If fully paid with wallet credit, complete order immediately
       if (finalPrice === 0) {
         // Complete order with wallet payment
-        const { data: rpcResult, error: completeError } = await supabase.rpc('complete_order_with_wallet', {
+        const { error: completeError } = await supabase.rpc('complete_order_with_wallet', {
           p_order_id: order.id,
           p_user_id: authenticatedUserId,
         })
@@ -453,7 +453,7 @@ function Checkout() {
           throw new Error('Failed to refresh session. Please try logging in again.')
         }
 
-        const { data: completeResult, error: completeError } = await supabase.functions.invoke('complete-g2pay-order', {
+        const { error: completeError } = await supabase.functions.invoke('complete-g2pay-order', {
           body: { orderId: order.id, userId: authenticatedUserId },
         })
 

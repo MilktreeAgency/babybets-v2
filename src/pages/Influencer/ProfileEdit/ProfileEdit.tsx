@@ -117,8 +117,7 @@ export default function ProfileEdit() {
     try {
       if (!influencer) throw new Error('No influencer data')
 
-
-      const { data, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('influencers')
         .update({
           display_name: formData.display_name,
@@ -128,7 +127,6 @@ export default function ProfileEdit() {
         })
         .eq('id', influencer.id)
         .select()
-
 
       if (updateError) {
         console.error('Update error details:', updateError)
