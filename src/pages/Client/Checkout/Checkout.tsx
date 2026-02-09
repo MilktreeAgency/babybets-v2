@@ -286,20 +286,6 @@ function Checkout() {
       const finalPence = Math.round(finalPrice * 100)
       const discountPence = Math.round(discountAmount * 100)
 
-      console.log('💰 ORDER VALUES CALCULATION:', {
-        totalPrice,
-        totalPence,
-        discountAmount,
-        discountPence,
-        appliedCredit,
-        creditPence,
-        finalPrice,
-        finalPence,
-        promoDiscount,
-        promoCodeType,
-        promoCodeValue
-      })
-
       // Validate order total is greater than 0
       if (totalPence <= 0) {
         throw new Error('Order total must be greater than £0.00. Please check your cart items.')
@@ -318,14 +304,20 @@ function Checkout() {
       // Ensure user is authenticated and refresh session to get latest token
       const { data: { session }, error: sessionError } = await supabase.auth.refreshSession()
 
-      if (sessionError || !session?.user) {
-        console.error('Session error:', sessionError)
+      if (sessionError) {
+        console.error('[Checkout] Session refresh error:', sessionError)
+        // Redirect to login if refresh fails
+        navigate('/login?redirect=/checkout&error=session_expired')
+        throw new Error('Your session has expired. Please log in again.')
+      }
+
+      if (!session?.user || !session?.access_token) {
+        console.error('[Checkout] No valid session after refresh')
+        navigate('/login?redirect=/checkout&error=no_session')
         throw new Error('User not authenticated. Please log in again.')
       }
 
       const authenticatedUserId = session.user.id
-      console.log('Authenticated user ID:', authenticatedUserId)
-      console.log('Session access token:', session.access_token ? 'exists' : 'missing')
 
       // Get influencer data from active referral
       let influencerUserId: string | null = null
@@ -365,8 +357,6 @@ function Checkout() {
         orderData.influencer_id = influencerUserId
       }
 
-      console.log('📦 ORDER DATA BEING SENT:', orderData)
-
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert(orderData)
@@ -377,17 +367,6 @@ function Checkout() {
         console.error('Order creation error:', orderError)
         throw orderError
       }
-
-      console.log('✅ ORDER CREATED SUCCESSFULLY:', {
-        orderId: order.id,
-        userId: order.user_id,
-        subtotal_pence: order.subtotal_pence,
-        discount_pence: order.discount_pence,
-        credit_applied_pence: order.credit_applied_pence,
-        total_pence: order.total_pence,
-        status: order.status,
-        influencer_id: order.influencer_id
-      })
 
       // Verify the order was created successfully
       const { data: verifyOrder, error: verifyError } = await supabase
@@ -401,8 +380,6 @@ function Checkout() {
         throw new Error('Failed to verify order creation')
       }
 
-      console.log('Order verified:', verifyOrder)
-
       // Create order items
       const orderItems = items.map((item) => ({
         order_id: order.id,
@@ -412,8 +389,6 @@ function Checkout() {
         total_pence: Math.round(item.totalPrice * 100),
       }))
 
-      console.log('📝 INSERTING ORDER ITEMS:', orderItems)
-
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
 
       if (itemsError) {
@@ -421,12 +396,8 @@ function Checkout() {
         throw itemsError
       }
 
-      console.log('✅ ORDER ITEMS CREATED')
-
       // If fully paid with wallet credit, complete order immediately
       if (finalPrice === 0) {
-        console.log('💳 ORDER FULLY PAID WITH WALLET - Completing order via RPC...')
-
         // Complete order with wallet payment
         const { data: rpcResult, error: completeError } = await supabase.rpc('complete_order_with_wallet', {
           p_order_id: order.id,
@@ -437,8 +408,6 @@ function Checkout() {
           console.error('❌ Error completing wallet order:', completeError)
           throw new Error('Failed to process wallet payment')
         }
-
-        console.log('✅ WALLET ORDER COMPLETED:', rpcResult)
 
         // Clear cart and redirect
         clearCart()
@@ -489,15 +458,12 @@ function Checkout() {
 
         // Complete order and allocate tickets via Edge Function (server-side)
         // Refresh session to ensure we have a valid JWT token
-        console.log('Refreshing session before edge function call')
         const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
 
         if (refreshError || !refreshedSession) {
           console.error('[Checkout] Session refresh error:', refreshError)
           throw new Error('Failed to refresh session. Please try logging in again.')
         }
-
-        console.log('Calling complete-g2pay-order edge function')
 
         const { data: completeResult, error: completeError } = await supabase.functions.invoke('complete-g2pay-order', {
           body: { orderId: order.id, userId: authenticatedUserId },
@@ -507,8 +473,6 @@ function Checkout() {
           console.error('[Checkout] Edge function error:', completeError)
           throw new Error(completeError.message || 'Failed to complete order')
         }
-
-        console.log('[Checkout] Order completed:', completeResult)
 
         // Clear cart and redirect
         clearCart()
