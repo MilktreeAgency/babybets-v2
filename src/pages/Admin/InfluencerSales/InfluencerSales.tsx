@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { DashboardHeader } from '../components'
 import { DollarSign, CheckCircle, Clock, TrendingUp } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
 type InfluencerWithSales = {
   id: string
@@ -25,85 +26,103 @@ type InfluencerWithSales = {
   sale_count: number
 }
 
+type InfluencerRaw = {
+  id: string
+  display_name: string
+  slug: string
+  commission_tier: number
+  total_sales_pence: number
+  total_commission_pence: number
+  monthly_sales_pence: number
+  profiles?: {
+    email: string
+  }
+}
+
 export default function InfluencerSales() {
-  const [influencers, setInfluencers] = useState<InfluencerWithSales[]>([])
-  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('all')
 
-  useEffect(() => {
-    loadInfluencerSales()
-  }, [filter])
+  // Query builder for infinite scroll
+  const queryBuilder = useCallback(() => {
+    return supabase
+      .from('influencers')
+      .select(`
+        id,
+        display_name,
+        slug,
+        commission_tier,
+        total_sales_pence,
+        total_commission_pence,
+        monthly_sales_pence,
+        profiles!influencers_user_id_fkey (
+          email
+        )
+      `)
+      .eq('is_active', true)
+      .order('total_sales_pence', { ascending: false })
+  }, [])
 
-  const loadInfluencerSales = async () => {
-    try {
-      setLoading(true)
+  // Transform function to enrich with sales data
+  const transformInfluencers = useCallback(async (rawData: unknown[]): Promise<InfluencerWithSales[]> => {
+    const influencersData = rawData as InfluencerRaw[]
 
-      // Get all active influencers
-      const { data: influencersData, error: influencersError } = await supabase
-        .from('influencers')
-        .select(`
-          id,
-          display_name,
-          slug,
-          commission_tier,
-          total_sales_pence,
-          total_commission_pence,
-          monthly_sales_pence,
-          profiles!influencers_user_id_fkey (
-            email
-          )
-        `)
-        .eq('is_active', true)
-        .order('total_sales_pence', { ascending: false })
+    // Get sales breakdown for each influencer
+    const influencersWithSales = await Promise.all(
+      influencersData.map(async (influencer) => {
+        const { data: salesData } = await supabase
+          .from('influencer_sales')
+          .select('status, commission_pence')
+          .eq('influencer_id', influencer.id)
 
-      if (influencersError) throw influencersError
+        const pending = salesData?.filter(s => s.status === 'pending').reduce((sum, s) => sum + (s.commission_pence || 0), 0) || 0
+        const approved = salesData?.filter(s => s.status === 'approved').reduce((sum, s) => sum + (s.commission_pence || 0), 0) || 0
+        const paid = salesData?.filter(s => s.status === 'paid').reduce((sum, s) => sum + (s.commission_pence || 0), 0) || 0
 
-      // Get sales breakdown for each influencer
-      const influencersWithSales = await Promise.all(
-        (influencersData || []).map(async (influencer) => {
-          const { data: salesData } = await supabase
-            .from('influencer_sales')
-            .select('status, commission_pence')
-            .eq('influencer_id', influencer.id)
+        return {
+          id: influencer.id,
+          display_name: influencer.display_name,
+          slug: influencer.slug,
+          email: influencer.profiles?.email || '',
+          commission_tier: influencer.commission_tier || 1,
+          total_sales_pence: influencer.total_sales_pence || 0,
+          total_commission_pence: influencer.total_commission_pence || 0,
+          monthly_sales_pence: influencer.monthly_sales_pence || 0,
+          pending_commission_pence: pending,
+          approved_commission_pence: approved,
+          paid_commission_pence: paid,
+          sale_count: salesData?.length || 0
+        }
+      })
+    )
 
-          const pending = salesData?.filter(s => s.status === 'pending').reduce((sum, s) => sum + (s.commission_pence || 0), 0) || 0
-          const approved = salesData?.filter(s => s.status === 'approved').reduce((sum, s) => sum + (s.commission_pence || 0), 0) || 0
-          const paid = salesData?.filter(s => s.status === 'paid').reduce((sum, s) => sum + (s.commission_pence || 0), 0) || 0
+    return influencersWithSales
+  }, [])
 
-          return {
-            id: influencer.id,
-            display_name: influencer.display_name,
-            slug: influencer.slug,
-            email: (influencer.profiles as any)?.email || '',
-            commission_tier: influencer.commission_tier || 1,
-            total_sales_pence: influencer.total_sales_pence || 0,
-            total_commission_pence: influencer.total_commission_pence || 0,
-            monthly_sales_pence: influencer.monthly_sales_pence || 0,
-            pending_commission_pence: pending,
-            approved_commission_pence: approved,
-            paid_commission_pence: paid,
-            sale_count: salesData?.length || 0
-          }
-        })
-      )
+  // Use infinite scroll hook
+  const {
+    data: allInfluencers,
+    loading,
+    loadingMore,
+    hasMore,
+    observerRef,
+  } = useInfiniteScroll<Record<string, unknown>, InfluencerWithSales>({
+    queryBuilder: queryBuilder as never,
+    pageSize: 10,
+    dependencies: [],
+    transform: transformInfluencers,
+  })
 
-      // Apply filter
-      let filtered = influencersWithSales
-      if (filter === 'has-pending') {
-        filtered = influencersWithSales.filter(i => i.pending_commission_pence > 0)
-      } else if (filter === 'has-approved') {
-        filtered = influencersWithSales.filter(i => i.approved_commission_pence > 0)
-      } else if (filter === 'active') {
-        filtered = influencersWithSales.filter(i => i.sale_count > 0)
-      }
-
-      setInfluencers(filtered)
-    } catch (error) {
-      console.error('Error loading influencer sales:', error)
-    } finally {
-      setLoading(false)
+  // Apply filter client-side
+  const influencers = useMemo(() => {
+    if (filter === 'has-pending') {
+      return allInfluencers.filter(i => i.pending_commission_pence > 0)
+    } else if (filter === 'has-approved') {
+      return allInfluencers.filter(i => i.approved_commission_pence > 0)
+    } else if (filter === 'active') {
+      return allInfluencers.filter(i => i.sale_count > 0)
     }
-  }
+    return allInfluencers
+  }, [allInfluencers, filter])
 
   const getCommissionRate = (tier: number) => {
     switch (tier) {
@@ -314,6 +333,27 @@ export default function InfluencerSales() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Infinite Scroll Sentinel */}
+              {hasMore && (
+                <div ref={observerRef} className="p-4 text-center">
+                  {loadingMore && (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="size-5 border-2 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
+                      <span className="text-sm text-muted-foreground">Loading more...</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* End of Results Message */}
+              {!hasMore && influencers.length > 0 && (
+                <div className="p-4 text-center">
+                  <span className="text-sm text-muted-foreground">
+                    All partners loaded ({influencers.length} total)
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

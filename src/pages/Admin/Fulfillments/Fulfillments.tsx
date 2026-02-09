@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { DashboardHeader } from '../components'
 import {
   Search,
@@ -35,6 +35,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { showSuccessToast, showErrorToast } from '@/lib/toast'
 import { useSidebarCounts } from '@/contexts/SidebarCountsContext'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
 type PrizeFulfillment = Database['public']['Tables']['prize_fulfillments']['Row']
 type FulfillmentStatus = Database['public']['Enums']['fulfillment_status']
@@ -61,8 +62,6 @@ interface ConfirmDialogState {
 export default function Fulfillments() {
   const { user } = useAuthStore()
   const { refreshCounts } = useSidebarCounts()
-  const [fulfillments, setFulfillments] = useState<FulfillmentWithDetails[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [choiceFilter, setChoiceFilter] = useState<string>('all')
@@ -81,152 +80,158 @@ export default function Fulfillments() {
   const [voucherDescriptionInput, setVoucherDescriptionInput] = useState('')
   const [voucherDialogOpen, setVoucherDialogOpen] = useState(false)
 
-  useEffect(() => {
-    loadFulfillments()
+  // Query builder for infinite scroll
+  const queryBuilder = useCallback(() => {
+    let query = supabase
+      .from('prize_fulfillments')
+      .select(`
+        *,
+        user:profiles!user_id(
+          first_name,
+          last_name,
+          email
+        ),
+        competition:competitions!competition_id(title)
+      `)
+      .order('created_at', { ascending: false })
+
+    if (statusFilter !== 'all') {
+      query = query.eq('status', statusFilter as FulfillmentStatus)
+    }
+
+    if (choiceFilter !== 'all') {
+      query = query.eq('choice', choiceFilter)
+    }
+
+    return query
   }, [statusFilter, choiceFilter])
 
-  const loadFulfillments = async () => {
-    try {
-      setLoading(true)
-      let query = supabase
-        .from('prize_fulfillments')
-        .select(`
-          *,
-          user:profiles!user_id(
-            first_name,
-            last_name,
-            email
-          ),
-          competition:competitions!competition_id(title)
-        `)
-        .order('created_at', { ascending: false })
+  // Transform function to enrich fulfillment data
+  const transformFulfillments = useCallback(async (rawData: unknown[]): Promise<FulfillmentWithDetails[]> => {
+    const data = rawData as (PrizeFulfillment & {
+      user?: { first_name?: string; last_name?: string; email: string }
+      competition?: { title: string }
+    })[]
 
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter as FulfillmentStatus)
-      }
+    // Fetch winners separately by ticket_id
+    const ticketIds = data
+      .map((f) => f.ticket_id)
+      .filter((id): id is string => !!id)
 
-      if (choiceFilter !== 'all') {
-        query = query.eq('choice', choiceFilter)
-      }
+    let winnersMap: Record<string, { prize_name: string; prize_value_gbp?: number; win_type?: string }> = {}
 
-      const { data, error } = await query
+    if (ticketIds.length > 0) {
+      const { data: winnersData } = await supabase
+        .from('winners')
+        .select('ticket_id, prize_name, prize_value_gbp, win_type')
+        .in('ticket_id', ticketIds)
 
-      if (error) throw error
-
-      // Fetch winners separately by ticket_id
-      const ticketIds = (data || [])
-        .map((f) => f.ticket_id)
-        .filter((id): id is string => !!id)
-
-      let winnersMap: Record<string, { prize_name: string; prize_value_gbp?: number; win_type?: string }> = {}
-
-      if (ticketIds.length > 0) {
-        const { data: winnersData } = await supabase
-          .from('winners')
-          .select('ticket_id, prize_name, prize_value_gbp, win_type')
-          .in('ticket_id', ticketIds)
-
-        winnersMap = (winnersData || []).reduce((acc, winner) => {
-          if (winner.ticket_id) {
-            acc[winner.ticket_id] = {
-              prize_name: winner.prize_name,
-              prize_value_gbp: winner.prize_value_gbp ?? undefined,
-              win_type: winner.win_type ?? undefined,
-            }
-          }
-          return acc
-        }, {} as Record<string, { prize_name: string; prize_value_gbp?: number; win_type?: string }>)
-      }
-
-      // Fetch prize types from prize_templates
-      const prizeIds = (data || [])
-        .map((f) => f.prize_id)
-        .filter((id): id is string => !!id)
-
-      let prizeTypesMap: Record<string, string> = {}
-
-      if (prizeIds.length > 0) {
-        // Get prize_template_ids from competition_instant_win_prizes
-        const { data: compPrizesData } = await supabase
-          .from('competition_instant_win_prizes')
-          .select('id, prize_template_id')
-          .in('id', prizeIds)
-
-        if (compPrizesData) {
-          const templateIds = compPrizesData
-            .map((cp) => cp.prize_template_id)
-            .filter((id): id is string => !!id)
-
-          if (templateIds.length > 0) {
-            // Get actual prize types from prize_templates
-            const { data: templatesData } = await supabase
-              .from('prize_templates')
-              .select('id, type')
-              .in('id', templateIds)
-
-            if (templatesData) {
-              // Create mapping from competition prize id to prize type
-              const templateTypeMap: Record<string, string> = {}
-              templatesData.forEach((t) => {
-                if (t.id) templateTypeMap[t.id] = t.type
-              })
-
-              compPrizesData.forEach((cp) => {
-                if (cp.id && cp.prize_template_id) {
-                  prizeTypesMap[cp.id] = templateTypeMap[cp.prize_template_id] || 'Physical'
-                }
-              })
-            }
+      winnersMap = (winnersData || []).reduce((acc, winner) => {
+        if (winner.ticket_id) {
+          acc[winner.ticket_id] = {
+            prize_name: winner.prize_name,
+            prize_value_gbp: winner.prize_value_gbp ?? undefined,
+            win_type: winner.win_type ?? undefined,
           }
         }
-      }
-
-      // Transform data
-      const transformedData = (data || []).map((fulfillment) => {
-        const user = fulfillment.user as { first_name?: string; last_name?: string; email: string } | null
-        const competition = fulfillment.competition as { title: string } | null
-        const winner = winnersMap[fulfillment.ticket_id]
-
-        // Determine prize type
-        let prizeType = 'Physical' // default
-        if (fulfillment.prize_id) {
-          // Instant win prize - get from prize_templates
-          prizeType = prizeTypesMap[fulfillment.prize_id] || 'Physical'
-        } else {
-          // End prize - typically physical
-          prizeType = 'Physical'
-        }
-
-        return {
-          ...fulfillment,
-          user_name: user
-            ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown User'
-            : 'Unknown User',
-          user_email: user?.email || 'N/A',
-          competition_title: competition?.title || 'Unknown Competition',
-          prize_name: winner?.prize_name || 'Unknown Prize',
-          prize_value_gbp: winner?.prize_value_gbp,
-          prize_type: prizeType,
-        }
-      })
-
-      setFulfillments(transformedData)
-    } catch (error) {
-      console.error('Error loading fulfillments:', error)
-    } finally {
-      setLoading(false)
+        return acc
+      }, {} as Record<string, { prize_name: string; prize_value_gbp?: number; win_type?: string }>)
     }
-  }
 
-  const filteredFulfillments = fulfillments.filter((fulfillment) => {
-    const query = searchQuery.toLowerCase()
-    return (
-      fulfillment.user_name?.toLowerCase().includes(query) ||
-      fulfillment.user_email?.toLowerCase().includes(query) ||
-      fulfillment.prize_name?.toLowerCase().includes(query) ||
-      fulfillment.competition_title?.toLowerCase().includes(query)
-    )
+    // Fetch prize types from prize_templates
+    const prizeIds = data
+      .map((f) => f.prize_id)
+      .filter((id): id is string => !!id)
+
+    let prizeTypesMap: Record<string, string> = {}
+
+    if (prizeIds.length > 0) {
+      const { data: compPrizesData } = await supabase
+        .from('competition_instant_win_prizes')
+        .select('id, prize_template_id')
+        .in('id', prizeIds)
+
+      if (compPrizesData) {
+        const templateIds = compPrizesData
+          .map((cp) => cp.prize_template_id)
+          .filter((id): id is string => !!id)
+
+        if (templateIds.length > 0) {
+          const { data: templatesData } = await supabase
+            .from('prize_templates')
+            .select('id, type')
+            .in('id', templateIds)
+
+          if (templatesData) {
+            const templateTypeMap: Record<string, string> = {}
+            templatesData.forEach((t) => {
+              if (t.id) templateTypeMap[t.id] = t.type
+            })
+
+            compPrizesData.forEach((cp) => {
+              if (cp.id && cp.prize_template_id) {
+                prizeTypesMap[cp.id] = templateTypeMap[cp.prize_template_id] || 'Physical'
+              }
+            })
+          }
+        }
+      }
+    }
+
+    // Transform data
+    return data.map((fulfillment) => {
+      const user = fulfillment.user
+      const competition = fulfillment.competition
+      const winner = winnersMap[fulfillment.ticket_id]
+
+      let prizeType = 'Physical'
+      if (fulfillment.prize_id) {
+        prizeType = prizeTypesMap[fulfillment.prize_id] || 'Physical'
+      }
+
+      return {
+        ...fulfillment,
+        user_name: user
+          ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown User'
+          : 'Unknown User',
+        user_email: user?.email || 'N/A',
+        competition_title: competition?.title || 'Unknown Competition',
+        prize_name: winner?.prize_name || 'Unknown Prize',
+        prize_value_gbp: winner?.prize_value_gbp,
+        prize_type: prizeType,
+      }
+    })
+  }, [])
+
+  // Use infinite scroll hook with transformation
+  const {
+    data: fulfillments,
+    loading,
+    loadingMore,
+    hasMore,
+    refresh,
+    observerRef,
+  } = useInfiniteScroll<Record<string, unknown>, FulfillmentWithDetails>({
+    queryBuilder: queryBuilder as never,
+    pageSize: 10,
+    dependencies: [statusFilter, choiceFilter],
+    transform: transformFulfillments,
   })
+
+  // Client-side search filter
+  const filteredFulfillments = useMemo(
+    () =>
+      fulfillments.filter((fulfillment) => {
+        const query = searchQuery.toLowerCase()
+        return (
+          fulfillment.user_name?.toLowerCase().includes(query) ||
+          fulfillment.user_email?.toLowerCase().includes(query) ||
+          fulfillment.prize_name?.toLowerCase().includes(query) ||
+          fulfillment.competition_title?.toLowerCase().includes(query)
+        )
+      }),
+    [fulfillments, searchQuery]
+  )
 
   const getStatusBadge = (status: FulfillmentStatus | null) => {
     const badges: Record<FulfillmentStatus, { label: string; color: string }> = {
@@ -262,7 +267,7 @@ export default function Fulfillments() {
         )
       }
 
-      await loadFulfillments()
+      await refresh()
       await refreshCounts()
       setDetailsOpen(false)
     } catch (error) {
@@ -303,7 +308,7 @@ export default function Fulfillments() {
 
       if (error) throw error
 
-      await loadFulfillments()
+      await refresh()
       await refreshCounts()
 
       // Close details dialog if the fulfillment is completed
@@ -344,7 +349,7 @@ export default function Fulfillments() {
 
       if (error) throw error
 
-      await loadFulfillments()
+      await refresh()
       await refreshCounts()
       setDetailsOpen(false)
       showSuccessToast('Voucher code provided successfully')
@@ -658,6 +663,27 @@ export default function Fulfillments() {
                     })}
                   </tbody>
                 </table>
+
+                {/* Infinite Scroll Sentinel */}
+                {hasMore && (
+                  <div ref={observerRef} className="p-4 text-center">
+                    {loadingMore && (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="size-5 border-2 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
+                        <span className="text-sm text-muted-foreground">Loading more...</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* End of Results Message */}
+                {!hasMore && filteredFulfillments.length > 0 && (
+                  <div className="p-4 text-center">
+                    <span className="text-sm text-muted-foreground">
+                      All fulfillments loaded ({filteredFulfillments.length} total)
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>

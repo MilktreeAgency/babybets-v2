@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { DashboardHeader } from '../components'
 import {
   Search,
@@ -26,6 +26,7 @@ import { useConfirm } from '@/contexts/ConfirmDialogContext'
 import { useSidebarCounts } from '@/contexts/SidebarCountsContext'
 import { toast } from 'sonner'
 import { RejectWithdrawalModal } from '@/components/RejectWithdrawalModal'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
 type WithdrawalRequest = Database['public']['Tables']['withdrawal_requests']['Row']
 
@@ -35,8 +36,6 @@ interface WithdrawalWithUser extends WithdrawalRequest {
 }
 
 export default function Withdrawals() {
-  const [withdrawals, setWithdrawals] = useState<WithdrawalWithUser[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [processingId, setProcessingId] = useState<string | null>(null)
@@ -45,62 +44,74 @@ export default function Withdrawals() {
   const { confirm } = useConfirm()
   const { refreshCounts } = useSidebarCounts()
 
-  useEffect(() => {
-    loadWithdrawals()
+  // Query builder for infinite scroll
+  const queryBuilder = useCallback(() => {
+    let query = supabase
+      .from('withdrawal_requests')
+      .select(`
+        *,
+        user:profiles!user_id(
+          first_name,
+          last_name,
+          email
+        )
+      `)
+      .order('created_at', { ascending: false })
+
+    if (statusFilter !== 'all') {
+      query = query.eq('status', statusFilter)
+    }
+
+    return query
   }, [statusFilter])
 
-  const loadWithdrawals = async () => {
-    try {
-      setLoading(true)
-      let query = supabase
-        .from('withdrawal_requests')
-        .select(`
-          *,
-          user:profiles!user_id(
-            first_name,
-            last_name,
-            email
-          )
-        `)
-        .order('created_at', { ascending: false })
+  // Transform function to enrich withdrawal data
+  const transformWithdrawals = useCallback(async (rawData: unknown[]): Promise<WithdrawalWithUser[]> => {
+    const data = rawData as (WithdrawalRequest & {
+      user?: { first_name?: string; last_name?: string; email: string }
+    })[]
 
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter)
+    return data.map((withdrawal) => {
+      const user = withdrawal.user
+
+      return {
+        ...withdrawal,
+        user_name: user
+          ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown User'
+          : 'Unknown User',
+        user_email: user?.email || 'N/A',
       }
+    })
+  }, [])
 
-      const { data, error } = await query
-
-      if (error) throw error
-
-      // Transform data
-      const transformedData = (data || []).map((withdrawal) => {
-        const user = withdrawal.user as { first_name?: string; last_name?: string; email: string } | null
-
-        return {
-          ...withdrawal,
-          user_name: user
-            ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown User'
-            : 'Unknown User',
-          user_email: user?.email || 'N/A',
-        }
-      })
-
-      setWithdrawals(transformedData)
-    } catch (error) {
-      console.error('Error loading withdrawals:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const filteredWithdrawals = withdrawals.filter((withdrawal) => {
-    const query = searchQuery.toLowerCase()
-    return (
-      withdrawal.user_name?.toLowerCase().includes(query) ||
-      withdrawal.user_email?.toLowerCase().includes(query) ||
-      withdrawal.bank_account_name?.toLowerCase().includes(query)
-    )
+  // Use infinite scroll hook with transformation
+  const {
+    data: withdrawals,
+    loading,
+    loadingMore,
+    hasMore,
+    refresh,
+    observerRef,
+  } = useInfiniteScroll<Record<string, unknown>, WithdrawalWithUser>({
+    queryBuilder: queryBuilder as never,
+    pageSize: 10,
+    dependencies: [statusFilter],
+    transform: transformWithdrawals,
   })
+
+  // Client-side search filter
+  const filteredWithdrawals = useMemo(
+    () =>
+      withdrawals.filter((withdrawal) => {
+        const query = searchQuery.toLowerCase()
+        return (
+          withdrawal.user_name?.toLowerCase().includes(query) ||
+          withdrawal.user_email?.toLowerCase().includes(query) ||
+          withdrawal.bank_account_name?.toLowerCase().includes(query)
+        )
+      }),
+    [withdrawals, searchQuery]
+  )
 
   const getStatusBadge = (status: string | null) => {
     const badges: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -140,7 +151,7 @@ export default function Withdrawals() {
       if (error) throw error
 
       toast.success('Withdrawal request approved')
-      await loadWithdrawals()
+      await refresh()
       await refreshCounts()
     } catch (error) {
       console.error('Error approving withdrawal:', error)
@@ -173,7 +184,7 @@ export default function Withdrawals() {
       if (error) throw error
 
       toast.success('Withdrawal processed successfully')
-      await loadWithdrawals()
+      await refresh()
       await refreshCounts()
     } catch (error) {
       console.error('Error marking withdrawal as paid:', error)
@@ -212,7 +223,7 @@ export default function Withdrawals() {
       toast.success('Withdrawal request rejected')
       setShowRejectModal(false)
       setRejectingWithdrawal(null)
-      await loadWithdrawals()
+      await refresh()
       await refreshCounts()
     } catch (error) {
       console.error('Error rejecting withdrawal:', error)
@@ -394,19 +405,20 @@ export default function Withdrawals() {
           </div>
 
           {/* Withdrawals Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {loading ? (
-              <div className="col-span-full p-8 text-center bg-admin-card-bg rounded-lg border border-border">
-                <div className="inline-block size-8 border-4 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
-                <p className="mt-2 text-muted-foreground">Loading withdrawals...</p>
-              </div>
-            ) : filteredWithdrawals.length === 0 ? (
-              <div className="col-span-full p-16 text-center bg-admin-card-bg rounded-lg border border-border">
-                <DollarSign className="size-12 text-admin-gray-bg mx-auto mb-4" />
-                <p className="text-muted-foreground">No withdrawal requests found</p>
-              </div>
-            ) : (
-              filteredWithdrawals.map((withdrawal) => {
+          {loading ? (
+            <div className="p-8 text-center bg-admin-card-bg rounded-lg border border-border">
+              <div className="inline-block size-8 border-4 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
+              <p className="mt-2 text-muted-foreground">Loading withdrawals...</p>
+            </div>
+          ) : filteredWithdrawals.length === 0 ? (
+            <div className="p-16 text-center bg-admin-card-bg rounded-lg border border-border">
+              <DollarSign className="size-12 text-admin-gray-bg mx-auto mb-4" />
+              <p className="text-muted-foreground">No withdrawal requests found</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredWithdrawals.map((withdrawal) => {
                 const badge = getStatusBadge(withdrawal.status)
 
                 return (
@@ -532,9 +544,31 @@ export default function Withdrawals() {
                     </div>
                   </div>
                 )
-              })
-            )}
-          </div>
+              })}
+              </div>
+
+              {/* Infinite Scroll Sentinel */}
+              {hasMore && (
+                <div ref={observerRef} className="p-4 text-center">
+                  {loadingMore && (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="size-5 border-2 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
+                      <span className="text-sm text-muted-foreground">Loading more withdrawals...</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* End of Results Message */}
+              {!hasMore && filteredWithdrawals.length > 0 && (
+                <div className="p-4 text-center">
+                  <span className="text-sm text-muted-foreground">
+                    All withdrawals loaded ({filteredWithdrawals.length} total)
+                  </span>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 

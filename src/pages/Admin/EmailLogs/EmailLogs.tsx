@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { DashboardHeader } from '../components/DashboardHeader'
 import { Input } from '@/components/ui/input'
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Download, RefreshCw, Eye, Search } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useConfirm } from '@/contexts/ConfirmDialogContext'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
 interface EmailNotification {
   id: string
@@ -47,9 +48,6 @@ const getStatusBadge = (status: string) => {
 }
 
 export default function EmailLogs() {
-  const [emails, setEmails] = useState<EmailNotification[]>([])
-  const [filteredEmails, setFilteredEmails] = useState<EmailNotification[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -59,46 +57,47 @@ export default function EmailLogs() {
   const [retrying, setRetrying] = useState(false)
   const { confirm } = useConfirm()
 
-  useEffect(() => {
-    loadEmails()
+  // Transform function to ensure data field is always an object
+  const transformEmails = useCallback((items: EmailNotification[]) => {
+    return items.map(item => {
+      const validStatus: 'pending' | 'sent' | 'failed' =
+        (item.status === 'pending' || item.status === 'sent' || item.status === 'failed')
+          ? item.status
+          : 'pending'
+
+      return {
+        ...item,
+        data: (item.data && typeof item.data === 'object' && !Array.isArray(item.data)) ? item.data as Record<string, unknown> : {},
+        status: validStatus
+      }
+    })
   }, [])
 
-  useEffect(() => {
-    filterEmails()
-  }, [emails, searchQuery, typeFilter, statusFilter, dateFilter])
+  // Query builder for infinite scroll
+  const queryBuilder = useCallback(() => {
+    return supabase
+      .from('email_notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+  }, [])
 
-  const loadEmails = async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('email_notifications')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(500)
+  // Use infinite scroll hook
+  const {
+    data: emails,
+    loading,
+    loadingMore,
+    hasMore,
+    refresh,
+    observerRef,
+  } = useInfiniteScroll<EmailNotification>({
+    queryBuilder,
+    pageSize: 10,
+    dependencies: [],
+    transform: transformEmails,
+  })
 
-      if (error) throw error
-      // Map the data to ensure data field is always an object, not null, and status is properly typed
-      const mappedData = (data || []).map(item => {
-        const validStatus: 'pending' | 'sent' | 'failed' =
-          (item.status === 'pending' || item.status === 'sent' || item.status === 'failed')
-            ? item.status
-            : 'pending'
-
-        return {
-          ...item,
-          data: (item.data && typeof item.data === 'object' && !Array.isArray(item.data)) ? item.data as Record<string, unknown> : {},
-          status: validStatus
-        }
-      })
-      setEmails(mappedData)
-    } catch (error) {
-      console.error('Error loading email logs:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const filterEmails = () => {
+  // Client-side filtering
+  const filteredEmails = useMemo(() => {
     let filtered = [...emails]
 
     // Filter by type
@@ -142,8 +141,8 @@ export default function EmailLogs() {
       )
     }
 
-    setFilteredEmails(filtered)
-  }
+    return filtered
+  }, [emails, searchQuery, typeFilter, statusFilter, dateFilter])
 
   const retryEmail = async (email: EmailNotification) => {
     const confirmed = await confirm({
@@ -172,7 +171,7 @@ export default function EmailLogs() {
       if (error) throw error
 
       // Reload emails
-      await loadEmails()
+      await refresh()
 
       alert('Email has been queued for retry')
     } catch (error) {
@@ -248,7 +247,7 @@ export default function EmailLogs() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button onClick={loadEmails} variant="outline" className="cursor-pointer">
+              <Button onClick={refresh} variant="outline" className="cursor-pointer">
                 <RefreshCw className="size-4 mr-2" />
                 Refresh
               </Button>
@@ -437,6 +436,27 @@ export default function EmailLogs() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Infinite Scroll Sentinel */}
+            {hasMore && (
+              <div ref={observerRef} className="p-4 text-center">
+                {loadingMore && (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="size-5 border-2 border-admin-gray-bg border-t-admin-info-fg rounded-full animate-spin"></div>
+                    <span className="text-sm text-muted-foreground">Loading more...</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* End of Results Message */}
+            {!hasMore && filteredEmails.length > 0 && (
+              <div className="p-4 text-center">
+                <span className="text-sm text-muted-foreground">
+                  All email logs loaded ({filteredEmails.length} total)
+                </span>
               </div>
             )}
           </div>
