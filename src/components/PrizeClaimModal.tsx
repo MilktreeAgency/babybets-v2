@@ -46,7 +46,7 @@ export function PrizeClaimModal({ isOpen, onClose, prize, ticketId, onClaimed }:
 
       // If user chose cash alternative, instantly claim it
       if (selectedChoice === 'cash' && fulfillmentData) {
-        const { data: claimData, error: claimError } = await supabase.rpc(
+        const { error: claimError } = await supabase.rpc(
           'claim_cash_alternative',
           {
             p_fulfillment_id: fulfillmentData.id,

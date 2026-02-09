@@ -46,7 +46,7 @@ export function WithdrawalRequestModal({
         if (error) throw error
 
         if (data?.setting_value) {
-          const limitsData = data.setting_value as WithdrawalLimits
+          const limitsData = data.setting_value as unknown as WithdrawalLimits
           setLimits(limitsData)
         }
       } catch (error) {
