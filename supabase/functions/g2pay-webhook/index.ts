@@ -10,43 +10,28 @@ const corsHeaders = {
 }
 
 // Verify G2Pay response signature using raw response body
-// G2Pay builds signatures from exact raw encoded string in order received
+// Per G2Pay support: Only exclude signature field, sort alphabetically, keep URL-encoded
 async function verifyG2PaySignature(
   rawBody: string,
   signatureKey: string
 ): Promise<boolean> {
-  console.log('[Webhook Signature Debug] ===== START SIGNATURE VERIFICATION =====')
-  console.log('[Webhook Signature Debug] Signature key length:', signatureKey.length)
-  console.log('[Webhook Signature Debug] Signature key:', signatureKey)
-  console.log('[Webhook Signature Debug] Raw body length:', rawBody.length)
-  console.log('[Webhook Signature Debug] FULL RAW BODY:')
-  console.log(rawBody)
-
   // Extract signature first
   const signatureMatch = rawBody.match(/(?:^|&)signature=([^&]+)/)
   if (!signatureMatch) {
-    console.error('[Webhook Signature Debug] No signature found in request')
+    console.error('[Webhook] No signature found in request')
     return false
   }
 
-  // DO NOT decode - compare raw
   const receivedSignature = signatureMatch[1]
-  console.log('[Webhook Signature Debug] Received signature (raw):', receivedSignature)
 
-  // Remove signature and __ fields WITHOUT altering order or encoding
-  const canonicalString = rawBody
+  // Per G2Pay support: Only exclude signature field (NOT __ fields), then sort alphabetically
+  const fields = rawBody
     .split('&')
-    .filter(pair => !pair.startsWith('signature=') && !pair.startsWith('__'))
+    .filter(pair => !pair.startsWith('signature='))
+    .sort() // Sort alphabetically at root level
     .join('&')
 
-  console.log('[Webhook Signature Debug] Canonical string length:', canonicalString.length)
-  console.log('[Webhook Signature Debug] CANONICAL STRING:')
-  console.log(canonicalString)
-
-  const messageToHash = canonicalString + signatureKey
-  console.log('[Webhook Signature Debug] Message to hash length:', messageToHash.length)
-  console.log('[Webhook Signature Debug] MESSAGE TO HASH:')
-  console.log(messageToHash)
+  const messageToHash = fields + signatureKey
 
   const buffer = new TextEncoder().encode(messageToHash)
   const digest = await crypto.subtle.digest('SHA-512', buffer)
@@ -54,11 +39,13 @@ async function verifyG2PaySignature(
     .map(b => b.toString(16).padStart(2, '0'))
     .join('')
 
-  console.log('[Webhook Signature Debug] Expected signature:', expectedSignature)
-  console.log('[Webhook Signature Debug] Signatures match:', expectedSignature === receivedSignature)
-  console.log('[Webhook Signature Debug] ===== END SIGNATURE VERIFICATION =====')
+  const isValid = expectedSignature === receivedSignature
 
-  return expectedSignature === receivedSignature
+  if (!isValid) {
+    console.error('[Webhook] Signature verification failed')
+  }
+
+  return isValid
 }
 
 serve(async (req) => {
@@ -76,8 +63,6 @@ serve(async (req) => {
   }
 
   try {
-    console.log('[Webhook] Payment confirmation received from G2Pay')
-
     // Get environment variables
     const G2PAY_SIGNATURE_KEY = Deno.env.get('G2PAY_SIGNATURE_KEY')
     if (!G2PAY_SIGNATURE_KEY) {
@@ -107,7 +92,6 @@ serve(async (req) => {
     }
 
     const requestText = await req.text()
-    console.log('[Webhook] Raw payload (first 500 chars):', requestText.substring(0, 500))
 
     // CRITICAL: Verify signature using raw body
     const signatureVerified = await verifyG2PaySignature(requestText, G2PAY_SIGNATURE_KEY)
@@ -147,8 +131,6 @@ serve(async (req) => {
       })
     }
 
-    console.log('[Webhook] ✅ Signature verified successfully')
-
     // Parse webhook data for processing
     const webhookData: Record<string, string> = {}
     const pairs = requestText.split('&')
@@ -160,14 +142,6 @@ serve(async (req) => {
         webhookData[key] = value
       }
     }
-
-    console.log('[Webhook] Parsed webhook data:', {
-      responseCode: webhookData.responseCode,
-      responseMessage: webhookData.responseMessage,
-      orderRef: webhookData.orderRef,
-      transactionID: webhookData.transactionID,
-      transactionUnique: webhookData.transactionUnique,
-    })
 
     // Extract order details
     const orderId = webhookData.orderRef
@@ -185,8 +159,6 @@ serve(async (req) => {
 
     // Check payment status (responseCode 0 = success)
     if (responseCode !== '0') {
-      console.log('[Webhook] Payment failed - responseCode:', responseCode)
-
       // Log failed payment webhook
       await supabaseAdmin
         .from('payment_transactions')
@@ -210,8 +182,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
-
-    console.log('[Webhook] Payment successful - processing order:', orderId)
 
     // Get order details
     const { data: order, error: orderError } = await supabaseAdmin
@@ -248,8 +218,6 @@ serve(async (req) => {
 
     // Idempotency check: If order already paid, acknowledge but don't process again
     if (order.status === 'paid') {
-      console.log('[Webhook] Order already completed - idempotency check passed')
-
       // Log duplicate webhook
       await supabaseAdmin
         .from('payment_transactions')
@@ -277,7 +245,6 @@ serve(async (req) => {
     }
 
     // Update order status to paid
-    console.log('[Webhook] Updating order status to paid...')
     const { error: updateError } = await supabaseAdmin
       .from('orders')
       .update({
@@ -291,8 +258,6 @@ serve(async (req) => {
       throw new Error(`Failed to update order: ${updateError.message}`)
     }
 
-    console.log('[Webhook] Order status updated to paid')
-
     // Get order items to allocate tickets
     const { data: orderItems, error: itemsError } = await supabaseAdmin
       .from('order_items')
@@ -304,13 +269,9 @@ serve(async (req) => {
       throw new Error('Failed to fetch order items')
     }
 
-    console.log(`[Webhook] Processing ${orderItems?.length || 0} order items`)
-
     // Allocate tickets for each item using atomic function
     for (const item of orderItems || []) {
       const ticketCount = item.ticket_count
-
-      console.log(`[Webhook] Claiming ${ticketCount} tickets for competition ${item.competition_id}`)
 
       // Get competition details
       const { data: competition, error: compError } = await supabaseAdmin
@@ -329,8 +290,6 @@ serve(async (req) => {
       }
 
       // Atomically claim tickets using database function with row-level locking
-      console.log(`[Webhook] Claiming ${ticketCount} tickets atomically...`)
-
       const { data: claimedTickets, error: claimError } = await supabaseAdmin.rpc(
         'claim_tickets_atomic',
         {
@@ -352,8 +311,6 @@ serve(async (req) => {
         )
       }
 
-      console.log(`[Webhook] Successfully claimed ${claimedTickets.length} tickets`)
-
       // Update competition tickets_sold count
       const { error: updateCompError } = await supabaseAdmin
         .from('competitions')
@@ -366,8 +323,6 @@ serve(async (req) => {
         console.error('[Webhook] Failed to update competition:', updateCompError)
         throw new Error('Failed to update competition tickets')
       }
-
-      console.log(`[Webhook] Competition tickets_sold updated`)
     }
 
     // Log successful webhook processing
@@ -385,8 +340,6 @@ serve(async (req) => {
         signature_verified: true,
         response_data: webhookData,
       })
-
-    console.log(`[Webhook] ✅ Order ${orderId} completed successfully via webhook`)
 
     return new Response(JSON.stringify({
       success: true,

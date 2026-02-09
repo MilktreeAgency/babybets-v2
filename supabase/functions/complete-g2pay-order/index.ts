@@ -13,12 +13,10 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Complete G2Pay order endpoint called')
 
     // Verify JWT token
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      console.error('Missing authorization header')
       return new Response(
         JSON.stringify({ error: 'Unauthorized - Missing token' }),
         {
@@ -56,7 +54,6 @@ serve(async (req) => {
       )
     }
 
-    console.log('JWT verified for user:', user.id)
 
     // Get request body
     const { orderId } = await req.json()
@@ -64,7 +61,6 @@ serve(async (req) => {
       throw new Error('Order ID is required')
     }
 
-    console.log(`Processing order ${orderId}`)
 
     // Create service role client for all operations (bypasses RLS)
     const supabaseAdmin = createClient(
@@ -90,7 +86,6 @@ serve(async (req) => {
       throw new Error('Order not found')
     }
 
-    console.log(`Order found for user ${order.user_id}, current status: ${order.status}`)
 
     // Security check: Ensure authenticated user owns this order
     if (order.user_id !== user.id) {
@@ -106,7 +101,6 @@ serve(async (req) => {
 
     // Check if already completed
     if (order.status === 'paid') {
-      console.log('Order already completed')
       return new Response(
         JSON.stringify({ success: true, message: 'Order already completed' }),
         {
@@ -120,7 +114,6 @@ serve(async (req) => {
     }
 
     // Update order to paid
-    console.log('Updating order status to paid...')
     const { error: updateError } = await supabaseAdmin
       .from('orders')
       .update({
@@ -140,7 +133,6 @@ serve(async (req) => {
       throw new Error(`Failed to update order status: ${updateError.message || JSON.stringify(updateError)}`)
     }
 
-    console.log('Order status updated to paid')
 
     // Get order items to allocate tickets
     const { data: orderItems, error: itemsError } = await supabaseAdmin
@@ -153,13 +145,11 @@ serve(async (req) => {
       throw new Error('Failed to fetch order items')
     }
 
-    console.log(`Found ${orderItems?.length || 0} order items`)
 
     // Process each item - claim tickets from pre-generated pool
     for (const item of orderItems || []) {
       const ticketCount = item.ticket_count
 
-      console.log(`Processing item: ${ticketCount} tickets for competition ${item.competition_id}`)
 
       // Get competition details
       const { data: competition, error: compError } = await supabaseAdmin
@@ -174,13 +164,7 @@ serve(async (req) => {
       }
 
       // Check if ticket pool is locked (required for claiming)
-      console.log(`Competition ticket pool status:`, {
-        id: competition.id,
-        title: competition.title,
-        ticket_pool_locked: competition.ticket_pool_locked,
-        tickets_sold: competition.tickets_sold,
-        max_tickets: competition.max_tickets,
-      })
+
 
       if (!competition.ticket_pool_locked) {
         throw new Error(`Ticket pool not generated for competition: ${competition.title}`)
@@ -188,7 +172,6 @@ serve(async (req) => {
 
       // Atomically claim tickets using database function with row-level locking
       // This prevents race conditions where two orders try to claim the same tickets
-      console.log(`Attempting to claim ${ticketCount} tickets atomically...`)
 
       const { data: claimedTickets, error: claimError } = await supabaseAdmin.rpc(
         'claim_tickets_atomic',
@@ -220,7 +203,6 @@ serve(async (req) => {
         )
       }
 
-      console.log(`Successfully claimed ${claimedTickets.length} tickets atomically from pool`)
 
       // Update competition tickets_sold count
       const { error: updateCompError } = await supabaseAdmin
@@ -235,12 +217,7 @@ serve(async (req) => {
         throw new Error('Failed to update competition tickets')
       }
 
-      console.log(
-        `Successfully claimed ${ticketCount} tickets from pool for competition ${item.competition_id}`
-      )
     }
-
-    console.log(`Order ${orderId} completed successfully`)
 
     return new Response(
       JSON.stringify({
