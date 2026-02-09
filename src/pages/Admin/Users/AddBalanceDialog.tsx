@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types/index'
+import { showErrorToast, showSuccessToast } from '@/lib/toast'
 
 interface AddBalanceDialogProps {
   user: Profile | null
@@ -37,17 +38,17 @@ export function AddBalanceDialog({
 
   const handleSave = async () => {
     if (!user || !amount || parseFloat(amount) <= 0) {
-      alert('Please enter a valid amount')
+      showErrorToast('Please enter a valid amount')
       return
     }
 
     if (!description.trim()) {
-      alert('Please enter a description')
+      showErrorToast('Please enter a description')
       return
     }
 
     if (!expiryDays || parseInt(expiryDays) <= 0) {
-      alert('Please enter valid expiry days')
+      showErrorToast('Please enter valid expiry days')
       return
     }
 
@@ -93,10 +94,12 @@ export function AddBalanceDialog({
       if (transactionError) throw transactionError
 
       // Success - close dialog and refresh
+      showSuccessToast('Balance added successfully')
       onSuccess()
       onOpenChange(false)
     } catch (error) {
       console.error('Error adding wallet balance:', error)
+      showErrorToast('Failed to add balance. Please try again.')
     } finally {
       setSaving(false)
     }

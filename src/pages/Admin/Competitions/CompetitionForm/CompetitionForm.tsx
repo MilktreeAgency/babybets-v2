@@ -8,6 +8,7 @@ import { useSidebar } from '@/contexts/SidebarContext'
 import { PrizeSelector, type SelectedPrize } from '@/components/PrizeSelector'
 import { MultiImageUpload } from '@/components/MultiImageUpload'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
+import { showErrorToast, showSuccessToast } from '@/lib/toast'
 
 interface TieredPrice {
   minQty: number
@@ -21,7 +22,6 @@ export default function CompetitionForm() {
   const { isCollapsed } = useSidebar()
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const isEditMode = Boolean(id)
 
@@ -71,7 +71,6 @@ export default function CompetitionForm() {
 
   const loadCompetitionData = async (competitionId: string) => {
     setLoadingData(true)
-    setError(null)
 
     try {
       const { data, error: fetchError } = await supabase
@@ -168,7 +167,7 @@ export default function CompetitionForm() {
       }
     } catch (err) {
       console.error('Error loading competition:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load competition')
+      showErrorToast(err instanceof Error ? err.message : 'Failed to load competition')
     } finally {
       setLoadingData(false)
     }
@@ -274,7 +273,6 @@ export default function CompetitionForm() {
   const handleSubmit = async (e: FormEvent, isDraft: boolean = false) => {
     e.preventDefault()
     setLoading(true)
-    setError(null)
 
     try {
       // Determine status based on draft flag and start date
@@ -295,7 +293,7 @@ export default function CompetitionForm() {
       const isActivating = status === 'active' || status === 'scheduled'
 
       if (isActivating && !isTicketPoolLocked) {
-        setError('Cannot publish competition without generating the ticket pool first.\n\nPlease save as draft, then generate the ticket pool from the competition detail page before publishing.')
+        showErrorToast('Cannot publish competition without generating the ticket pool first. Please save as draft, then generate the ticket pool from the competition detail page before publishing.')
         setLoading(false)
         return
       }
@@ -375,6 +373,7 @@ export default function CompetitionForm() {
           } 
         }
 
+        showSuccessToast(isDraft ? 'Competition saved as draft' : 'Competition updated successfully')
         navigate(`/admin/dashboard/competitions/${data.id}`)
       } else {
         // Create new competition
@@ -414,12 +413,13 @@ export default function CompetitionForm() {
           }
         }
 
+        showSuccessToast(isDraft ? 'Competition saved as draft' : 'Competition created successfully')
         navigate(`/admin/dashboard/competitions/${data.id}`)
       }
     } catch (err) {
       console.error(`Error ${isEditMode ? 'updating' : 'creating'} competition:`, err)
       const errorMessage = err instanceof Error ? err.message : `Failed to ${isEditMode ? 'update' : 'create'} competition`
-      setError(errorMessage)
+      showErrorToast(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -453,12 +453,6 @@ export default function CompetitionForm() {
               </p>
             </div>
           </div>
-
-          {error && (
-            <div className="bg-admin-error-bg border border-admin-error-border rounded-lg p-4">
-              <p className="text-admin-error-text">{error}</p>
-            </div>
-          )}
 
           {loadingData ? (
             <div className="flex items-center justify-center py-12">
