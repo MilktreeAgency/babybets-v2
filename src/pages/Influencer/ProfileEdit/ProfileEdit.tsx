@@ -117,7 +117,6 @@ export default function ProfileEdit() {
     try {
       if (!influencer) throw new Error('No influencer data')
 
-      console.log('Updating influencer profile:', influencer.id, formData)
 
       const { data, error: updateError } = await supabase
         .from('influencers')
@@ -130,14 +129,12 @@ export default function ProfileEdit() {
         .eq('id', influencer.id)
         .select()
 
-      console.log('Update result:', { data, error: updateError })
 
       if (updateError) {
         console.error('Update error details:', updateError)
         throw updateError
       }
 
-      console.log('Profile updated successfully')
       setSuccess(true)
       setTimeout(() => {
         navigate('/influencer/dashboard')

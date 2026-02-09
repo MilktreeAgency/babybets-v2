@@ -26,9 +26,6 @@ class AuthService {
         useAuthStore.getState().setUser(null)
       } else if (session?.user) {
         const userRole = session.user.user_metadata?.role
-        console.log('🔍 User metadata:', session.user.user_metadata)
-        console.log('🔍 User role:', userRole)
-        console.log('🔍 Is admin?', userRole === 'admin' || userRole === 'super_admin')
 
         const user = {
           id: session.user.id,
@@ -41,7 +38,6 @@ class AuthService {
           updatedAt: session.user.updated_at || session.user.created_at,
         }
 
-        console.log('✅ Final user object:', user)
         useAuthStore.getState().setUser(user)
       } else {
         useAuthStore.getState().setUser(null)
@@ -68,9 +64,6 @@ class AuthService {
         useAuthStore.getState().setUser(null)
       } else if (session?.user) {
         const userRole = session.user.user_metadata?.role
-        console.log('🔍 User metadata:', session.user.user_metadata)
-        console.log('🔍 User role:', userRole)
-        console.log('🔍 Is admin?', userRole === 'admin' || userRole === 'super_admin')
 
         const user = {
           id: session.user.id,
@@ -83,7 +76,6 @@ class AuthService {
           updatedAt: session.user.updated_at || session.user.created_at,
         }
 
-        console.log('✅ Final user object:', user)
         useAuthStore.getState().setUser(user)
       } else {
         useAuthStore.getState().setUser(null)
