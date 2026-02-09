@@ -7,7 +7,6 @@ export default function NewsletterSection() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     // TODO: Add newsletter subscription logic
-    console.log('Subscribe email:', email)
   }
 
   return (

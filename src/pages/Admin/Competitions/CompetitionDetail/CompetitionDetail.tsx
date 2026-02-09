@@ -185,14 +185,10 @@ export default function CompetitionDetail() {
   const handleDeleteConfirm = async () => {
     if (!competition) return
 
-    console.log('Starting delete for competition:', competition.id, competition.title)
     setIsDeleting(true)
 
     try {
-      console.log('Calling Supabase delete...')
-      const { error, data } = await supabase.from('competitions').delete().eq('id', competition.id)
-
-      console.log('Delete response:', { error, data })
+      const { error } = await supabase.from('competitions').delete().eq('id', competition.id)
 
       if (error) {
         console.error('Delete error:', error)
@@ -211,7 +207,6 @@ export default function CompetitionDetail() {
         return
       }
 
-      console.log('Delete successful, navigating...')
       setDeleteDialogOpen(false)
       navigate('/admin/dashboard/competitions')
     } catch (error) {

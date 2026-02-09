@@ -323,8 +323,6 @@ export default function CompetitionForm() {
         } : null,
       }
 
-      console.log('Submitting competition data:', competitionData)
-
       let competitionId: string
 
       if (isEditMode && id) {
@@ -374,9 +372,7 @@ export default function CompetitionForm() {
                 throw prizeError
               }
             }
-          } else {
-            console.log('Ticket pool is locked - skipping prize updates to preserve ticket assignments')
-          }
+          } 
         }
 
         navigate(`/admin/dashboard/competitions/${data.id}`)

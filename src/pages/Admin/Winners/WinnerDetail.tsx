@@ -386,7 +386,6 @@ export default function WinnerDetail() {
 
       if (!response.ok) {
         // If the API doesn't exist yet, just show a message
-        console.log('Email API not configured yet')
         alert(
           `Request would be sent to ${winner.user.email}.\n\nNote: Email functionality requires backend setup.`
         )
