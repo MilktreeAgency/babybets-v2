@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { PostgrestFilterBuilder } from '@supabase/postgrest-js'
-import type { Database } from '@/types/database.types'
 
-interface UseInfiniteScrollOptions<T, R = T> {
-  queryBuilder: () => PostgrestFilterBuilder<Database['public'], T, T[], unknown>
+interface UseInfiniteScrollOptions<T extends Record<string, unknown>, R = T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  queryBuilder: () => PostgrestFilterBuilder<any, any, any, unknown>
   pageSize?: number
   dependencies?: unknown[]
   transform?: (items: T[]) => Promise<R[]>
@@ -48,7 +48,7 @@ export function useInfiniteScroll<T extends Record<string, unknown>, R = T>({
 
       if (error) throw error
 
-      const items = newData || []
+      const items = (newData || []) as T[]
       const transformedItems = transform ? await transform(items) : (items as unknown as R[])
       setData(transformedItems)
       setHasMore(items.length === pageSize)
@@ -79,7 +79,7 @@ export function useInfiniteScroll<T extends Record<string, unknown>, R = T>({
 
       if (error) throw error
 
-      const items = newData || []
+      const items = (newData || []) as T[]
       const transformedItems = transform ? await transform(items) : (items as unknown as R[])
       setData((prev) => [...prev, ...transformedItems])
       setPage(nextPage)
