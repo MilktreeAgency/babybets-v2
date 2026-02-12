@@ -540,10 +540,10 @@ function CompetitionEntry() {
                   {/* Paid Entry Section */}
                   {entryMode === 'paid' && (
                     <>
+                  {/* Quick Select Buttons - Only show if tiered pricing exists */}
+                  {tieredPricing.length > 0 && quickSelectOptions.length > 0 && (
+                    <>
                       <h3 className="font-bold text-sm mb-3">Choose Your Tickets</h3>
-
-                  {/* Quick Select Buttons */}
-                  {quickSelectOptions.length > 0 && (
                     <div className="grid grid-cols-4 gap-2 mb-4">
                       {quickSelectOptions.map((option) => {
                         const optionPrice = calculatePrice(option)
@@ -591,6 +591,7 @@ function CompetitionEntry() {
                         )
                       })}
                     </div>
+                    </>
                   )}
 
                   {/* Custom Amount */}
