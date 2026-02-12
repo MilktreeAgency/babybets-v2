@@ -2,10 +2,14 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Star, Zap } from 'lucide-react'
 import { useCompetitions } from '@/hooks/useCompetitions'
+import { useSystemSettings } from '@/hooks/useSystemSettings'
 import { supabase } from '@/lib/supabase'
 import TrustStatsSection from './TrustStatsSection'
 
 export default function HeroSection() {
+  // Fetch system settings for hero content
+  const { heroContent } = useSystemSettings()
+
   // Fetch featured competition for hero
   const { competitions: heroCompetitions, isLoading: heroLoading } = useCompetitions({
     showOnHomepage: true,
@@ -58,6 +62,10 @@ export default function HeroSection() {
 
   const heroCompetition = heroCompetitions[0]
 
+  // Get hero text content from settings (with fallback defaults)
+  const heroTitle = heroContent?.title || 'Win Premium Baby Gear Instantly'
+  const heroDesc = heroContent?.description || 'Enter our instant win competitions for a chance to win iCandy prams, car seats, and cash prizes. Over 1,900 instant wins available now.'
+
   // Get all images for carousel
   const heroImages = heroCompetition?.images && Array.isArray(heroCompetition.images) && heroCompetition.images.length > 0
     ? heroCompetition.images
@@ -96,35 +104,20 @@ export default function HeroSection() {
         style={{ backgroundColor: 'rgba(255, 240, 230, 0.2)' }}
       />
 
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-8 md:py-28 lg:py-32">
-        <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-20 items-center">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-12 sm:py-16 md:py-24 lg:py-32">
+        <div className="flex flex-col-reverse lg:flex-row gap-8 md:gap-12 lg:gap-20 items-center">
           {/* Left Column - Text content */}
-          <div className="w-full lg:w-[55%] text-left z-10 space-y-6 lg:space-y-8">
-            {/* Badge */}
-            <div>
-              <span
-                className="inline-flex items-center px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wider shadow-sm cursor-pointer"
-                style={{
-                  backgroundColor: '#fff0e6',
-                  color: '#151e20',
-                  borderWidth: '1px',
-                  borderColor: '#ffdec9'
-                }}
-              >
-                ⚡ Instant Win Competitions Live
-              </span>
-            </div>
-
+          <div className="w-full lg:w-[55%] text-left z-10 space-y-4 sm:space-y-6 lg:space-y-8">
             {/* Headline */}
             <h1
-              className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight leading-[1.05] mb-0"
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight leading-[1.05] mb-0"
               style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
             >
-              Win Premium Baby Gear{' '}
+              {heroTitle.split(' ').slice(0, -1).join(' ')}{' '}
               <span className="relative inline-block" style={{ color: '#496B71' }}>
-                Instantly
+                {heroTitle.split(' ').slice(-1)[0]}
                 <span
-                  className="absolute bottom-3 left-0 w-full h-4 rounded-full -z-10"
+                  className="absolute bottom-2 sm:bottom-3 left-0 w-full h-3 sm:h-4 rounded-full -z-10"
                   style={{ backgroundColor: 'rgba(254, 208, 185, 0.4)' }}
                 />
               </span>
@@ -132,21 +125,17 @@ export default function HeroSection() {
 
             {/* Subheadline */}
             <p
-              className="text-xl lg:text-2xl font-medium leading-relaxed max-w-2xl pt-3"
+              className="text-base sm:text-lg md:text-xl lg:text-2xl font-medium leading-relaxed max-w-2xl pt-2 sm:pt-3"
               style={{ color: '#78716c' }}
             >
-              Enter our instant win competitions for a chance to win iCandy prams, car seats, and cash prizes. Over{' '}
-              <span className="font-bold" style={{ color: '#2c4044' }}>
-                1,900 instant wins
-              </span>{' '}
-              available now.
+              {heroDesc}
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-2">
-              <Link to="/competitions" className="flex-shrink-0">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2">
+              <Link to="/competitions" className="shrink-0">
                 <button
-                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-10 py-6 text-lg font-bold transition-all duration-300 shadow-2xl hover:shadow-xl cursor-pointer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-8 sm:px-10 py-4 sm:py-6 text-base sm:text-lg font-bold transition-all duration-300 shadow-2xl hover:shadow-xl cursor-pointer"
                   style={{
                     backgroundColor: '#496B71',
                     color: 'white',
@@ -159,9 +148,9 @@ export default function HeroSection() {
                   <ArrowRight size={20} className="ml-2" />
                 </button>
               </Link>
-              <Link to="/how-it-works" className="flex-shrink-0">
+              <Link to="/how-it-works" className="shrink-0">
                 <button
-                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-10 py-6 text-lg font-bold transition-all duration-300 cursor-pointer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-8 sm:px-10 py-4 sm:py-6 text-base sm:text-lg font-bold transition-all duration-300 cursor-pointer"
                   style={{
                     backgroundColor: 'transparent',
                     color: '#2c4044',
@@ -183,13 +172,13 @@ export default function HeroSection() {
             </div>
 
             {/* Social Proof - Reviews */}
-            <div className="flex items-center gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 pt-3 sm:pt-4">
               <div className="flex -space-x-3">
                 {[1, 2, 3, 4, 5].map(i => (
                   <img
                     key={i}
                     src={`https://i.pravatar.cc/100?img=${i + 20}`}
-                    className="w-12 h-12 rounded-full shadow-md"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full shadow-md"
                     style={{ borderWidth: '3px', borderColor: 'white' }}
                     alt={`BabyBets winner ${i}`}
                     loading="lazy"
@@ -198,13 +187,18 @@ export default function HeroSection() {
               </div>
               <div>
                 <div className="flex gap-0.5 mb-1" style={{ color: '#fa8c61' }}>
-                  <Star size={18} fill="currentColor" />
-                  <Star size={18} fill="currentColor" />
-                  <Star size={18} fill="currentColor" />
-                  <Star size={18} fill="currentColor" />
-                  <Star size={18} fill="currentColor" />
+                  <Star size={16} className="sm:hidden" fill="currentColor" />
+                  <Star size={16} className="sm:hidden" fill="currentColor" />
+                  <Star size={16} className="sm:hidden" fill="currentColor" />
+                  <Star size={16} className="sm:hidden" fill="currentColor" />
+                  <Star size={16} className="sm:hidden" fill="currentColor" />
+                  <Star size={18} className="hidden sm:block" fill="currentColor" />
+                  <Star size={18} className="hidden sm:block" fill="currentColor" />
+                  <Star size={18} className="hidden sm:block" fill="currentColor" />
+                  <Star size={18} className="hidden sm:block" fill="currentColor" />
+                  <Star size={18} className="hidden sm:block" fill="currentColor" />
                 </div>
-                <span className="text-sm font-bold" style={{ color: '#78716c' }}>
+                <span className="text-xs sm:text-sm font-bold" style={{ color: '#78716c' }}>
                   4.9/5 from 200+ reviews
                 </span>
               </div>
@@ -214,9 +208,9 @@ export default function HeroSection() {
           {/* Right Column - Hero Image */}
           <div className="w-full lg:w-[45%] relative">
             <div
-              className="relative rounded-[2.5rem] overflow-hidden shadow-2xl"
+              className="relative rounded-2xl sm:rounded-[2.5rem] overflow-hidden shadow-2xl"
               style={{
-                borderWidth: '8px',
+                borderWidth: '4px',
                 borderColor: 'white',
                 boxShadow: '0 25px 50px -12px rgba(34, 48, 51, 0.2)'
               }}
@@ -284,26 +278,26 @@ export default function HeroSection() {
 
                   {/* Bottom CTA Overlay */}
                   <div
-                    className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 pt-32 text-white"
+                    className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 pt-24 sm:pt-32 text-white"
                     style={{
                       background: 'linear-gradient(to top, rgba(34, 48, 51, 0.95), rgba(34, 48, 51, 0.8), transparent)'
                     }}
                   >
-                    <div className="flex justify-between items-end gap-4">
+                    <div className="flex justify-between items-end gap-3 sm:gap-4">
                       <div className="grow">
                         <div
-                          className="text-xs font-bold uppercase mb-2 tracking-wider"
+                          className="text-[10px] sm:text-xs font-bold uppercase mb-1 sm:mb-2 tracking-wider"
                           style={{ color: '#FED0B9' }}
                         >
                           Live Now
                         </div>
-                        <div className="text-xl sm:text-2xl font-bold leading-tight">
+                        <div className="text-base sm:text-xl md:text-2xl font-bold leading-tight">
                           {`${heroCompetition.title} - £${heroCompetition.total_value_gbp.toLocaleString()}`}
                         </div>
                       </div>
                       <Link to={`/competitions/${heroCompetition.slug}`} className="shrink-0">
                         <div
-                          className="rounded-full p-3 sm:p-4 shadow-lg cursor-pointer transition-all duration-300"
+                          className="rounded-full p-2.5 sm:p-3 md:p-4 shadow-lg cursor-pointer transition-all duration-300"
                           style={{ backgroundColor: 'white', color: '#151e20' }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = '#FED0B9'
@@ -314,7 +308,8 @@ export default function HeroSection() {
                             e.currentTarget.style.transform = 'scale(1)'
                           }}
                         >
-                          <ArrowRight size={22} strokeWidth={2.5} />
+                          <ArrowRight size={18} className="sm:hidden" strokeWidth={2.5} />
+                          <ArrowRight size={22} className="hidden sm:block" strokeWidth={2.5} />
                         </div>
                       </Link>
                     </div>
@@ -326,14 +321,16 @@ export default function HeroSection() {
             {/* Floating Winner Badge */}
             {!instantWinLoading && instantWinCount > 0 && (
               <div
-                className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-8 py-4 rounded-full cursor-pointer z-10 flex items-center gap-2"
+                className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 rounded-full cursor-pointer z-10 flex items-center gap-1.5 sm:gap-2 shadow-lg"
                 style={{
                   backgroundColor: 'white'
                 }}
               >
-                <Zap size={20} style={{ color: '#ef4444' }} fill="#ef4444" />
+                <Zap size={16} className="sm:hidden" style={{ color: '#ef4444' }} fill="#ef4444" />
+                <Zap size={18} className="hidden sm:block md:hidden" style={{ color: '#ef4444' }} fill="#ef4444" />
+                <Zap size={20} className="hidden md:block" style={{ color: '#ef4444' }} fill="#ef4444" />
                 <div
-                  className="text-lg font-bold text-center whitespace-nowrap"
+                  className="text-sm sm:text-base md:text-lg font-bold text-center whitespace-nowrap"
                   style={{ color: '#151e20' }}
                 >
                   {instantWinCount}+ prizes to be won instantly!
