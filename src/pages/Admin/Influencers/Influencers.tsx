@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select'
 import { useSidebarCounts } from '@/contexts/SidebarCountsContext'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
+import { emailService } from '@/services/email.service'
 
 interface Influencer extends Record<string, unknown> {
   id: string
@@ -106,6 +107,27 @@ export default function Influencers() {
           .eq('id', influencer.user_id)
 
         if (profileError) throw profileError
+
+        // Send influencer approved email (non-blocking)
+        if (influencer.profiles?.email) {
+          const recipientName = influencer.profiles.first_name
+            ? `${influencer.profiles.first_name} ${influencer.profiles.last_name || ''}`.trim()
+            : influencer.display_name || 'there'
+
+          emailService.sendInfluencerApprovedEmail(
+            influencer.profiles.email,
+            recipientName,
+            {
+              displayName: influencer.display_name,
+              slug: influencer.slug,
+              dashboardUrl: `${window.location.origin}/influencer/dashboard`,
+              commissionTier: influencer.commission_tier || 1
+            }
+          ).catch(err => {
+            console.error('Failed to send influencer approved email:', err)
+            // Don't throw - email failure shouldn't affect the operation
+          })
+        }
       } else {
         // If deactivating, update user's role back to 'user' in profiles
         const { error: profileError } = await supabase
@@ -132,6 +154,9 @@ export default function Influencers() {
         return
       }
 
+      // Get influencer data before deleting
+      const influencer = influencers.find(i => i.id === id)
+
       // Delete the influencer application
       const { error } = await supabase
         .from('influencers')
@@ -139,6 +164,25 @@ export default function Influencers() {
         .eq('id', id)
 
       if (error) throw error
+
+      // Send influencer rejected email (non-blocking)
+      if (influencer?.profiles?.email) {
+        const recipientName = influencer.profiles.first_name
+          ? `${influencer.profiles.first_name} ${influencer.profiles.last_name || ''}`.trim()
+          : influencer.display_name || 'there'
+
+        emailService.sendInfluencerRejectedEmail(
+          influencer.profiles.email,
+          recipientName,
+          {
+            displayName: influencer.display_name,
+            rejectionReason: 'We appreciate your interest, but we are unable to approve your application at this time. Please feel free to reapply in the future once you meet our partner criteria.'
+          }
+        ).catch(err => {
+          console.error('Failed to send influencer rejected email:', err)
+          // Don't throw - email failure shouldn't affect the operation
+        })
+      }
 
       // Reload data
       await refresh()

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types/index'
 import { showErrorToast, showSuccessToast } from '@/lib/toast'
+import { emailService } from '@/services/email.service'
 
 interface AddBalanceDialogProps {
   user: Profile | null
@@ -92,6 +93,29 @@ export function AddBalanceDialog({
       })
 
       if (transactionError) throw transactionError
+
+      // Send wallet credit notification email (non-blocking)
+      const userName = user.first_name || user.last_name
+        ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
+        : user.email.split('@')[0]
+
+      emailService.sendWalletCreditEmail(
+        user.email,
+        userName,
+        {
+          amount: parseFloat(amount).toFixed(2),
+          description: description.trim(),
+          expiryDate: expiresAt.toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          }),
+          newBalance: (balanceAfter / 100).toFixed(2),
+          transactionsUrl: `${window.location.origin}/account/transactions`
+        }
+      ).catch(err => {
+        console.error('Failed to send wallet credit email:', err)
+      })
 
       // Success - close dialog and refresh
       showSuccessToast('Balance added successfully')
