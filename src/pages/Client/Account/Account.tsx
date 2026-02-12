@@ -11,7 +11,7 @@ import { UserPrizeClaimModal } from '@/components/UserPrizeClaimModal'
 import { WithdrawalRequestModal } from '@/components/WithdrawalRequestModal'
 import { authService } from '@/services/auth.service'
 import type { PrizeTemplate } from '@/types'
-import { showErrorToast } from '@/lib/toast'
+import { showErrorToast, showSuccessToast } from '@/lib/toast'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
 
@@ -79,8 +79,9 @@ function Account() {
       // Scroll to top when switching tabs
       window.scrollTo({ top: 0, behavior: 'smooth' })
 
-      // If coming from a successful purchase, remove the purchase param
+      // If coming from a successful purchase, show success toast and remove the purchase param
       if (searchParams.get('purchase') === 'success') {
+        showSuccessToast('Purchase successful! Your tickets are ready.')
         // Remove the purchase param after acknowledging
         const newParams = new URLSearchParams(searchParams)
         newParams.delete('purchase')
