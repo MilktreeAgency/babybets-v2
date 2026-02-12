@@ -18,10 +18,16 @@ interface WithdrawalLimitsSettings {
   max_amount_pence: number
 }
 
+interface HeroContentSettings {
+  title: string
+  description: string
+}
+
 interface SystemSettings {
   maintenance_mode: MaintenanceModeSettings
   live_ticker: LiveTickerSettings
   withdrawal_limits: WithdrawalLimitsSettings
+  hero_content: HeroContentSettings
 }
 
 interface SystemSettingsReturn {
@@ -31,6 +37,7 @@ interface SystemSettingsReturn {
   maintenanceMode: MaintenanceModeSettings | undefined
   liveTicker: LiveTickerSettings | undefined
   withdrawalLimits: WithdrawalLimitsSettings | undefined
+  heroContent: HeroContentSettings | undefined
 }
 
 export function useSystemSettings(): SystemSettingsReturn {
@@ -67,7 +74,7 @@ export function useSystemSettings(): SystemSettingsReturn {
       const { data, error } = await supabase
         .from('system_settings')
         .select('setting_key, setting_value')
-        .in('setting_key', ['maintenance_mode', 'live_ticker', 'withdrawal_limits'])
+        .in('setting_key', ['maintenance_mode', 'live_ticker', 'withdrawal_limits', 'hero_content'])
 
       if (error) throw error
 
@@ -75,6 +82,7 @@ export function useSystemSettings(): SystemSettingsReturn {
       let maintenanceMode: MaintenanceModeSettings | undefined
       let liveTicker: LiveTickerSettings | undefined
       let withdrawalLimits: WithdrawalLimitsSettings | undefined
+      let heroContent: HeroContentSettings | undefined
 
       data?.forEach((item) => {
         if (item.setting_key === 'maintenance_mode' && item.setting_value && typeof item.setting_value === 'object' && !Array.isArray(item.setting_value)) {
@@ -83,6 +91,8 @@ export function useSystemSettings(): SystemSettingsReturn {
           liveTicker = item.setting_value as unknown as LiveTickerSettings
         } else if (item.setting_key === 'withdrawal_limits' && item.setting_value && typeof item.setting_value === 'object' && !Array.isArray(item.setting_value)) {
           withdrawalLimits = item.setting_value as unknown as WithdrawalLimitsSettings
+        } else if (item.setting_key === 'hero_content' && item.setting_value && typeof item.setting_value === 'object' && !Array.isArray(item.setting_value)) {
+          heroContent = item.setting_value as unknown as HeroContentSettings
         }
       })
 
@@ -91,7 +101,11 @@ export function useSystemSettings(): SystemSettingsReturn {
         setSettings({
           maintenance_mode: maintenanceMode,
           live_ticker: liveTicker,
-          withdrawal_limits: withdrawalLimits || { min_amount_pence: 10000, max_amount_pence: 1000000 }
+          withdrawal_limits: withdrawalLimits || { min_amount_pence: 10000, max_amount_pence: 1000000 },
+          hero_content: heroContent || {
+            title: 'Win Premium Baby Gear Instantly',
+            description: 'Enter our instant win competitions for a chance to win iCandy prams, car seats, and cash prizes. Over 1,900 instant wins available now.'
+          }
         })
       } else {
         throw new Error('Missing required settings')
@@ -102,7 +116,11 @@ export function useSystemSettings(): SystemSettingsReturn {
       setSettings({
         maintenance_mode: { enabled: false, message: '' },
         live_ticker: { enabled: false, url: '', text: 'Watch Live Now' },
-        withdrawal_limits: { min_amount_pence: 10000, max_amount_pence: 1000000 }
+        withdrawal_limits: { min_amount_pence: 10000, max_amount_pence: 1000000 },
+        hero_content: {
+          title: 'Win Premium Baby Gear Instantly',
+          description: 'Enter our instant win competitions for a chance to win iCandy prams, car seats, and cash prizes. Over 1,900 instant wins available now.'
+        }
       })
     } finally {
       setLoading(false)
@@ -132,6 +150,7 @@ export function useSystemSettings(): SystemSettingsReturn {
     updateSetting,
     maintenanceMode: settings?.maintenance_mode,
     liveTicker: settings?.live_ticker,
-    withdrawalLimits: settings?.withdrawal_limits
+    withdrawalLimits: settings?.withdrawal_limits,
+    heroContent: settings?.hero_content
   }
 }

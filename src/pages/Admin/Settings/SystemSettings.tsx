@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { Construction, Radio, Landmark } from 'lucide-react'
+import { Construction, Radio, Landmark, Sparkles } from 'lucide-react'
 
 export default function SystemSettings() {
   const { settings, updateSetting, loading } = useSystemSettings()
@@ -19,6 +19,8 @@ export default function SystemSettings() {
   const [liveTickerText, setLiveTickerText] = useState('Watch Live Now')
   const [minWithdrawalAmount, setMinWithdrawalAmount] = useState('100.00')
   const [maxWithdrawalAmount, setMaxWithdrawalAmount] = useState('10000.00')
+  const [heroTitle, setHeroTitle] = useState('Win Premium Baby Gear Instantly')
+  const [heroDescription, setHeroDescription] = useState('Enter our instant win competitions for a chance to win iCandy prams, car seats, and cash prizes. Over 1,900 instant wins available now.')
 
   const [saving, setSaving] = useState(false)
 
@@ -35,6 +37,12 @@ export default function SystemSettings() {
       if (settings.withdrawal_limits) {
         setMinWithdrawalAmount((settings.withdrawal_limits.min_amount_pence / 100).toFixed(2))
         setMaxWithdrawalAmount((settings.withdrawal_limits.max_amount_pence / 100).toFixed(2))
+      }
+
+      // Load hero content if it exists
+      if (settings.hero_content) {
+        setHeroTitle(settings.hero_content.title)
+        setHeroDescription(settings.hero_content.description)
       }
     }
   }, [settings])
@@ -133,6 +141,33 @@ export default function SystemSettings() {
     } catch (error) {
       console.error('Error updating withdrawal limits:', error)
       toast.error('Failed to update withdrawal limits')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSaveHeroContent = async () => {
+    try {
+      // Validate inputs
+      if (!heroTitle.trim()) {
+        toast.error('Hero title cannot be empty')
+        return
+      }
+
+      if (!heroDescription.trim()) {
+        toast.error('Hero description cannot be empty')
+        return
+      }
+
+      setSaving(true)
+      await updateSetting('hero_content', {
+        title: heroTitle.trim(),
+        description: heroDescription.trim()
+      })
+      toast.success('Hero content updated')
+    } catch (error) {
+      console.error('Error updating hero content:', error)
+      toast.error('Failed to update hero content')
     } finally {
       setSaving(false)
     }
@@ -298,6 +333,71 @@ export default function SystemSettings() {
                 className="cursor-pointer"
               >
                 Save URL & Button Text
+              </Button>
+            </div>
+          </div>
+
+          {/* Hero Content Section */}
+          <div className="bg-admin-card-bg border border-border rounded-lg p-6 space-y-6">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg" style={{ backgroundColor: '#fef3c7' }}>
+                <Sparkles className="size-5" style={{ color: '#f59e0b' }} />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold">Hero Section Content</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Customize the main heading and description text displayed on the homepage hero section
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="hero-title" className="cursor-pointer">
+                  Hero Title
+                </Label>
+                <Input
+                  id="hero-title"
+                  value={heroTitle}
+                  onChange={(e) => setHeroTitle(e.target.value)}
+                  placeholder="Win Premium Baby Gear Instantly"
+                  className="font-semibold"
+                />
+                <p className="text-xs text-muted-foreground">
+                  The main heading displayed in large text on the hero section
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="hero-description" className="cursor-pointer">
+                  Hero Description
+                </Label>
+                <Textarea
+                  id="hero-description"
+                  value={heroDescription}
+                  onChange={(e) => setHeroDescription(e.target.value)}
+                  placeholder="Enter our instant win competitions for a chance to win..."
+                  rows={4}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  The descriptive text shown below the main heading
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200">
+                <p className="text-sm text-yellow-900">
+                  <strong>Preview:</strong> Changes will be reflected immediately on the homepage after saving.
+                  Make sure to review the homepage after making changes.
+                </p>
+              </div>
+
+              <Button
+                onClick={handleSaveHeroContent}
+                disabled={saving || loading}
+                className="cursor-pointer"
+              >
+                Save Hero Content
               </Button>
             </div>
           </div>
