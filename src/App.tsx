@@ -9,6 +9,8 @@ import PaymentSuccess from './pages/Client/PaymentSuccess/PaymentSuccess'
 import SignIn from './pages/Client/signin/SignIn'
 import SignUp from './pages/Client/signup/SignUp'
 import AuthCallback from './pages/Client/AuthCallback/AuthCallback'
+import ResetPassword from './pages/Client/ResetPassword'
+import VerifyEmail from './pages/Client/VerifyEmail'
 import Account from './pages/Client/Account/Account'
 import HowItWorks from './pages/Client/HowItWorks/HowItWorks'
 import FAQ from './pages/Client/FAQ/FAQ'
@@ -79,6 +81,8 @@ function App() {
         <Route path="/login" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/auth/reset-password" element={<ResetPassword />} />
+        <Route path="/auth/verify-email" element={<VerifyEmail />} />
         <Route path="/account" element={<Account />} />
         <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/faq" element={<FAQ />} />
