@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# G2Pay Payment System - Function Deployment Script
-# Deploys all three edge functions required for production payment processing
+# BabyBets Edge Functions - Deployment Script
+# Deploys all edge functions required for production
 
 set -e  # Exit on error
 
-echo "🚀 Deploying G2Pay Payment System Functions..."
+echo "🚀 Deploying BabyBets Edge Functions..."
 echo ""
 
 # Check if supabase CLI is available
@@ -21,39 +21,55 @@ if [ ! -d "supabase/functions" ]; then
     exit 1
 fi
 
-echo "📦 Function 1/3: create-g2pay-session (Payment Processing)"
+echo "📦 Function 1/4: create-g2pay-session (Payment Processing)"
 echo "   - Processes card payments via G2Pay Direct Integration"
 echo "   - Registers webhook callback with G2Pay"
-supabase functions deploy create-g2pay-session --no-verify-jwt
+echo "   - 🔒 JWT verification enabled (requires authenticated users)"
+supabase functions deploy create-g2pay-session
 echo "✅ Deployed successfully"
 echo ""
 
-echo "📦 Function 2/3: complete-g2pay-order (Synchronous Ticket Allocation)"
+echo "📦 Function 2/4: complete-g2pay-order (Synchronous Ticket Allocation)"
 echo "   - Completes orders when frontend receives payment response"
 echo "   - Atomic ticket claiming with race condition protection"
-supabase functions deploy complete-g2pay-order --no-verify-jwt
+echo "   - 🔒 JWT verification enabled (requires authenticated users)"
+supabase functions deploy complete-g2pay-order
 echo "✅ Deployed successfully"
 echo ""
 
-echo "📦 Function 3/3: g2pay-webhook (Asynchronous Payment Confirmation)"
+echo "📦 Function 3/4: g2pay-webhook (Asynchronous Payment Confirmation)"
 echo "   - Receives payment confirmations from G2Pay backend"
 echo "   - Ensures orders complete even if user closes browser"
-echo "   - Signature verification for security"
+echo "   - 🔓 No JWT verification (called by G2Pay, uses signature verification)"
 supabase functions deploy g2pay-webhook --no-verify-jwt
+echo "✅ Deployed successfully"
+echo ""
+
+echo "📦 Function 4/4: send-notification-email (Email Notification System)"
+echo "   - Sends all transactional emails via Mailgun"
+echo "   - 14 email templates with BabyBets branding"
+echo "   - 🔓 No JWT verification (internal service, uses service role key)"
+supabase functions deploy send-notification-email --no-verify-jwt
 echo "✅ Deployed successfully"
 echo ""
 
 echo "🎉 All functions deployed successfully!"
 echo ""
+echo "📋 Deployed Functions:"
+echo "   ✓ create-g2pay-session - Payment processing (🔒 JWT required)"
+echo "   ✓ complete-g2pay-order - Order completion (🔒 JWT required)"
+echo "   ✓ g2pay-webhook - Payment confirmations (🔓 Public webhook)"
+echo "   ✓ send-notification-email - Email notifications (🔓 Internal service)"
+echo ""
+echo "🔒 Security Notes:"
+echo "   • User-facing functions (create/complete-order) require JWT authentication"
+echo "   • G2Pay webhook uses signature verification instead of JWT"
+echo "   • Email service is internal-only (called from backend with service role key)"
+echo ""
 echo "📋 Next Steps:"
-echo "1. Verify webhook URL in logs: https://<your-project>.supabase.co/functions/v1/g2pay-webhook"
-echo "2. Test payment flow with real G2Pay sandbox card"
-echo "3. Test reliability by closing browser during payment"
-echo "4. Monitor payment_transactions table for webhook activity"
+echo "1. Test payment flow with G2Pay sandbox card"
+echo "2. Test email notifications (Welcome, Orders, Withdrawals, etc.)"
+echo "3. Monitor email_notifications table for email delivery status"
+echo "4. Verify webhook URL: https://<your-project>.supabase.co/functions/v1/g2pay-webhook"
 echo ""
-echo "📚 Documentation:"
-echo "   - WEBHOOK_IMPLEMENTATION.md - Complete webhook guide"
-echo "   - DEPLOYMENT_SUMMARY.md - Deployment status and next steps"
-echo "   - PRODUCTION_READY_G2PAY.md - Production readiness checklist"
-echo ""
-echo "✨ Your production-grade payment system is live!"
+echo "✨ Your production system is live!"
