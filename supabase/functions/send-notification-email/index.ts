@@ -7,8 +7,6 @@ import { getWithdrawalApprovedHTML, getWithdrawalApprovedText } from './template
 import { getWithdrawalRejectedHTML, getWithdrawalRejectedText } from './templates/withdrawal-rejected.ts'
 import { getCompetitionEndingHTML, getCompetitionEndingText } from './templates/competition-ending.ts'
 import { getWelcomeHTML, getWelcomeText } from './templates/welcome.ts'
-import { getPasswordResetHTML, getPasswordResetText } from './templates/password-reset.ts'
-import { getEmailVerificationHTML, getEmailVerificationText } from './templates/email-verification.ts'
 import { getInfluencerApplicationSubmittedHTML, getInfluencerApplicationSubmittedText } from './templates/influencer-application-submitted.ts'
 import { getInfluencerApprovedHTML, getInfluencerApprovedText } from './templates/influencer-approved.ts'
 import { getInfluencerRejectedHTML, getInfluencerRejectedText } from './templates/influencer-rejected.ts'
@@ -21,7 +19,7 @@ const corsHeaders = {
 }
 
 interface EmailNotification {
-  type: 'prize_win' | 'order_confirmation' | 'withdrawal_request' | 'withdrawal_approved' | 'withdrawal_rejected' | 'competition_ending' | 'welcome' | 'password_reset' | 'email_verification' | 'influencer_application_submitted' | 'influencer_approved' | 'influencer_rejected' | 'prize_fulfillment_update' | 'wallet_credit' | 'custom'
+  type: 'prize_win' | 'order_confirmation' | 'withdrawal_request' | 'withdrawal_approved' | 'withdrawal_rejected' | 'competition_ending' | 'welcome' | 'influencer_application_submitted' | 'influencer_approved' | 'influencer_rejected' | 'prize_fulfillment_update' | 'wallet_credit' | 'custom'
   recipientEmail: string
   recipientName?: string
   data: Record<string, unknown>
@@ -83,20 +81,6 @@ function getEmailTemplate(notification: EmailNotification): { subject: string; h
         subject: '🎉 Welcome to BabyBets!',
         html: getWelcomeHTML(firstName, data),
         text: getWelcomeText(firstName, data),
-      }
-
-    case 'password_reset':
-      return {
-        subject: 'Reset Your BabyBets Password',
-        html: getPasswordResetHTML(firstName, data),
-        text: getPasswordResetText(firstName, data),
-      }
-
-    case 'email_verification':
-      return {
-        subject: 'Verify Your BabyBets Email Address',
-        html: getEmailVerificationHTML(firstName, data),
-        text: getEmailVerificationText(firstName, data),
       }
 
     case 'influencer_application_submitted':

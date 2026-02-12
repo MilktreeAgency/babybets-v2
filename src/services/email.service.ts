@@ -52,17 +52,6 @@ export interface WithdrawalRejectedEmailData {
   statusUrl?: string
 }
 
-export interface PasswordResetEmailData {
-  resetUrl: string
-  expiryHours?: number
-}
-
-export interface EmailVerificationEmailData {
-  verificationUrl: string
-  verificationCode?: string
-  expiryHours?: number
-}
-
 export interface InfluencerApplicationSubmittedEmailData {
   displayName: string
   reviewUrl?: string
@@ -98,7 +87,7 @@ export interface WalletCreditEmailData {
 }
 
 export interface EmailNotification {
-  type: 'prize_win' | 'order_confirmation' | 'withdrawal_request' | 'withdrawal_approved' | 'withdrawal_rejected' | 'competition_ending' | 'welcome' | 'password_reset' | 'email_verification' | 'influencer_application_submitted' | 'influencer_approved' | 'influencer_rejected' | 'prize_fulfillment_update' | 'wallet_credit' | 'custom'
+  type: 'prize_win' | 'order_confirmation' | 'withdrawal_request' | 'withdrawal_approved' | 'withdrawal_rejected' | 'competition_ending' | 'welcome' | 'influencer_application_submitted' | 'influencer_approved' | 'influencer_rejected' | 'prize_fulfillment_update' | 'wallet_credit' | 'custom'
   recipientEmail: string
   recipientName?: string
   data: Record<string, unknown>
@@ -218,40 +207,6 @@ class EmailService {
   ): Promise<{ success: boolean; notification_id?: string; error?: string }> {
     return this.sendNotification({
       type: 'withdrawal_rejected',
-      recipientEmail,
-      recipientName,
-      data,
-    })
-  }
-
-  /**
-   * Send a password reset email
-   * Non-blocking - returns immediately after queuing
-   */
-  async sendPasswordResetEmail(
-    recipientEmail: string,
-    recipientName: string,
-    data: PasswordResetEmailData
-  ): Promise<{ success: boolean; notification_id?: string; error?: string }> {
-    return this.sendNotification({
-      type: 'password_reset',
-      recipientEmail,
-      recipientName,
-      data,
-    })
-  }
-
-  /**
-   * Send an email verification email
-   * Non-blocking - returns immediately after queuing
-   */
-  async sendEmailVerificationEmail(
-    recipientEmail: string,
-    recipientName: string,
-    data: EmailVerificationEmailData
-  ): Promise<{ success: boolean; notification_id?: string; error?: string }> {
-    return this.sendNotification({
-      type: 'email_verification',
       recipientEmail,
       recipientName,
       data,
