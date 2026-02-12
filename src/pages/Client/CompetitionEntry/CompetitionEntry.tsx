@@ -383,11 +383,11 @@ function CompetitionEntry() {
       <Header />
 
       {/* Main Content */}
-      <div className="pt-20 pb-12">
+      <div className="pt-16 sm:pt-20 pb-8 sm:pb-12">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
             {/* Left: Image and Description */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Main Competition Image */}
               <div
                 className="relative aspect-square rounded-xl overflow-hidden cursor-pointer"
@@ -468,22 +468,22 @@ function CompetitionEntry() {
               </div>
 
               {/* Title - Centered */}
-              <h1 className="text-2xl md:text-3xl font-bold mb-6 leading-tight text-center">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 leading-tight text-center">
                 {competition.title}
               </h1>
 
               {/* Price - Centered */}
-              <div className="text-center mb-6">
-                <p className="text-xs font-bold uppercase mb-1" style={{ color: '#78716c' }}>From</p>
-                <div className="text-3xl font-bold" style={{ color: '#496B71' }}>
+              <div className="text-center mb-4 sm:mb-6">
+                <p className="text-[10px] sm:text-xs font-bold uppercase mb-1" style={{ color: '#78716c' }}>From</p>
+                <div className="text-2xl sm:text-3xl font-bold" style={{ color: '#496B71' }}>
                   £{(competition.base_ticket_price_pence / 100).toFixed(2)}
                 </div>
-                <p className="text-xs mt-1" style={{ color: '#78716c' }}>per ticket</p>
+                <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#78716c' }}>per ticket</p>
               </div>
 
               {/* Progress - Simple */}
-              <div className="mb-6">
-                <div className="flex justify-between text-xs font-bold mb-2" style={{ color: '#666666' }}>
+              <div className="mb-4 sm:mb-6">
+                <div className="flex justify-between text-[10px] sm:text-xs font-bold mb-2" style={{ color: '#666666' }}>
                   <span>{percentSold.toFixed(0)}% Sold</span>
                 </div>
                 <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#e7e5e4' }}>
@@ -495,19 +495,19 @@ function CompetitionEntry() {
                     }}
                   />
                 </div>
-                <div className="text-xs font-semibold mt-2 text-center" style={{ color: '#666666' }}>
+                <div className="text-[10px] sm:text-xs font-semibold mt-2 text-center" style={{ color: '#666666' }}>
                   {competition.tickets_sold || 0}/{competition.max_tickets}
                 </div>
               </div>
 
               {/* Ticket Selector */}
-              <div className="mb-6">
-                <div className="rounded-lg p-4" style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#f0e0ca' }}>
+              <div className="mb-4 sm:mb-6">
+                <div className="rounded-lg p-3 sm:p-4" style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#f0e0ca' }}>
                   {/* Entry Mode Toggle */}
-                  <div className="flex items-stretch gap-0 mb-6">
+                  <div className="flex items-stretch gap-0 mb-4 sm:mb-6">
                     <button
                       onClick={() => setEntryMode('paid')}
-                      className="flex-1 py-3 font-bold text-sm transition-all cursor-pointer"
+                      className="flex-1 py-2.5 sm:py-3 font-bold text-xs sm:text-sm transition-all cursor-pointer"
                       style={{
                         backgroundColor: entryMode === 'paid' ? '#496B71' : 'transparent',
                         color: entryMode === 'paid' ? 'white' : '#78716c',
@@ -522,7 +522,7 @@ function CompetitionEntry() {
                     </button>
                     <button
                       onClick={() => setEntryMode('postal')}
-                      className="flex-1 py-3 font-bold text-sm transition-all cursor-pointer"
+                      className="flex-1 py-2.5 sm:py-3 font-bold text-xs sm:text-sm transition-all cursor-pointer"
                       style={{
                         backgroundColor: entryMode === 'postal' ? '#496B71' : 'transparent',
                         color: entryMode === 'postal' ? 'white' : '#78716c',
@@ -533,7 +533,8 @@ function CompetitionEntry() {
                         borderLeft: 'none'
                       }}
                     >
-                      Free Postal Entry
+                      <span className="hidden sm:inline">Free Postal Entry</span>
+                      <span className="sm:hidden">Postal Entry</span>
                     </button>
                   </div>
 
@@ -543,8 +544,8 @@ function CompetitionEntry() {
                   {/* Quick Select Buttons - Only show if tiered pricing exists */}
                   {tieredPricing.length > 0 && quickSelectOptions.length > 0 && (
                     <>
-                      <h3 className="font-bold text-sm mb-3">Choose Your Tickets</h3>
-                    <div className="grid grid-cols-4 gap-2 mb-4">
+                      <h3 className="font-bold text-xs sm:text-sm mb-2 sm:mb-3">Choose Your Tickets</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3 sm:mb-4">
                       {quickSelectOptions.map((option) => {
                         const optionPrice = calculatePrice(option)
                         const basePrice = (option * (competition.base_ticket_price_pence / 100))
@@ -553,7 +554,7 @@ function CompetitionEntry() {
                           <button
                             key={option}
                             onClick={() => setQuantity(option)}
-                            className="relative pt-3 p-2 rounded-lg transition-all cursor-pointer"
+                            className="relative pt-2.5 sm:pt-3 p-1.5 sm:p-2 rounded-lg transition-all cursor-pointer"
                             style={{
                               borderWidth: '1px',
                               borderColor: quantity === option ? '#496B71' : '#f0e0ca',
@@ -572,7 +573,7 @@ function CompetitionEntry() {
                           >
                             {savings > 0 && (
                               <div
-                                className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap"
+                                className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold whitespace-nowrap"
                                 style={{
                                   backgroundColor: 'white',
                                   borderWidth: '1px',
@@ -583,8 +584,8 @@ function CompetitionEntry() {
                                 Save £{savings.toFixed(2)}
                               </div>
                             )}
-                            <div className="font-bold text-base">{option}</div>
-                            <div className="text-xs" style={{ color: '#78716c' }}>
+                            <div className="font-bold text-sm sm:text-base">{option}</div>
+                            <div className="text-[10px] sm:text-xs" style={{ color: '#78716c' }}>
                               £{optionPrice.toFixed(2)}
                             </div>
                           </button>
@@ -596,31 +597,31 @@ function CompetitionEntry() {
 
                   {/* Custom Amount */}
                   <div>
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="font-medium text-xs" style={{ color: '#78716c' }}>Custom Amount</span>
-                      <div className="flex items-center gap-2">
+                    <div className="flex justify-between items-center mb-2 sm:mb-3">
+                      <span className="font-medium text-[10px] sm:text-xs" style={{ color: '#78716c' }}>Custom Amount</span>
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         <button
                           onClick={() => adjustQuantity(-1)}
                           disabled={quantity <= 1}
-                          className="w-7 h-7 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                           style={{ backgroundColor: '#FBEFDF' }}
                           onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#f0e0ca')}
                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FBEFDF'}
                         >
-                          <Minus className="size-3" />
+                          <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                         </button>
-                        <div className="rounded px-3 py-1 font-bold text-lg min-w-[50px] text-center" style={{ backgroundColor: '#fff0e6', borderWidth: '1px', borderColor: '#f0e0ca' }}>
+                        <div className="rounded px-2.5 sm:px-3 py-1 font-bold text-base sm:text-lg min-w-[45px] sm:min-w-[50px] text-center" style={{ backgroundColor: '#fff0e6', borderWidth: '1px', borderColor: '#f0e0ca' }}>
                           {quantity}
                         </div>
                         <button
                           onClick={() => adjustQuantity(1)}
                           disabled={quantity >= maxPurchase}
-                          className="w-7 h-7 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                           style={{ backgroundColor: '#FBEFDF' }}
                           onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#f0e0ca')}
                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FBEFDF'}
                         >
-                          <Plus className="size-3" />
+                          <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                         </button>
                       </div>
                     </div>
@@ -634,30 +635,30 @@ function CompetitionEntry() {
                       className="w-full h-1.5 rounded-lg appearance-none cursor-pointer"
                       style={{ backgroundColor: '#e7e5e4', accentColor: '#496B71' }}
                     />
-                    <div className="flex justify-between text-xs mt-1.5" style={{ color: '#a8a29e' }}>
+                    <div className="flex justify-between text-[10px] sm:text-xs mt-1.5" style={{ color: '#a8a29e' }}>
                       <span>1</span>
                       <span>{maxPurchase}</span>
                     </div>
                   </div>
 
                   {/* Divider */}
-                  <div className="my-4" style={{ borderTopWidth: '1px', borderColor: '#f0e0ca' }}></div>
+                  <div className="my-3 sm:my-4" style={{ borderTopWidth: '1px', borderColor: '#f0e0ca' }}></div>
 
                   {/* Total and CTA */}
                   <div>
-                    <div className="flex justify-between items-center pb-4 mb-4">
+                    <div className="flex justify-between items-center pb-3 sm:pb-4 mb-3 sm:mb-4">
                       <div>
-                        <span className="font-medium block text-xs" style={{ color: '#78716c' }}>Total Price</span>
+                        <span className="font-medium block text-[10px] sm:text-xs" style={{ color: '#78716c' }}>Total Price</span>
                         {pricingDetails.savings > 0 && (
-                          <span className="text-xs font-bold" style={{ color: '#22c55e' }}>
+                          <span className="text-[10px] sm:text-xs font-bold" style={{ color: '#22c55e' }}>
                             You save £{pricingDetails.savings.toFixed(2)}
                           </span>
                         )}
                       </div>
                       <div className="text-right">
-                        <span className="block text-2xl font-bold" style={{ color: '#496B71' }}>£{pricingDetails.total.toFixed(2)}</span>
+                        <span className="block text-xl sm:text-2xl font-bold" style={{ color: '#496B71' }}>£{pricingDetails.total.toFixed(2)}</span>
                         {quantity > 1 && (
-                          <span className="text-xs font-medium" style={{ color: '#78716c' }}>
+                          <span className="text-[10px] sm:text-xs font-medium" style={{ color: '#78716c' }}>
                             £{pricingDetails.perTicket.toFixed(2)} per ticket
                           </span>
                         )}
@@ -665,7 +666,7 @@ function CompetitionEntry() {
                     </div>
                     <button
                       onClick={handleAddToCart}
-                      className="w-full font-bold py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      className="w-full font-bold py-3 sm:py-4 text-sm sm:text-base rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                       style={{
                         backgroundColor: '#496B71',
                         color: 'white'
@@ -676,7 +677,7 @@ function CompetitionEntry() {
                     >
                       {competition.status === 'scheduled' ? 'Coming Soon' : 'Add to Basket'}
                     </button>
-                    <p className="text-xs text-center mt-3" style={{ color: '#78716c' }}>
+                    <p className="text-[10px] sm:text-xs text-center mt-2 sm:mt-3" style={{ color: '#78716c' }}>
                       By entering, you agree to our Terms & Conditions
                     </p>
                   </div>
@@ -685,19 +686,19 @@ function CompetitionEntry() {
 
               {/* Postal Entry Section */}
               {entryMode === 'postal' && (
-                <div className="space-y-4">
-                  <div className="text-center mb-4">
-                    <p className="text-2xl font-bold mb-2" style={{ color: '#496B71' }}>
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="text-center mb-3 sm:mb-4">
+                    <p className="text-xl sm:text-2xl font-bold mb-2" style={{ color: '#496B71' }}>
                       {calculatePostalEntries()} {calculatePostalEntries() === 1 ? 'Entry' : 'Entries'}
                     </p>
-                    <p className="text-sm" style={{ color: '#78716c' }}>
+                    <p className="text-xs sm:text-sm" style={{ color: '#78716c' }}>
                       You can enter this competition for free by post
                     </p>
                   </div>
 
-                  <div className="space-y-3">
-                    <h3 className="font-bold mb-3" style={{ color: '#151e20' }}>How to Enter by Post:</h3>
-                    <ol className="space-y-2 text-sm" style={{ color: '#78716c' }}>
+                  <div className="space-y-2 sm:space-y-3">
+                    <h3 className="font-bold text-sm sm:text-base mb-2 sm:mb-3" style={{ color: '#151e20' }}>How to Enter by Post:</h3>
+                    <ol className="space-y-2 text-xs sm:text-sm" style={{ color: '#78716c' }}>
                       <li className="flex gap-2">
                         <span className="font-bold shrink-0">1.</span>
                         <span>Write your full name, email address, phone number, and the competition name on a postcard or envelope.</span>
@@ -716,16 +717,16 @@ function CompetitionEntry() {
                       </li>
                     </ol>
 
-                    <div className="mt-4 pt-4" style={{ borderTopWidth: '1px', borderColor: '#f0e0ca' }}>
-                      <p className="text-xs" style={{ color: '#78716c' }}>
+                    <div className="mt-3 sm:mt-4 pt-3 sm:pt-4" style={{ borderTopWidth: '1px', borderColor: '#f0e0ca' }}>
+                      <p className="text-[10px] sm:text-xs" style={{ color: '#78716c' }}>
                         <strong>Important:</strong> Based on the £{(competition.base_ticket_price_pence / 100).toFixed(2)} ticket price, you can receive up to {calculatePostalEntries()} {calculatePostalEntries() === 1 ? 'entry' : 'entries'} per postal submission. Standard postage costs apply (87p for a first-class stamp).
                       </p>
                     </div>
 
-                    <div className="mt-4">
+                    <div className="mt-3 sm:mt-4">
                       <Link
                         to="/terms"
-                        className="text-sm font-bold underline cursor-pointer"
+                        className="text-xs sm:text-sm font-bold underline cursor-pointer"
                         style={{ color: '#496B71' }}
                         onMouseEnter={(e) => e.currentTarget.style.color = '#3a565a'}
                         onMouseLeave={(e) => e.currentTarget.style.color = '#496B71'}

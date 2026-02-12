@@ -15,28 +15,28 @@ function FAQItem({ question, answer }: FAQItemProps) {
     <div className="border-b" style={{ borderColor: '#e7e5e4' }}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex justify-between items-center py-6 text-left group cursor-pointer"
+        className="w-full flex justify-between items-center py-4 sm:py-5 md:py-6 text-left group cursor-pointer gap-3"
         aria-expanded={isOpen}
       >
         <span
-          className="text-lg font-bold transition-colors"
+          className="text-base sm:text-lg font-bold transition-colors"
           style={{ color: isOpen ? '#496B71' : '#151e20' }}
         >
           {question}
         </span>
         <span
-          className="p-2 rounded-full transition-colors"
+          className="p-1.5 sm:p-2 rounded-full transition-colors shrink-0"
           style={{
             backgroundColor: isOpen ? 'rgba(73, 107, 113, 0.1)' : '#f5f5f4',
             color: isOpen ? '#496B71' : '#78716c'
           }}
         >
-          {isOpen ? <Minus size={20} /> : <Plus size={20} />}
+          {isOpen ? <Minus size={18} className="sm:w-5 sm:h-5" /> : <Plus size={18} className="sm:w-5 sm:h-5" />}
         </span>
       </button>
       {isOpen && (
-        <div className="overflow-hidden pb-6 pr-8">
-          <p className="leading-relaxed" style={{ color: '#78716c' }}>
+        <div className="overflow-hidden pb-4 sm:pb-5 md:pb-6 pr-6 sm:pr-8">
+          <p className="text-sm sm:text-base leading-relaxed" style={{ color: '#78716c' }}>
             {answer}
           </p>
         </div>
@@ -93,19 +93,19 @@ export default function FAQ() {
     <div className="antialiased relative min-h-screen" style={{ color: '#2D251E', backgroundColor: '#fffbf7' }}>
       <Header />
 
-      <div className="py-20">
-        <div className="max-w-3xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
+      <div className="py-12 sm:py-16 md:py-20">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10 sm:mb-12 md:mb-16">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
               Frequently Asked Questions
             </h1>
-            <p className="text-lg" style={{ color: '#78716c' }}>
+            <p className="text-base sm:text-lg" style={{ color: '#78716c' }}>
               Everything you need to know about entering BabyBets competitions.
             </p>
           </div>
 
           <div
-            className="rounded-2xl p-8 md:p-12"
+            className="rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 lg:p-12"
             style={{
               backgroundColor: 'white',
               borderWidth: '1px',
@@ -119,13 +119,13 @@ export default function FAQ() {
           </div>
 
           {/* Additional Help Section */}
-          <div className="mt-12 text-center">
-            <p className="mb-4" style={{ color: '#78716c' }}>
+          <div className="mt-8 sm:mt-10 md:mt-12 text-center">
+            <p className="mb-3 sm:mb-4 text-sm sm:text-base" style={{ color: '#78716c' }}>
               Still have questions? We're here to help!
             </p>
             <a
               href="mailto:hello@babybets.co.uk"
-              className="inline-flex items-center gap-2 font-bold transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 font-bold text-sm sm:text-base transition-colors cursor-pointer"
               style={{ color: '#496B71' }}
             >
               Contact us at hello@babybets.co.uk

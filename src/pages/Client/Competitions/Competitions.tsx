@@ -16,7 +16,7 @@ export default function Competitions() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<Category>('all')
   const [selectedType, setSelectedType] = useState<CompetitionType>('all')
-  const [sortBy, setSortBy] = useState<SortOption>('ending_soon')
+  const [sortBy, setSortBy] = useState<SortOption>('newest')
 
   const categories: { value: Category; label: string }[] = [
     { value: 'all', label: 'All' },
@@ -87,24 +87,24 @@ export default function Competitions() {
     <div className="antialiased relative min-h-screen" style={{ color: '#2D251E', backgroundColor: '#fffbf7' }}>
       <Header />
 
-      <section className="pt-4 pb-16">
+      <section className="pt-4 pb-12 sm:pb-16">
         <PageSection
           title="All Competitions"
           description="Browse all our amazing competitions and win incredible prizes"
         />
 
         {/* Filters */}
-        <div className="max-w-[1300px] mx-auto mt-8">
+        <div className="max-w-[1300px] mx-auto mt-6 sm:mt-8 px-4 sm:px-6">
           {/* Search Bar, Type Dropdown, and Sort Dropdown */}
-          <div className="mb-6 flex flex-col sm:flex-row gap-4">
+          <div className="mb-5 sm:mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5" style={{ color: '#78716c' }} />
+              <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5" style={{ color: '#78716c' }} />
               <input
                 type="text"
                 placeholder="Search competitions..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 rounded-xl border cursor-text"
+                className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-xl border cursor-text"
                 style={{
                   borderColor: '#e7e5e4',
                   backgroundColor: 'white',
@@ -127,14 +127,14 @@ export default function Competitions() {
           </div>
 
           {/* Category Tabs */}
-          <div className="mb-8">
+          <div className="mb-6 sm:mb-8 -mx-4 sm:mx-0">
             <div className="border-b" style={{ borderColor: '#e7e5e4' }}>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex overflow-x-auto no-scrollbar px-4 sm:px-0" style={{ scrollbarWidth: 'none' }}>
                 {categories.map((category) => (
                   <button
                     key={category.value}
                     onClick={() => setSelectedCategory(category.value)}
-                    className="px-4 py-3 text-sm font-semibold transition-all cursor-pointer relative"
+                    className="px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-all cursor-pointer relative whitespace-nowrap"
                     style={{
                       color: selectedCategory === category.value ? '#151e20' : '#78716c',
                       borderBottom: selectedCategory === category.value ? '2px solid #151e20' : '2px solid transparent'
@@ -149,25 +149,25 @@ export default function Competitions() {
         </div>
 
         {/* Competition Cards */}
-        <div className="max-w-[1300px] mx-auto">
+        <div className="max-w-[1300px] mx-auto px-4 sm:px-6">
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader className="size-8 animate-spin" style={{ color: '#151e20' }} />
+            <div className="flex items-center justify-center py-16 sm:py-20">
+              <Loader className="w-7 h-7 sm:w-8 sm:h-8 animate-spin" style={{ color: '#151e20' }} />
             </div>
           ) : error ? (
-            <div className="text-center py-20">
-              <p className="text-lg" style={{ color: '#78716c' }}>
+            <div className="text-center py-16 sm:py-20">
+              <p className="text-base sm:text-lg" style={{ color: '#78716c' }}>
                 Failed to load competitions. Please try again later.
               </p>
             </div>
           ) : filteredAndSortedCompetitions.length === 0 ? (
-            <div className="text-center py-20">
-              <p className="text-lg" style={{ color: '#78716c' }}>
+            <div className="text-center py-16 sm:py-20">
+              <p className="text-base sm:text-lg" style={{ color: '#78716c' }}>
                 No competitions found matching your filters.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
               {filteredAndSortedCompetitions.map((competition) => (
                 <CompetitionCard
                   key={competition.id}
