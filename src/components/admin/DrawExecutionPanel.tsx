@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { emailService } from '@/services/email.service'
 
 interface DrawExecutionPanelProps {
   competition: Competition
@@ -77,24 +76,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
       // Execute the actual draw
       const result = await executeDraw(competition.id)
 
-      // Send prize win email to the winner (non-blocking)
-      if (result.winner_email && result.winner_display_name) {
-        emailService.sendPrizeWinEmail(
-          result.winner_email,
-          result.winner_display_name,
-          {
-            prizeName: competition.title,
-            prizeValue: competition.prize_value || undefined,
-            prizeDescription: competition.description || undefined,
-            ticketNumber: result.winning_ticket_number?.toString(),
-            competitionTitle: competition.title,
-            claimUrl: `${window.location.origin}/account/prizes`
-          }
-        ).catch(err => {
-          console.error('Failed to send prize win email:', err)
-          // Don't throw - email failure shouldn't affect draw execution
-        })
-      }
+      // Note: Prize win email is sent automatically by the backend RPC function
 
       // Phase 2: Selecting animation (1.5 seconds)
       await new Promise(resolve => setTimeout(resolve, 1500))

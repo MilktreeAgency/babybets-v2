@@ -301,16 +301,6 @@ export default function Withdrawals() {
     }
   }
 
-  const maskAccountNumber = (accountNumber: string | null) => {
-    if (!accountNumber) return 'N/A'
-    return `****${accountNumber.slice(-4)}`
-  }
-
-  const maskSortCode = (sortCode: string | null) => {
-    if (!sortCode) return 'N/A'
-    return `**-**-${sortCode.slice(-2)}`
-  }
-
   const handleExport = () => {
     const csv = [
       [

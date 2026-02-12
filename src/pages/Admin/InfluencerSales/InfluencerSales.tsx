@@ -22,6 +22,11 @@ import {
 } from '@/components/ui/alert-dialog'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
+interface PayoutCommissionResponse {
+  success: boolean
+  message: string
+}
+
 type InfluencerWithSales = {
   id: string
   display_name: string
@@ -171,10 +176,10 @@ export default function InfluencerSales() {
         throw new Error('Not authenticated')
       }
 
-      const { data, error } = await supabase.rpc('payout_influencer_commission', {
+      const { data, error } = await supabase.rpc('payout_influencer_commission' as never, {
         p_influencer_id: selectedInfluencer.id,
         p_admin_id: user.id
-      })
+      } as never) as { data: PayoutCommissionResponse | null; error: Error | null }
 
       if (error) throw error
 

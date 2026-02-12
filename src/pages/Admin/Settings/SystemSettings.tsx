@@ -21,7 +21,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 interface Influencer {
   id: string
   display_name: string
-  is_active: boolean
+  is_active: boolean | null
 }
 
 export default function SystemSettings() {

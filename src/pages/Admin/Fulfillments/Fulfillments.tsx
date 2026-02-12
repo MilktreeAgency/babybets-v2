@@ -386,10 +386,10 @@ export default function Fulfillments() {
         if (selectedFulfillment?.id === id) {
           // Update the selected fulfillment with the new status immediately
           console.log('Updating selectedFulfillment with new status:', newStatus)
-          const updatedFulfillment = {
+          const updatedFulfillment: FulfillmentWithDetails = {
             ...selectedFulfillment,
             status: newStatus,
-            updated_at: updates.updated_at,
+            updated_at: updates.updated_at ?? null,
             ...(newStatus === 'dispatched' && trackingNumber ? { tracking_number: trackingNumber, dispatched_at: updates.dispatched_at } : {}),
             ...(newStatus === 'dispatched' && !trackingNumber ? { dispatched_at: updates.dispatched_at } : {}),
             ...(newStatus === 'delivered' ? { delivered_at: updates.delivered_at } : {})
