@@ -1,7 +1,8 @@
 import { Link, useLocation } from 'react-router-dom'
-import { ShoppingBag, User } from 'lucide-react'
+import { ShoppingBag, User, Menu, X } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'
+import { useState } from 'react'
 
 export default function Header() {
   const { isAuthenticated, user } = useAuthStore()
@@ -9,6 +10,7 @@ export default function Header() {
   const cartTotal = items.length
   const location = useLocation()
   const isAdmin = user?.isAdmin || false
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const navLinks = [
     { name: 'Competitions', path: '/competitions' },
@@ -114,16 +116,8 @@ export default function Header() {
           </div>
 
           {/* Mobile Actions */}
-          <div className="md:hidden flex items-center gap-4">
-            {isAdmin ? (
-              <Link
-                to="/admin/dashboard"
-                className="text-sm font-bold px-4 py-2 rounded-xl cursor-pointer"
-                style={{ backgroundColor: '#496B71', color: 'white' }}
-              >
-                Dashboard
-              </Link>
-            ) : (
+          <div className="md:hidden flex items-center gap-3">
+            {!isAdmin && (
               <button
                 onClick={() => setCartOpen(true)}
                 className="relative p-2 cursor-pointer"
@@ -137,8 +131,80 @@ export default function Header() {
                 )}
               </button>
             )}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 cursor-pointer"
+              style={{ color: '#223033' }}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t" style={{ borderColor: '#f0e0ca' }}>
+            <div className="px-4 py-4 space-y-3">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.name}
+                  to={link.path}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block py-3 px-4 rounded-lg text-base font-bold transition-colors cursor-pointer"
+                  style={{
+                    color: isActive(link.path) ? '#496B71' : '#78716c',
+                    backgroundColor: isActive(link.path) ? 'rgba(73, 107, 113, 0.1)' : 'transparent'
+                  }}
+                >
+                  {link.name}
+                </Link>
+              ))}
+              <div className="border-t pt-3" style={{ borderColor: '#f0e0ca' }}>
+                {isAdmin ? (
+                  <Link
+                    to="/admin/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block text-center py-3 px-4 rounded-xl font-bold cursor-pointer"
+                    style={{ backgroundColor: '#496B71', color: 'white' }}
+                  >
+                    Dashboard
+                  </Link>
+                ) : isAuthenticated ? (
+                  <Link
+                    to="/account"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block text-center py-3 px-4 rounded-xl font-bold cursor-pointer"
+                    style={{ backgroundColor: '#151e20', color: 'white' }}
+                  >
+                    <User size={18} className="inline mr-2" />
+                    My Profile
+                  </Link>
+                ) : (
+                  <div className="space-y-2">
+                    <Link
+                      to="/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block text-center py-3 px-4 rounded-xl font-bold cursor-pointer"
+                      style={{ backgroundColor: '#f0e0ca', color: '#151e20' }}
+                    >
+                      <User size={18} className="inline mr-2" />
+                      Log In
+                    </Link>
+                    <Link
+                      to="/signup"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block text-center py-3 px-4 rounded-xl font-bold cursor-pointer"
+                      style={{ backgroundColor: '#496B71', color: 'white' }}
+                    >
+                      Sign Up
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   )
