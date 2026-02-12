@@ -11,6 +11,10 @@ export default function SignIn() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetSuccess, setResetSuccess] = useState(false)
 
   const handleGoogleSignIn = async () => {
     try {
@@ -18,6 +22,26 @@ export default function SignIn() {
     } catch (error) {
       console.error('Sign-in failed:', error)
       showErrorToast('Failed to sign in with Google')
+    }
+  }
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!resetEmail) {
+      showErrorToast('Please enter your email address')
+      return
+    }
+
+    try {
+      setResetLoading(true)
+      await authService.resetPassword(resetEmail)
+      setResetSuccess(true)
+    } catch (error) {
+      console.error('Password reset failed:', error)
+      showErrorToast('Failed to send reset email. Please try again.')
+    } finally {
+      setResetLoading(false)
     }
   }
 
@@ -33,12 +57,12 @@ export default function SignIn() {
       setLoading(true)
       await authService.signInWithEmail(email, password)
 
-      // Redirect based on user role
+      // Redirect based on user role using hard navigation
       const user = useAuthStore.getState().user
       if (user?.isAdmin) {
-        navigate('/admin/dashboard')
+        window.location.href = '/admin/dashboard'
       } else {
-        navigate('/')
+        window.location.href = '/'
       }
     } catch (error) {
       console.error('Sign-in failed:', error)
@@ -49,22 +73,22 @@ export default function SignIn() {
   }
 
   return (
-    <div className="antialiased relative min-h-screen" style={{ color: '#151e20', backgroundColor: '#fffbf7' }}>
+    <div className="antialiased relative min-h-screen overflow-hidden" style={{ color: '#151e20', backgroundColor: '#fffbf7' }}>
       {/* Background decorative elements */}
       <div
-        className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-[600px] h-[600px] rounded-full blur-3xl -z-10"
+        className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-[400px] h-[400px] sm:w-[600px] sm:h-[600px] rounded-full blur-3xl -z-10"
         style={{ backgroundColor: 'rgba(254, 208, 185, 0.3)' }}
       />
       <div
-        className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-[500px] h-[500px] rounded-full blur-3xl -z-10"
+        className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-[350px] h-[350px] sm:w-[500px] sm:h-[500px] rounded-full blur-3xl -z-10"
         style={{ backgroundColor: 'rgba(225, 234, 236, 0.3)' }}
       />
 
       {/* Back button */}
-      <div className="fixed top-6 left-6 z-50">
+      <div className="fixed top-4 left-4 sm:top-6 sm:left-6 z-50">
         <button
           onClick={() => navigate('/')}
-          className="p-2.5 rounded-xl hover:bg-white/80 flex items-center justify-center transition-all cursor-pointer"
+          className="p-2 sm:p-2.5 rounded-xl hover:bg-white/80 flex items-center justify-center transition-all cursor-pointer"
           style={{ backgroundColor: 'rgba(255, 255, 255, 0.6)', color: '#151e20', backdropFilter: 'blur(8px)' }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)'
@@ -73,42 +97,41 @@ export default function SignIn() {
             e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.6)'
           }}
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
       </div>
 
       {/* Main content */}
-      <div className="flex min-h-screen items-center justify-center px-6 py-12">
+      <div className="flex h-screen items-center justify-center px-4 sm:px-6">
         <div
-          className="w-full max-w-md rounded-2xl p-8 md:p-10"
+          className="w-full max-w-md rounded-2xl p-6 sm:p-8 md:p-10 border-0 lg:border-2"
           style={{
             backgroundColor: '#fffbf7',
-            borderWidth: '2px',
             borderColor: '#e7e5e4'
           }}
         >
           {/* Header */}
-          <div className="mb-8 text-center">
-            <div className="flex items-center justify-center mb-6">
+          <div className="mb-6 sm:mb-8 text-center">
+            <div className="flex items-center justify-center mb-4 sm:mb-6">
               <img
                 src="/babybets-logo.png"
                 alt="BabyBets Logo"
-                className="h-12"
+                className="h-10 sm:h-12"
               />
             </div>
             <h1
-              className="text-3xl font-bold mb-3"
+              className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3"
               style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
             >
               Welcome back
             </h1>
-            <p className="text-base" style={{ color: '#78716c' }}>
+            <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>
               Sign in to continue to your account
             </p>
           </div>
 
           {/* Sign-in form */}
-          <div className="space-y-5">
+          <div className="space-y-4 sm:space-y-5">
             {/* Email/Password Form */}
             <form onSubmit={handleEmailSignIn} className="space-y-4">
               <div>
@@ -182,7 +205,7 @@ export default function SignIn() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-sm pt-1">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 text-xs sm:text-sm pt-1">
                 <Link
                   to="/signup"
                   className="font-bold cursor-pointer"
@@ -194,6 +217,7 @@ export default function SignIn() {
                 </Link>
                 <button
                   type="button"
+                  onClick={() => setShowForgotPassword(true)}
                   className="font-medium cursor-pointer"
                   style={{ color: '#78716c' }}
                   onMouseEnter={(e) => {
@@ -211,7 +235,7 @@ export default function SignIn() {
 
               <button
                 type="submit"
-                className="w-full px-6 py-4 rounded-xl font-bold text-base transition-all"
+                className="w-full px-6 py-3 sm:py-4 rounded-xl font-bold text-sm sm:text-base transition-all cursor-pointer"
                 style={{
                   backgroundColor: !email || !password ? '#d1d5db' : '#496B71',
                   color: 'white',
@@ -235,12 +259,12 @@ export default function SignIn() {
             </form>
 
             {/* Divider */}
-            <div className="relative my-6">
+            <div className="relative my-5 sm:my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full" style={{ borderTop: '1px solid #e7e5e4' }}></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase font-bold">
-                <span className="px-3 text-sm" style={{ backgroundColor: '#fffbf7', color: '#78716c' }}>
+                <span className="px-3 text-xs sm:text-sm" style={{ backgroundColor: '#fffbf7', color: '#78716c' }}>
                   Or continue with
                 </span>
               </div>
@@ -248,7 +272,7 @@ export default function SignIn() {
 
             {/* Google Sign-in button */}
             <button
-              className="w-full px-6 py-4 rounded-xl font-bold text-base transition-all cursor-pointer flex items-center justify-center gap-3"
+              className="w-full px-6 py-3 sm:py-4 rounded-xl font-bold text-sm sm:text-base transition-all cursor-pointer flex items-center justify-center gap-2 sm:gap-3"
               style={{
                 backgroundColor: 'transparent',
                 color: '#151e20',
@@ -286,28 +310,185 @@ export default function SignIn() {
             </button>
 
             {/* Terms and Privacy */}
-            <p className="text-xs text-center mt-6" style={{ color: '#78716c' }}>
+            <p className="text-[10px] sm:text-xs text-center mt-5 sm:mt-6 leading-relaxed" style={{ color: '#78716c' }}>
               By continuing, you agree to our{' '}
-              <a
-                href="/terms"
+              <Link
+                to="/legal/terms"
                 className="font-bold underline cursor-pointer"
                 style={{ color: '#496B71' }}
               >
                 Terms of Service
-              </a>{' '}
+              </Link>{' '}
               and{' '}
-              <a
-                href="/privacy"
+              <Link
+                to="/legal/privacy"
                 className="font-bold underline cursor-pointer"
                 style={{ color: '#496B71' }}
               >
                 Privacy Policy
-              </a>
+              </Link>
               .
             </p>
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4"
+          onClick={() => {
+            setShowForgotPassword(false)
+            setResetSuccess(false)
+            setResetEmail('')
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl p-6 sm:p-8"
+            style={{
+              backgroundColor: '#fffbf7',
+              borderWidth: '2px',
+              borderColor: '#e7e5e4'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {resetSuccess ? (
+              <div className="text-center">
+                <div
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4"
+                  style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}
+                >
+                  <svg className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#22c55e' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h2
+                  className="text-xl sm:text-2xl font-bold mb-3"
+                  style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
+                >
+                  Check your email
+                </h2>
+                <p className="text-sm sm:text-base mb-6" style={{ color: '#78716c' }}>
+                  We've sent password reset instructions to <span className="font-bold" style={{ color: '#151e20' }}>{resetEmail}</span>
+                </p>
+                <button
+                  onClick={() => {
+                    setShowForgotPassword(false)
+                    setResetSuccess(false)
+                    setResetEmail('')
+                  }}
+                  className="w-full px-6 py-3 rounded-xl font-bold text-sm sm:text-base transition-all cursor-pointer"
+                  style={{
+                    backgroundColor: '#496B71',
+                    color: 'white'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#3a565a'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#496B71'
+                  }}
+                >
+                  Got it
+                </button>
+              </div>
+            ) : (
+              <>
+                <h2
+                  className="text-xl sm:text-2xl font-bold mb-2"
+                  style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
+                >
+                  Reset your password
+                </h2>
+                <p className="text-sm sm:text-base mb-6" style={{ color: '#78716c' }}>
+                  Enter your email address and we'll send you instructions to reset your password.
+                </p>
+
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div>
+                    <label htmlFor="resetEmail" className="block text-sm font-bold mb-2" style={{ color: '#151e20' }}>
+                      Email address
+                    </label>
+                    <input
+                      id="resetEmail"
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      className="w-full px-4 py-3 rounded-xl text-sm sm:text-base transition-all cursor-pointer"
+                      style={{
+                        borderWidth: '2px',
+                        borderColor: '#e7e5e4',
+                        backgroundColor: '#fffbf7',
+                        color: '#151e20'
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = '#496B71'
+                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(73, 107, 113, 0.1)'
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = '#e7e5e4'
+                        e.currentTarget.style.boxShadow = 'none'
+                      }}
+                      disabled={resetLoading}
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForgotPassword(false)
+                        setResetEmail('')
+                      }}
+                      className="flex-1 px-6 py-3 rounded-xl font-bold text-sm sm:text-base transition-all cursor-pointer"
+                      style={{
+                        backgroundColor: 'transparent',
+                        color: '#151e20',
+                        borderWidth: '2px',
+                        borderColor: '#e7e5e4'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f5f5f4'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                      }}
+                      disabled={resetLoading}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 px-6 py-3 rounded-xl font-bold text-sm sm:text-base transition-all cursor-pointer"
+                      style={{
+                        backgroundColor: !resetEmail ? '#d1d5db' : '#496B71',
+                        color: 'white',
+                        cursor: !resetEmail || resetLoading ? 'not-allowed' : 'pointer',
+                        opacity: !resetEmail ? 0.6 : 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (resetEmail && !resetLoading) {
+                          e.currentTarget.style.backgroundColor = '#3a565a'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (resetEmail) {
+                          e.currentTarget.style.backgroundColor = '#496B71'
+                        }
+                      }}
+                      disabled={resetLoading || !resetEmail}
+                    >
+                      {resetLoading ? 'Sending...' : 'Send reset link'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

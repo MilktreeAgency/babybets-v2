@@ -16,6 +16,7 @@ export default function SignUp() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [emailConfirmationRequired, setEmailConfirmationRequired] = useState(false)
 
   const handleGoogleSignIn = async () => {
     try {
@@ -46,18 +47,26 @@ export default function SignUp() {
 
     try {
       setLoading(true)
-      await authService.signUpWithEmail(email, password, firstName, lastName)
-      setSuccess(true)
-      // Wait 2 seconds before redirecting to show success message
-      setTimeout(() => {
+      const { requiresEmailConfirmation } = await authService.signUpWithEmail(email, password, firstName, lastName)
+
+      if (requiresEmailConfirmation) {
+        // Show email confirmation screen
+        setEmailConfirmationRequired(true)
+      } else {
+        // User is immediately authenticated (email confirmation disabled)
         const user = useAuthStore.getState().user
-        // Redirect based on user role
-        if (user?.isAdmin) {
-          navigate('/admin/dashboard')
-        } else {
-          navigate('/')
+        if (user) {
+          setSuccess(true)
+          // Wait 1.5 seconds to show success message, then do a hard redirect
+          setTimeout(() => {
+            if (user.isAdmin) {
+              window.location.href = '/admin/dashboard'
+            } else {
+              window.location.href = '/'
+            }
+          }, 1500)
         }
-      }, 2000)
+      }
     } catch (error) {
       console.error('Sign-up failed:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to create account'
@@ -67,43 +76,105 @@ export default function SignUp() {
     }
   }
 
-  if (success) {
+  if (emailConfirmationRequired) {
     return (
-      <div className="antialiased relative min-h-screen" style={{ color: '#151e20', backgroundColor: '#fffbf7' }}>
+      <div className="antialiased relative min-h-screen overflow-hidden" style={{ color: '#151e20', backgroundColor: '#fffbf7' }}>
         {/* Background decorative elements */}
         <div
-          className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-[600px] h-[600px] rounded-full blur-3xl -z-10"
+          className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-[400px] h-[400px] sm:w-[600px] sm:h-[600px] rounded-full blur-3xl -z-10"
           style={{ backgroundColor: 'rgba(254, 208, 185, 0.3)' }}
         />
         <div
-          className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-[500px] h-[500px] rounded-full blur-3xl -z-10"
+          className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-[350px] h-[350px] sm:w-[500px] sm:h-[500px] rounded-full blur-3xl -z-10"
           style={{ backgroundColor: 'rgba(225, 234, 236, 0.3)' }}
         />
 
-        <div className="flex min-h-screen items-center justify-center px-6 py-12">
+        <div className="flex h-screen items-center justify-center px-4 sm:px-6">
           <div
-            className="w-full max-w-md rounded-2xl p-10 text-center"
+            className="w-full max-w-md rounded-2xl p-8 sm:p-10 text-center border-0 lg:border-2"
             style={{
               backgroundColor: '#fffbf7',
-              borderWidth: '2px',
               borderColor: '#e7e5e4'
             }}
           >
             <div
-              className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6"
+              style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)' }}
+            >
+              <svg className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#3b82f6' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h2
+              className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3"
+              style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
+            >
+              Check your email
+            </h2>
+            <p className="text-sm sm:text-base mb-4" style={{ color: '#78716c' }}>
+              We've sent a verification link to <span className="font-bold" style={{ color: '#151e20' }}>{email}</span>
+            </p>
+            <p className="text-sm mb-6" style={{ color: '#78716c' }}>
+              Click the link in the email to verify your account and get started.
+            </p>
+            <button
+              onClick={() => navigate('/login')}
+              className="w-full px-6 py-3 rounded-xl font-bold text-sm sm:text-base transition-all cursor-pointer"
+              style={{
+                backgroundColor: '#496B71',
+                color: 'white'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#3a565a'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#496B71'
+              }}
+            >
+              Go to Sign In
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (success) {
+    return (
+      <div className="antialiased relative min-h-screen overflow-hidden" style={{ color: '#151e20', backgroundColor: '#fffbf7' }}>
+        {/* Background decorative elements */}
+        <div
+          className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-[400px] h-[400px] sm:w-[600px] sm:h-[600px] rounded-full blur-3xl -z-10"
+          style={{ backgroundColor: 'rgba(254, 208, 185, 0.3)' }}
+        />
+        <div
+          className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-[350px] h-[350px] sm:w-[500px] sm:h-[500px] rounded-full blur-3xl -z-10"
+          style={{ backgroundColor: 'rgba(225, 234, 236, 0.3)' }}
+        />
+
+        <div className="flex h-screen items-center justify-center px-4 sm:px-6">
+          <div
+            className="w-full max-w-md rounded-2xl p-8 sm:p-10 text-center border-0 lg:border-2"
+            style={{
+              backgroundColor: '#fffbf7',
+              borderColor: '#e7e5e4'
+            }}
+          >
+            <div
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6"
               style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}
             >
-              <svg className="w-10 h-10" style={{ color: '#22c55e' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#22c55e' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
             </div>
             <h2
-              className="text-3xl font-bold mb-3"
+              className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3"
               style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
             >
               Account Created!
             </h2>
-            <p className="text-base" style={{ color: '#78716c' }}>
+            <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>
               Your account has been successfully created. Redirecting you to the homepage...
             </p>
           </div>
@@ -113,22 +184,22 @@ export default function SignUp() {
   }
 
   return (
-    <div className="antialiased relative min-h-screen" style={{ color: '#151e20', backgroundColor: '#fffbf7' }}>
+    <div className="antialiased relative min-h-screen overflow-hidden" style={{ color: '#151e20', backgroundColor: '#fffbf7' }}>
       {/* Background decorative elements */}
       <div
-        className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-[600px] h-[600px] rounded-full blur-3xl -z-10"
+        className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-[400px] h-[400px] sm:w-[600px] sm:h-[600px] rounded-full blur-3xl -z-10"
         style={{ backgroundColor: 'rgba(254, 208, 185, 0.3)' }}
       />
       <div
-        className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-[500px] h-[500px] rounded-full blur-3xl -z-10"
+        className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-[350px] h-[350px] sm:w-[500px] sm:h-[500px] rounded-full blur-3xl -z-10"
         style={{ backgroundColor: 'rgba(225, 234, 236, 0.3)' }}
       />
 
       {/* Back button */}
-      <div className="fixed top-6 left-6 z-50">
+      <div className="fixed top-4 left-4 sm:top-6 sm:left-6 z-50">
         <button
           onClick={() => navigate('/login')}
-          className="p-2.5 rounded-xl hover:bg-white/80 flex items-center justify-center transition-all cursor-pointer"
+          className="p-2 sm:p-2.5 rounded-xl hover:bg-white/80 flex items-center justify-center transition-all cursor-pointer"
           style={{ backgroundColor: 'rgba(255, 255, 255, 0.6)', color: '#151e20', backdropFilter: 'blur(8px)' }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)'
@@ -137,45 +208,44 @@ export default function SignUp() {
             e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.6)'
           }}
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
       </div>
 
       {/* Main content */}
-      <div className="flex min-h-screen items-center justify-center px-6 py-12">
+      <div className="flex h-screen items-center justify-center px-4 sm:px-6 overflow-y-auto py-6">
         <div
-          className="w-full max-w-md rounded-2xl p-8 md:p-10"
+          className="w-full max-w-md rounded-2xl p-6 sm:p-8 md:p-10 border-0 lg:border-2 my-auto"
           style={{
             backgroundColor: '#fffbf7',
-            borderWidth: '2px',
             borderColor: '#e7e5e4'
           }}
         >
           {/* Header */}
-          <div className="mb-8 text-center">
-            <div className="flex items-center justify-center mb-6">
+          <div className="mb-6 sm:mb-8 text-center">
+            <div className="flex items-center justify-center mb-4 sm:mb-6">
               <img
                 src="/babybets-logo.png"
                 alt="BabyBets Logo"
-                className="h-12"
+                className="h-10 sm:h-12"
               />
             </div>
             <h1
-              className="text-3xl font-bold mb-3"
+              className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3"
               style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
             >
               Create account
             </h1>
-            <p className="text-base" style={{ color: '#78716c' }}>
+            <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>
               Join babybets and start winning today
             </p>
           </div>
 
           {/* Sign-up form */}
-          <div className="space-y-5">
+          <div className="space-y-4 sm:space-y-5">
             {/* Google Sign-in button */}
             <button
-              className="w-full px-6 py-4 rounded-xl font-bold text-base transition-all cursor-pointer flex items-center justify-center gap-3"
+              className="w-full px-6 py-3 sm:py-4 rounded-xl font-bold text-sm sm:text-base transition-all cursor-pointer flex items-center justify-center gap-2 sm:gap-3"
               style={{
                 backgroundColor: 'transparent',
                 color: '#151e20',
@@ -213,12 +283,12 @@ export default function SignUp() {
             </button>
 
             {/* Divider */}
-            <div className="relative my-6">
+            <div className="relative my-5 sm:my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full" style={{ borderTop: '1px solid #e7e5e4' }}></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase font-bold">
-                <span className="px-3 text-sm" style={{ backgroundColor: '#fffbf7', color: '#78716c' }}>
+                <span className="px-3 text-xs sm:text-sm" style={{ backgroundColor: '#fffbf7', color: '#78716c' }}>
                   Or sign up with email
                 </span>
               </div>
@@ -403,7 +473,7 @@ export default function SignUp() {
 
               <button
                 type="submit"
-                className="w-full px-6 py-4 rounded-xl font-bold text-base transition-all"
+                className="w-full px-6 py-3 sm:py-4 rounded-xl font-bold text-sm sm:text-base transition-all cursor-pointer"
                 style={{
                   backgroundColor: !email || !password || !confirmPassword ? '#d1d5db' : '#496B71',
                   color: 'white',
@@ -425,7 +495,7 @@ export default function SignUp() {
                 {loading ? 'Creating account...' : 'Create account'}
               </button>
 
-              <div className="text-center text-base pt-2">
+              <div className="text-center text-sm sm:text-base pt-2">
                 <span style={{ color: '#78716c' }}>Already have an account? </span>
                 <Link
                   to="/login"
@@ -440,23 +510,23 @@ export default function SignUp() {
             </form>
 
             {/* Terms and Privacy */}
-            <p className="text-xs text-center mt-6" style={{ color: '#78716c' }}>
+            <p className="text-[10px] sm:text-xs text-center mt-5 sm:mt-6 leading-relaxed" style={{ color: '#78716c' }}>
               By creating an account, you agree to our{' '}
-              <a
-                href="/terms"
+              <Link
+                to="/legal/terms"
                 className="font-bold underline cursor-pointer"
                 style={{ color: '#496B71' }}
               >
                 Terms of Service
-              </a>{' '}
+              </Link>{' '}
               and{' '}
-              <a
-                href="/privacy"
+              <Link
+                to="/legal/privacy"
                 className="font-bold underline cursor-pointer"
                 style={{ color: '#496B71' }}
               >
                 Privacy Policy
-              </a>
+              </Link>
               .
             </p>
           </div>

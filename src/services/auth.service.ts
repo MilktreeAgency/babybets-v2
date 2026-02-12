@@ -137,7 +137,7 @@ class AuthService {
     password: string,
     firstName?: string,
     lastName?: string
-  ): Promise<void> {
+  ): Promise<{ requiresEmailConfirmation: boolean }> {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -148,7 +148,7 @@ class AuthService {
             last_name: lastName,
             full_name: firstName && lastName ? `${firstName} ${lastName}` : firstName || email.split('@')[0],
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/verify-email`,
         },
       })
 
@@ -156,6 +156,11 @@ class AuthService {
         console.error('Email sign-up error:', error)
         throw error
       }
+
+      // Check if email confirmation is required
+      // If there's a session immediately, confirmation is disabled
+      // If there's no session, confirmation is required
+      const requiresEmailConfirmation = !data.session
 
       if (data.session?.user) {
         await this.refreshAuth()
@@ -170,6 +175,8 @@ class AuthService {
           // Don't throw - email failure shouldn't block signup
         })
       }
+
+      return { requiresEmailConfirmation }
     } catch (error) {
       console.error('Sign-up error:', error)
       throw error
@@ -178,6 +185,8 @@ class AuthService {
 
   async resetPassword(email: string): Promise<void> {
     try {
+      // Generate reset token and send email via Supabase
+      // NOTE: Customize the email template in Supabase Dashboard > Authentication > Email Templates
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       })
@@ -188,6 +197,22 @@ class AuthService {
       }
     } catch (error) {
       console.error('Password reset error:', error)
+      throw error
+    }
+  }
+
+  async updatePassword(newPassword: string): Promise<void> {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      })
+
+      if (error) {
+        console.error('Password update error:', error)
+        throw error
+      }
+    } catch (error) {
+      console.error('Password update error:', error)
       throw error
     }
   }
