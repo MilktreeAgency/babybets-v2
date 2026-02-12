@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trophy, X, Gift } from 'lucide-react'
+import { X, Gift } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import type { PrizeTemplate } from '@/types'
 

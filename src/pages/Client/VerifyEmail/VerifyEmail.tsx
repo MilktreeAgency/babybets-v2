@@ -6,7 +6,6 @@ import { showErrorToast, showSuccessToast } from '@/lib/toast'
 export default function VerifyEmail() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
-  const [success, setSuccess] = useState(false)
   const [error, setError] = useState(false)
 
   useEffect(() => {
@@ -22,7 +21,6 @@ export default function VerifyEmail() {
         // Check if auth session is valid
         await authService.checkAuth()
 
-        setSuccess(true)
         showSuccessToast('Email verified successfully!')
 
         // Redirect to homepage after 2 seconds

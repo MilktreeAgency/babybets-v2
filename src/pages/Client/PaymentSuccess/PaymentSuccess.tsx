@@ -64,7 +64,7 @@ function PaymentSuccess() {
           user.name,
           {
             orderNumber: data.id.slice(0, 8).toUpperCase(),
-            orderDate: new Date(data.created_at).toLocaleDateString('en-GB', {
+            orderDate: new Date(data.created_at || Date.now()).toLocaleDateString('en-GB', {
               day: 'numeric',
               month: 'long',
               year: 'numeric',
