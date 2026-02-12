@@ -9,7 +9,7 @@ import { processG2PayPayment, parseCardExpiry, validateCardNumber } from '@/lib/
 import { supabase } from '@/lib/supabase'
 import { ShoppingCart, Trash2, Wallet, ShieldCheck, Tag, X, Check, Users } from 'lucide-react'
 import { getReferral, clearReferral, setReferral } from '@/lib/referralTracking'
-import { showErrorToast, showWarningToast, showSuccessToast } from '@/lib/toast'
+import { showErrorToast, showWarningToast } from '@/lib/toast'
 
 function Checkout() {
   const navigate = useNavigate()
@@ -398,8 +398,7 @@ function Checkout() {
 
         // Clear cart and redirect with success indicator
         clearCart()
-        showSuccessToast('Order completed successfully! Your tickets are ready.')
-        navigate('/account?tab=tickets&purchase=success')
+        window.location.href = '/account?tab=tickets&purchase=success'
         return
       }
 
@@ -464,8 +463,7 @@ function Checkout() {
 
         // Clear cart and redirect with success indicator
         clearCart()
-        showSuccessToast('Payment successful! Your tickets are ready.')
-        navigate('/account?tab=tickets&purchase=success')
+        window.location.href = '/account?tab=tickets&purchase=success'
       } else {
         // Payment declined or failed
         throw new Error(paymentResult.message || 'Payment was declined')
@@ -497,6 +495,30 @@ function Checkout() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FFFCF9', color: '#2D251E' }}>
       <Header />
+
+      {/* Processing Modal */}
+      {loading && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div
+            className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4 text-center"
+            style={{ borderWidth: '1px', borderColor: '#e7e5e4' }}
+          >
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 mx-auto mb-6" style={{ borderColor: '#496B71' }}></div>
+            <h3
+              className="text-2xl font-bold mb-3"
+              style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
+            >
+              Processing Payment
+            </h3>
+            <p className="text-sm" style={{ color: '#78716c' }}>
+              Please wait while we securely process your payment...
+            </p>
+            <p className="text-xs mt-4" style={{ color: '#78716c' }}>
+              Do not close this window or press the back button
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="pt-24 pb-16 px-6">
         <div className="max-w-6xl mx-auto">
