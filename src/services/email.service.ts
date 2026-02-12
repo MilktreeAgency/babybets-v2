@@ -1,6 +1,4 @@
-import { supabase } from '@/lib/supabase'
-
-export interface PrizeWinEmailData {
+export interface PrizeWinEmailData extends Record<string, unknown> {
   prizeName: string
   prizeValue?: number
   prizeDescription?: string
@@ -9,7 +7,7 @@ export interface PrizeWinEmailData {
   claimUrl?: string
 }
 
-export interface OrderConfirmationEmailData {
+export interface OrderConfirmationEmailData extends Record<string, unknown> {
   orderNumber: string
   orderDate?: string
   totalTickets: number
@@ -17,13 +15,13 @@ export interface OrderConfirmationEmailData {
   ticketsUrl?: string
 }
 
-export interface WithdrawalRequestEmailData {
+export interface WithdrawalRequestEmailData extends Record<string, unknown> {
   amount: string
   requestDate?: string
   statusUrl?: string
 }
 
-export interface WithdrawalApprovedEmailData {
+export interface WithdrawalApprovedEmailData extends Record<string, unknown> {
   amount: string
   approvedDate?: string
   paymentMethod?: string
@@ -31,7 +29,7 @@ export interface WithdrawalApprovedEmailData {
   statusUrl?: string
 }
 
-export interface CompetitionEndingEmailData {
+export interface CompetitionEndingEmailData extends Record<string, unknown> {
   competitionTitle: string
   prizeName: string
   prizeValue?: number
@@ -40,36 +38,36 @@ export interface CompetitionEndingEmailData {
   competitionUrl?: string
 }
 
-export interface WelcomeEmailData {
+export interface WelcomeEmailData extends Record<string, unknown> {
   welcomeBonus?: string
   competitionsUrl?: string
 }
 
-export interface WithdrawalRejectedEmailData {
+export interface WithdrawalRejectedEmailData extends Record<string, unknown> {
   amount: string
   rejectedDate?: string
   rejectionReason: string
   statusUrl?: string
 }
 
-export interface InfluencerApplicationSubmittedEmailData {
+export interface InfluencerApplicationSubmittedEmailData extends Record<string, unknown> {
   displayName: string
   reviewUrl?: string
 }
 
-export interface InfluencerApprovedEmailData {
+export interface InfluencerApprovedEmailData extends Record<string, unknown> {
   displayName: string
   slug: string
   dashboardUrl?: string
   commissionTier?: number
 }
 
-export interface InfluencerRejectedEmailData {
+export interface InfluencerRejectedEmailData extends Record<string, unknown> {
   displayName: string
   rejectionReason?: string
 }
 
-export interface PrizeFulfillmentUpdateEmailData {
+export interface PrizeFulfillmentUpdateEmailData extends Record<string, unknown> {
   prizeName: string
   status: string
   trackingNumber?: string
@@ -78,7 +76,7 @@ export interface PrizeFulfillmentUpdateEmailData {
   notes?: string
 }
 
-export interface WalletCreditEmailData {
+export interface WalletCreditEmailData extends Record<string, unknown> {
   amount: string
   description: string
   expiryDate: string
