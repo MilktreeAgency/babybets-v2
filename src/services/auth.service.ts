@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
+import { emailService } from '@/services/email.service'
 
 class AuthService {
   private isChecking = false
@@ -156,9 +157,18 @@ class AuthService {
         throw error
       }
 
-      // If email confirmation is disabled, sign in immediately
       if (data.session?.user) {
         await this.refreshAuth()
+
+        // Send welcome email (non-blocking)
+        const fullName = firstName && lastName ? `${firstName} ${lastName}` : firstName || email.split('@')[0]
+
+        emailService.sendWelcomeEmail(email, fullName, {
+          competitionsUrl: `${window.location.origin}/competitions`
+        }).catch(err => {
+          console.error('Failed to send welcome email:', err)
+          // Don't throw - email failure shouldn't block signup
+        })
       }
     } catch (error) {
       console.error('Sign-up error:', error)

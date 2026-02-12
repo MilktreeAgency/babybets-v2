@@ -3,6 +3,7 @@ import { X, AlertCircle, Landmark } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
+import { emailService } from '@/services/email.service'
 
 interface WithdrawalRequestModalProps {
   isOpen: boolean
@@ -192,6 +193,20 @@ export function WithdrawalRequestModal({
       if (error) throw error
 
       toast.success('Withdrawal request submitted successfully')
+
+      // Send withdrawal request confirmation email (non-blocking)
+      emailService.sendWithdrawalRequestEmail(
+        user.email,
+        user.name,
+        {
+          amount: (amountPence / 100).toFixed(2),
+          requestDate: new Date().toLocaleDateString('en-GB'),
+          statusUrl: `${window.location.origin}/account/withdrawals`
+        }
+      ).catch(err => {
+        console.error('Failed to send withdrawal request email:', err)
+        // Don't throw - email failure shouldn't affect user experience
+      })
 
       // Reset form
       setAmount('')

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { authService } from '@/services/auth.service'
+import { emailService } from '@/services/email.service'
 import { useAuthStore } from '@/store/authStore'
 
 export default function AuthCallback() {
@@ -15,7 +16,7 @@ export default function AuthCallback() {
     const handleCallback = async () => {
       try {
         // Handle the OAuth callback
-        const { error } = await supabase.auth.getSession()
+        const { data: sessionData, error } = await supabase.auth.getSession()
 
         if (error) {
           console.error('Auth callback error:', error)
@@ -23,8 +24,28 @@ export default function AuthCallback() {
           return
         }
 
+        const session = sessionData.session
+        const supabaseUser = session?.user
+
+        // Check if this is a new user (account created in last 10 seconds)
+        const isNewUser = supabaseUser && supabaseUser.created_at &&
+          (new Date().getTime() - new Date(supabaseUser.created_at).getTime()) < 10000
+
         // Refresh authentication status
         await authService.refreshAuth()
+
+        // Send welcome email for new OAuth users (non-blocking)
+        if (isNewUser && supabaseUser?.email) {
+          const userName = supabaseUser.user_metadata?.full_name ||
+                          supabaseUser.user_metadata?.name ||
+                          supabaseUser.email.split('@')[0]
+
+          emailService.sendWelcomeEmail(supabaseUser.email, userName, {
+            competitionsUrl: `${window.location.origin}/competitions`
+          }).catch(err => {
+            console.error('Failed to send welcome email:', err)
+          })
+        }
 
         // Get the updated user from the store
         const { user } = useAuthStore.getState()

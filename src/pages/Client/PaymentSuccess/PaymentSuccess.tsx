@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import Header from '@/components/common/Header'
 import { supabase } from '@/lib/supabase'
 import { CheckCircle, Trophy, ArrowRight } from 'lucide-react'
+import { emailService } from '@/services/email.service'
+import { useAuthStore } from '@/store/authStore'
 
 interface OrderDetails {
   id: string
@@ -23,6 +25,7 @@ function PaymentSuccess() {
   const orderId = searchParams.get('orderId')
   const [order, setOrder] = useState<OrderDetails | null>(null)
   const [loading, setLoading] = useState(true)
+  const { user } = useAuthStore()
 
   useEffect(() => {
     if (orderId) {
@@ -51,6 +54,30 @@ function PaymentSuccess() {
 
       if (error) throw error
       setOrder(data as any)
+
+      // Send order confirmation email (non-blocking)
+      if (data && user) {
+        const totalTickets = (data as OrderDetails).items.reduce((sum, item) => sum + item.ticket_count, 0)
+
+        emailService.sendOrderConfirmationEmail(
+          user.email,
+          user.name,
+          {
+            orderNumber: data.id.slice(0, 8).toUpperCase(),
+            orderDate: new Date(data.created_at).toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            }),
+            totalTickets,
+            orderTotal: (data.total_pence / 100).toFixed(2),
+            ticketsUrl: `${window.location.origin}/account/tickets`
+          }
+        ).catch(err => {
+          console.error('Failed to send order confirmation email:', err)
+          // Don't throw - email failure shouldn't affect user experience
+        })
+      }
     } catch (error) {
       console.error('Error loading order:', error)
     } finally {
