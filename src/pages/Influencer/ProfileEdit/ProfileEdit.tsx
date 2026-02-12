@@ -208,11 +208,15 @@ export default function ProfileEdit() {
                 <input
                   type="text"
                   required
+                  maxLength={20}
                   value={formData.display_name}
                   onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
                   className="w-full px-4 py-3 rounded-lg border-2 transition-colors"
                   style={{ borderColor: '#e7e5e4', color: '#151e20' }}
                 />
+                <p className="text-xs mt-1" style={{ color: '#78716c' }}>
+                  {formData.display_name.length}/20 characters
+                </p>
               </div>
 
               <div>
@@ -221,12 +225,16 @@ export default function ProfileEdit() {
                 </label>
                 <textarea
                   rows={5}
+                  maxLength={700}
                   value={formData.page_bio}
                   onChange={(e) => setFormData({ ...formData, page_bio: e.target.value })}
                   placeholder="Longer bio for your public partner page..."
                   className="w-full px-4 py-3 rounded-lg border-2 transition-colors resize-none"
                   style={{ borderColor: '#e7e5e4', color: '#151e20' }}
                 />
+                <p className="text-xs mt-1" style={{ color: '#78716c' }}>
+                  {formData.page_bio.length}/700 characters
+                </p>
               </div>
 
               <div>
@@ -235,12 +243,16 @@ export default function ProfileEdit() {
                 </label>
                 <input
                   type="url"
+                  maxLength={200}
                   value={formData.social_profile_url}
                   onChange={(e) => setFormData({ ...formData, social_profile_url: e.target.value })}
                   placeholder="https://instagram.com/yourprofile"
                   className="w-full px-4 py-3 rounded-lg border-2 transition-colors"
                   style={{ borderColor: '#e7e5e4', color: '#151e20' }}
                 />
+                <p className="text-xs mt-1" style={{ color: '#78716c' }}>
+                  {formData.social_profile_url.length}/200 characters
+                </p>
               </div>
             </div>
 

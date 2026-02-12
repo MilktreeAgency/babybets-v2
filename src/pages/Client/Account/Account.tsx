@@ -1341,6 +1341,7 @@ function Account() {
                         </label>
                         <input
                           type="text"
+                          maxLength={100}
                           value={addressForm.address_line1}
                           onChange={(e) => handleAddressChange('address_line1', e.target.value)}
                           required
@@ -1348,6 +1349,9 @@ function Account() {
                           style={{ borderColor: '#e5e7eb' }}
                           placeholder="123 Main Street"
                         />
+                        <p className="text-xs mt-1" style={{ color: '#999' }}>
+                          {addressForm.address_line1.length}/100 characters
+                        </p>
                       </div>
 
                       <div>
@@ -1356,12 +1360,16 @@ function Account() {
                         </label>
                         <input
                           type="text"
+                          maxLength={100}
                           value={addressForm.address_line2}
                           onChange={(e) => handleAddressChange('address_line2', e.target.value)}
                           className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2"
                           style={{ borderColor: '#e5e7eb' }}
                           placeholder="Apartment, suite, etc. (optional)"
                         />
+                        <p className="text-xs mt-1" style={{ color: '#999' }}>
+                          {addressForm.address_line2.length}/100 characters
+                        </p>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1371,6 +1379,7 @@ function Account() {
                           </label>
                           <input
                             type="text"
+                            maxLength={50}
                             value={addressForm.city}
                             onChange={(e) => handleAddressChange('city', e.target.value)}
                             required
@@ -1378,6 +1387,9 @@ function Account() {
                             style={{ borderColor: '#e5e7eb' }}
                             placeholder="London"
                           />
+                          <p className="text-xs mt-1" style={{ color: '#999' }}>
+                            {addressForm.city.length}/50 characters
+                          </p>
                         </div>
 
                         <div>
@@ -1386,12 +1398,16 @@ function Account() {
                           </label>
                           <input
                             type="text"
+                            maxLength={50}
                             value={addressForm.county}
                             onChange={(e) => handleAddressChange('county', e.target.value)}
                             className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2"
                             style={{ borderColor: '#e5e7eb' }}
                             placeholder="Greater London"
                           />
+                          <p className="text-xs mt-1" style={{ color: '#999' }}>
+                            {addressForm.county.length}/50 characters
+                          </p>
                         </div>
                       </div>
 
@@ -1402,6 +1418,7 @@ function Account() {
                           </label>
                           <input
                             type="text"
+                            maxLength={10}
                             value={addressForm.postcode}
                             onChange={(e) => handleAddressChange('postcode', e.target.value.toUpperCase())}
                             required
@@ -1409,6 +1426,9 @@ function Account() {
                             style={{ borderColor: '#e5e7eb' }}
                             placeholder="SW1A 1AA"
                           />
+                          <p className="text-xs mt-1" style={{ color: '#999' }}>
+                            {addressForm.postcode.length}/10 characters
+                          </p>
                         </div>
 
                         <div>
@@ -1510,12 +1530,16 @@ function Account() {
                           </label>
                           <input
                             type="text"
+                            maxLength={50}
                             value={accountForm.first_name}
                             onChange={(e) => handleAccountChange('first_name', e.target.value)}
                             className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2"
                             style={{ borderColor: '#e5e7eb' }}
                             placeholder="John"
                           />
+                          <p className="text-xs mt-1" style={{ color: '#999' }}>
+                            {accountForm.first_name.length}/50 characters
+                          </p>
                         </div>
 
                         <div>
@@ -1524,12 +1548,16 @@ function Account() {
                           </label>
                           <input
                             type="text"
+                            maxLength={50}
                             value={accountForm.last_name}
                             onChange={(e) => handleAccountChange('last_name', e.target.value)}
                             className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2"
                             style={{ borderColor: '#e5e7eb' }}
                             placeholder="Doe"
                           />
+                          <p className="text-xs mt-1" style={{ color: '#999' }}>
+                            {accountForm.last_name.length}/50 characters
+                          </p>
                         </div>
                       </div>
 
@@ -1539,12 +1567,19 @@ function Account() {
                         </label>
                         <input
                           type="tel"
+                          maxLength={15}
                           value={accountForm.phone}
-                          onChange={(e) => handleAccountChange('phone', e.target.value)}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/[^0-9]/g, '')
+                            handleAccountChange('phone', value)
+                          }}
                           className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2"
                           style={{ borderColor: '#e5e7eb' }}
-                          placeholder="+44 7700 900000"
+                          placeholder="07700900000"
                         />
+                        <p className="text-xs mt-1" style={{ color: '#999' }}>
+                          {accountForm.phone.length}/15 characters (numbers only)
+                        </p>
                       </div>
 
                       <div>

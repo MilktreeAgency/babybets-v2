@@ -355,6 +355,7 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
                 <input
                   type="text"
                   required
+                  maxLength={25}
                   placeholder="Your display name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -363,6 +364,9 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
                   onFocus={(e) => e.currentTarget.style.borderColor = '#496B71'}
                   onBlur={(e) => e.currentTarget.style.borderColor = '#e7e5e4'}
                 />
+                <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#78716c' }}>
+                  {formData.name.length}/25 characters
+                </p>
               </div>
 
               <div>
@@ -397,6 +401,7 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
                 <input
                   type="url"
                   required
+                  maxLength={200}
                   placeholder="https://instagram.com/yourprofile"
                   value={formData.social_profile_url}
                   onChange={(e) => setFormData({ ...formData, social_profile_url: e.target.value })}
@@ -405,6 +410,9 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
                   onFocus={(e) => e.currentTarget.style.borderColor = '#496B71'}
                   onBlur={(e) => e.currentTarget.style.borderColor = '#e7e5e4'}
                 />
+                <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#78716c' }}>
+                  {formData.social_profile_url.length}/200 characters
+                </p>
               </div>
 
               <div>
