@@ -393,7 +393,8 @@ function Checkout() {
 
         if (completeError) {
           console.error('❌ Error completing wallet order:', completeError)
-          throw new Error('Failed to process wallet payment')
+          // Use the actual error message from the database
+          throw new Error(completeError.message || 'Failed to process wallet payment')
         }
 
         // Clear cart and redirect with success indicator
