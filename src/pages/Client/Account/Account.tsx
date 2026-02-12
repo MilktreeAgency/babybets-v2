@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { LogOut, MapPin, User, Bell, LayoutDashboard, X, Save, Wallet, Clock, TrendingUp, Gift, Ticket, Trophy, ChevronDown, ChevronUp, UserCheck, ArrowDownToLine, CheckCircle, XCircle, AlertCircle as AlertCircleIcon } from 'lucide-react'
+import { LogOut, MapPin, User, Bell, LayoutDashboard, X, Save, Wallet, Clock, TrendingUp, Gift, Ticket, Trophy, ChevronDown, ChevronUp, UserCheck, ArrowDownToLine, CheckCircle, XCircle, AlertCircle as AlertCircleIcon, Menu } from 'lucide-react'
 import Header from '@/components/common/Header'
 import { useAuthStore } from '@/store/authStore'
 import { useTickets } from '@/hooks/useTickets'
@@ -9,6 +9,7 @@ import { useWallet } from '@/hooks/useWallet'
 import { usePrizeFulfillments } from '@/hooks/usePrizeFulfillments'
 import { UserPrizeClaimModal } from '@/components/UserPrizeClaimModal'
 import { WithdrawalRequestModal } from '@/components/WithdrawalRequestModal'
+import { WinCelebrationModal } from '@/components/WinCelebrationModal'
 import { authService } from '@/services/auth.service'
 import type { PrizeTemplate } from '@/types'
 import { showErrorToast, showSuccessToast } from '@/lib/toast'
@@ -63,6 +64,9 @@ function Account() {
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false)
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([])
   const [loadingWithdrawals, setLoadingWithdrawals] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [showWinModal, setShowWinModal] = useState(false)
+  const [wonPrize, setWonPrize] = useState<PrizeTemplate | null>(null)
 
   useEffect(() => {
     if (!isLoading && isInitialized && !isAuthenticated) {
@@ -125,6 +129,7 @@ function Account() {
       setActiveSection(section)
       setSearchParams({ tab: section })
     }
+    setIsMobileMenuOpen(false) // Close mobile menu when a section is selected
   }
 
   const confirmLogout = async () => {
@@ -212,6 +217,30 @@ function Account() {
 
   const hasAddress = profile && profile.address_line1 && profile.city && profile.postcode
 
+  // Wrapper function to handle ticket reveal and celebration
+  const handleTicketReveal = async (ticketId: string, showCelebration = true) => {
+    try {
+      const result = await revealTicket(ticketId)
+
+      console.log('Ticket reveal result:', result)
+      console.log('Has prize:', result.hasPrize)
+      console.log('Prize data:', result.prize)
+      console.log('Show celebration:', showCelebration)
+
+      // Show celebration modal if ticket has a prize and showCelebration is true
+      if (result.hasPrize && result.prize && showCelebration) {
+        console.log('Setting prize and showing modal')
+        setWonPrize(result.prize)
+        setShowWinModal(true)
+      }
+
+      return result
+    } catch (error) {
+      console.error('Error revealing ticket:', error)
+      throw error
+    }
+  }
+
   // Bulk reveal all tickets (instant win only) with engaging animations
   const handleRevealAll = async () => {
     if (isBulkRevealing || isRevealing) return
@@ -234,8 +263,8 @@ function Account() {
         // Add suspense delay before reveal
         await new Promise(resolve => setTimeout(resolve, 300))
 
-        // Reveal the ticket
-        await revealTicket(ticket.id)
+        // Reveal the ticket (don't show celebration during bulk reveal)
+        await handleTicketReveal(ticket.id, false)
 
         // Brief pause to show result before moving to next
         await new Promise(resolve => setTimeout(resolve, 800))
@@ -292,12 +321,48 @@ function Account() {
     <div className="antialiased relative h-screen flex flex-col" style={{ color: '#2D251E', backgroundColor: '#fffbf7' }}>
       <Header />
 
-      <div className="flex-1 overflow-y-auto pt-6 pb-8 px-6">
+      <div className="flex-1 overflow-y-auto pt-4 sm:pt-6 pb-6 sm:pb-8 px-4 sm:px-6">
         <div className="max-w-[1300px] mx-auto">
-          <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="lg:hidden fixed bottom-6 right-6 z-40 p-3 sm:p-4 rounded-full shadow-lg cursor-pointer"
+            style={{ backgroundColor: '#335761', color: 'white' }}
+            aria-label="Open navigation menu"
+          >
+            <Menu size={20} className="sm:w-6 sm:h-6" />
+          </button>
+
+          {/* Mobile Menu Backdrop */}
+          {isMobileMenuOpen && (
+            <div
+              className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+          )}
+
+          <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8 lg:items-start">
             {/* Sidebar */}
-            <div className="lg:w-82 shrink-0">
-              <div className="bg-white rounded-xl p-4 lg:sticky lg:top-8">
+            <div className={`
+              lg:w-82 shrink-0
+              fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto
+              w-[280px] sm:w-[320px] lg:w-82
+              transform transition-transform duration-300 ease-in-out lg:transform-none
+              ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            `}>
+              <div className="bg-white rounded-xl p-3 sm:p-4 lg:sticky lg:top-8 h-full lg:h-auto overflow-y-auto">
+                {/* Mobile Menu Close Button */}
+                <div className="lg:hidden flex items-center justify-between mb-3 pb-3 border-b border-gray-200">
+                  <h2 className="text-base sm:text-lg font-bold" style={{ color: '#2D251E' }}>Menu</h2>
+                  <button
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="p-2 rounded-lg hover:bg-gray-100 cursor-pointer"
+                    aria-label="Close menu"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
                 <nav className="space-y-1">
                   {navigationItems.map((item) => {
                     const Icon = item.icon
@@ -306,7 +371,7 @@ function Account() {
                       <button
                         key={item.id}
                         onClick={() => handleSectionChange(item.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-semibold transition-colors text-left cursor-pointer ${
+                        className={`w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-semibold transition-colors text-left cursor-pointer ${
                           item.id === 'logout'
                             ? 'text-red-600 hover:bg-red-50'
                             : isActive
@@ -315,8 +380,8 @@ function Account() {
                         }`}
                         style={isActive && item.id !== 'logout' ? { backgroundColor: '#335761' } : {}}
                       >
-                        <Icon size={18} className="shrink-0" />
-                        <span className="text-sm leading-tight flex-1">{item.label}</span>
+                        <Icon size={16} className="shrink-0 sm:w-[18px] sm:h-[18px]" />
+                        <span className="text-xs sm:text-sm leading-tight flex-1">{item.label}</span>
                         {'badge' in item && item.badge && (
                           <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold rounded-full" style={{ backgroundColor: '#f25100', color: 'white' }}>
                             {item.badge}
@@ -334,11 +399,11 @@ function Account() {
               {activeSection === 'dashboard' && (
                 <div className="space-y-8">
                   {/* Welcome Message */}
-                  <div className="bg-white rounded-xl p-6">
-                    <h1 className="text-3xl font-bold mb-3" style={{ color: '#1a1a1a' }}>
+                  <div className="bg-white rounded-xl p-4 sm:p-5 md:p-6">
+                    <h1 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3" style={{ color: '#1a1a1a' }}>
                       Hello {user?.name || 'User'}
                     </h1>
-                    <p className="text-base" style={{ color: '#666' }}>
+                    <p className="text-sm sm:text-base" style={{ color: '#666' }}>
                       From your account dashboard you can view your tickets, manage your prizes, check your wallet balance, and edit your account details.
                     </p>
                   </div>
@@ -347,45 +412,45 @@ function Account() {
                   {isInfluencer && (
                     <button
                       onClick={() => navigate('/influencer/dashboard')}
-                      className="w-full bg-gradient-to-r from-[#496B71] to-[#335761] rounded-xl p-6 text-white cursor-pointer hover:shadow-xl transition-all text-left"
+                      className="w-full bg-gradient-to-r from-[#496B71] to-[#335761] rounded-xl p-4 sm:p-5 md:p-6 text-white cursor-pointer text-left"
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="p-4 bg-white/20 rounded-full">
-                          <UserCheck size={32} />
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+                        <div className="p-3 sm:p-4 bg-white/20 rounded-full">
+                          <UserCheck size={24} className="sm:w-8 sm:h-8" />
                         </div>
                         <div className="flex-1">
-                          <h2 className="text-2xl font-bold mb-2">Partner Dashboard</h2>
-                          <p className="text-white/90">View your commission stats, sales, referral link, and manage your partner profile</p>
+                          <h2 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Partner Dashboard</h2>
+                          <p className="text-sm sm:text-base text-white/90">View your commission stats, sales, referral link, and manage your partner profile</p>
                         </div>
-                        <div className="text-4xl font-bold">→</div>
+                        <div className="hidden sm:block text-3xl md:text-4xl font-bold">→</div>
                       </div>
                     </button>
                   )}
 
                   {/* Quick Stats */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                     {/* Tickets Card */}
                     <button
                       onClick={() => {
                         setActiveSection('tickets')
                         setSearchParams({ tab: 'tickets' })
                       }}
-                      className="bg-white rounded-xl p-6 text-left hover:shadow-lg transition-shadow cursor-pointer"
+                      className="bg-white rounded-xl p-4 sm:p-5 md:p-6 text-left cursor-pointer"
                     >
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="p-3 rounded-lg" style={{ backgroundColor: '#f0f9ff' }}>
-                          <Ticket size={24} style={{ color: '#335761' }} />
+                      <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                        <div className="p-2 sm:p-3 rounded-lg" style={{ backgroundColor: '#f0f9ff' }}>
+                          <Ticket size={20} className="sm:w-6 sm:h-6" style={{ color: '#335761' }} />
                         </div>
-                        <h3 className="text-xl font-bold" style={{ color: '#1a1a1a' }}>
+                        <h3 className="text-lg sm:text-xl font-bold" style={{ color: '#1a1a1a' }}>
                           My Tickets
                         </h3>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
+                      <div className="space-y-1.5 sm:space-y-2">
+                        <div className="flex items-center justify-between text-sm sm:text-base">
                           <span style={{ color: '#666' }}>Total</span>
                           <span className="font-bold" style={{ color: '#1a1a1a' }}>{tickets.length}</span>
                         </div>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between text-sm sm:text-base">
                           <span style={{ color: '#666' }}>Unrevealed</span>
                           <span className="font-bold text-orange-600">{unrevealedCount}</span>
                         </div>
@@ -398,22 +463,22 @@ function Account() {
                         setActiveSection('prizes')
                         setSearchParams({ tab: 'prizes' })
                       }}
-                      className="bg-white rounded-xl p-6 text-left hover:shadow-lg transition-shadow cursor-pointer"
+                      className="bg-white rounded-xl p-4 sm:p-5 md:p-6 text-left cursor-pointer"
                     >
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="p-3 rounded-lg" style={{ backgroundColor: '#fef3c7' }}>
-                          <Gift size={24} style={{ color: '#f59e0b' }} />
+                      <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                        <div className="p-2 sm:p-3 rounded-lg" style={{ backgroundColor: '#fef3c7' }}>
+                          <Gift size={20} className="sm:w-6 sm:h-6" style={{ color: '#f59e0b' }} />
                         </div>
-                        <h3 className="text-xl font-bold" style={{ color: '#1a1a1a' }}>
+                        <h3 className="text-lg sm:text-xl font-bold" style={{ color: '#1a1a1a' }}>
                           My Prizes
                         </h3>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
+                      <div className="space-y-1.5 sm:space-y-2">
+                        <div className="flex items-center justify-between text-sm sm:text-base">
                           <span style={{ color: '#666' }}>Pending</span>
                           <span className="font-bold text-orange-600">{pendingFulfillments.length}</span>
                         </div>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between text-sm sm:text-base">
                           <span style={{ color: '#666' }}>Completed</span>
                           <span className="font-bold text-green-600">{completedFulfillments.length}</span>
                         </div>
@@ -426,24 +491,24 @@ function Account() {
                         setActiveSection('wallet')
                         setSearchParams({ tab: 'wallet' })
                       }}
-                      className="bg-white rounded-xl p-6 text-left hover:shadow-lg transition-shadow cursor-pointer"
+                      className="bg-white rounded-xl p-4 sm:p-5 md:p-6 text-left cursor-pointer"
                     >
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="p-3 rounded-lg" style={{ backgroundColor: '#dcfce7' }}>
-                          <Wallet size={24} style={{ color: '#22c55e' }} />
+                      <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                        <div className="p-2 sm:p-3 rounded-lg" style={{ backgroundColor: '#dcfce7' }}>
+                          <Wallet size={20} className="sm:w-6 sm:h-6" style={{ color: '#22c55e' }} />
                         </div>
-                        <h3 className="text-xl font-bold" style={{ color: '#1a1a1a' }}>
+                        <h3 className="text-lg sm:text-xl font-bold" style={{ color: '#1a1a1a' }}>
                           My Wallet
                         </h3>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
+                      <div className="space-y-1.5 sm:space-y-2">
+                        <div className="flex items-center justify-between text-sm sm:text-base">
                           <span style={{ color: '#666' }}>Balance</span>
                           <span className="font-bold" style={{ color: '#1a1a1a' }}>
                             £{(summary.availableBalance / 100).toFixed(2)}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between text-sm sm:text-base">
                           <span style={{ color: '#666' }}>Active Credits</span>
                           <span className="font-bold" style={{ color: '#1a1a1a' }}>{credits.length}</span>
                         </div>
@@ -454,201 +519,194 @@ function Account() {
               )}
 
               {activeSection === 'tickets' && (
-                <div className="space-y-6">
-                  {/* Tickets Header */}
-                  <div className="bg-white rounded-xl p-6 mb-6">
-                    <div className="flex items-center gap-3">
-                      <Ticket size={24} style={{ color: '#335761' }} />
-                      <h2 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
-                        My Tickets
-                      </h2>
-                    </div>
-                  </div>
-
-                  {/* All Tickets - Grouped by Competition */}
-                  {tickets.length > 0 && (
-                    <div className="bg-white rounded-xl p-6">
-                      {/* Reveal All Button - Only show if there are unrevealed instant win tickets */}
-                      {unrevealedCount > 0 && (
-                        <div className="mb-6">
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-xl font-bold" style={{ color: '#1a1a1a' }}>
-                              Tap to Reveal
-                            </h3>
-                            <button
-                              onClick={handleRevealAll}
-                              disabled={isBulkRevealing || isRevealing}
-                              className="px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                              style={{ backgroundColor: '#335761' }}
-                            >
-                              {isBulkRevealing ? `Revealing ${revealProgress.current}/${revealProgress.total}...` : `Reveal All (${unrevealedCount})`}
-                            </button>
+                <div className="space-y-3 sm:space-y-4">
+                  {/* Reveal All Section - Only show if there are unrevealed instant win tickets */}
+                  {unrevealedCount > 0 && (
+                    <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-3 sm:p-4 border-2" style={{ borderColor: '#fb923c' }}>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 mb-2">
+                        <div>
+                          <h3 className="text-base sm:text-lg font-bold mb-0.5" style={{ color: '#1a1a1a' }}>
+                            Unrevealed Tickets
+                          </h3>
+                          <p className="text-xs" style={{ color: '#78716c' }}>
+                            You have {unrevealedCount} ticket{unrevealedCount > 1 ? 's' : ''} ready to reveal
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleRevealAll}
+                          disabled={isBulkRevealing || isRevealing}
+                          className="w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm text-white transition-all duration-300 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg"
+                          style={{ backgroundColor: '#f97316' }}
+                        >
+                          {isBulkRevealing ? `Revealing ${revealProgress.current}/${revealProgress.total}...` : `Reveal All (${unrevealedCount})`}
+                        </button>
+                      </div>
+                      {isBulkRevealing && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs sm:text-sm">
+                            <span style={{ color: '#78716c' }}>Progress</span>
+                            <span className="font-bold" style={{ color: '#f97316' }}>
+                              {revealProgress.current} / {revealProgress.total}
+                            </span>
                           </div>
-                          {isBulkRevealing && (
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between text-sm">
-                                <span style={{ color: '#666' }}>Progress</span>
-                                <span className="font-bold" style={{ color: '#335761' }}>
-                                  {revealProgress.current} / {revealProgress.total}
-                                </span>
+                          <div className="w-full h-2 sm:h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: '#fed7aa' }}>
+                            <div
+                              className="h-full transition-all duration-500 rounded-full"
+                              style={{
+                                width: `${(revealProgress.current / revealProgress.total) * 100}%`,
+                                backgroundColor: '#f97316'
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* All Competitions */}
+                  {tickets.length > 0 ? (
+                    <div className="space-y-3">
+                      {groupTicketsByCompetition(tickets).map((group) => (
+                        <div key={group.competitionId} className="bg-white rounded-lg border overflow-hidden" style={{ borderColor: '#e5e7eb' }}>
+                          {/* Competition Header */}
+                          <button
+                            onClick={() => toggleCompetitionExpanded(group.competitionId)}
+                            className="w-full p-3 sm:p-4 border-b transition-colors hover:bg-gray-50 cursor-pointer"
+                            style={{ borderColor: '#f3f4f6', backgroundColor: '#fafafa' }}
+                          >
+                            <div className="flex items-center gap-2 sm:gap-3">
+                              {/* Competition Image */}
+                              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden shrink-0">
+                                {(group.competition?.image_url || (group.competition?.images && group.competition.images.length > 0)) ? (
+                                  <img
+                                    src={group.competition.image_url || group.competition.images![0]}
+                                    alt={group.competition.title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#f5f5f5' }}>
+                                    <Ticket className="size-6 sm:size-8 text-gray-400" />
+                                  </div>
+                                )}
                               </div>
-                              <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#e5e7eb' }}>
-                                <div
-                                  className="h-full transition-all duration-500"
-                                  style={{
-                                    width: `${(revealProgress.current / revealProgress.total) * 100}%`,
-                                    backgroundColor: '#335761'
-                                  }}
-                                />
+                              {/* Competition Details */}
+                              <div className="flex-1 min-w-0 text-left">
+                                <h4 className="font-bold text-sm sm:text-base mb-0.5 truncate" style={{ color: '#1a1a1a' }}>
+                                  {group.competition?.title || 'Competition'}
+                                </h4>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#dbeafe', color: '#1e40af' }}>
+                                    {group.tickets.length} Ticket{group.tickets.length > 1 ? 's' : ''}
+                                  </span>
+                                  {group.competition?.competition_type === 'instant_win' && (
+                                    <span className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#fef3c7', color: '#92400e' }}>
+                                      Instant Win
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {/* Chevron Icon */}
+                              <div className="shrink-0">
+                                {expandedCompetitions.has(group.competitionId) ? (
+                                  <ChevronUp className="size-4 sm:size-5 text-gray-600" />
+                                ) : (
+                                  <ChevronDown className="size-4 sm:size-5 text-gray-600" />
+                                )}
+                              </div>
+                            </div>
+                          </button>
+
+                          {/* Ticket Numbers - Collapsible */}
+                          {expandedCompetitions.has(group.competitionId) && (
+                            <div className="p-2 sm:p-3">
+                              <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5 sm:gap-2">
+                                {group.tickets.map((ticket) => {
+                                  const isUnrevealed = !ticket.is_revealed && ticket.competition?.competition_type === 'instant_win'
+                                  const isRevealing = revealingTicketId === ticket.id
+
+                                  if (isUnrevealed) {
+                                    // Unrevealed instant win ticket
+                                    return (
+                                      <button
+                                        key={ticket.id}
+                                        onClick={() => handleTicketReveal(ticket.id)}
+                                        disabled={isBulkRevealing || isRevealing}
+                                        className={`relative p-1.5 sm:p-2 rounded-md font-bold text-[9px] sm:text-[10px] transition-all duration-300 cursor-pointer ${
+                                          isRevealing
+                                            ? 'ring-1 ring-orange-500 scale-105'
+                                            : ''
+                                        }`}
+                                        style={{
+                                          backgroundColor: '#fff7ed',
+                                          borderWidth: '1px',
+                                          borderColor: '#fb923c',
+                                          color: '#9a3412'
+                                        }}
+                                      >
+                                        <div className="flex flex-col items-center justify-center gap-0.5">
+                                          {isRevealing ? (
+                                            <>
+                                              <div className="animate-spin rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 border border-orange-900 border-t-transparent"></div>
+                                              <span className="text-[8px] sm:text-[9px]">Revealing...</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Ticket className="size-2.5 sm:size-3" />
+                                              <span className="leading-tight">Reveal</span>
+                                            </>
+                                          )}
+                                        </div>
+                                      </button>
+                                    )
+                                  }
+
+                                  // Revealed ticket or standard competition ticket
+                                  return (
+                                    <div
+                                      key={ticket.id}
+                                      className={`relative p-1.5 sm:p-2 rounded-md font-mono font-bold text-[10px] sm:text-xs transition-all flex flex-col items-center justify-center min-h-[32px] sm:min-h-[36px] ${
+                                        ticket.prize_id ? 'ring-1 ring-yellow-400' : ''
+                                      }`}
+                                      style={{
+                                        backgroundColor: ticket.prize_id ? '#fef9c3' : '#f9fafb',
+                                        borderWidth: '1px',
+                                        borderColor: ticket.prize_id ? '#facc15' : '#e5e7eb',
+                                        color: ticket.prize_id ? '#713f12' : '#1f2937'
+                                      }}
+                                    >
+                                      {ticket.prize_id && (
+                                        <div className="absolute -top-0.5 -right-0.5 bg-yellow-400 rounded-full p-0.5">
+                                          <Trophy size={8} className="text-yellow-900" />
+                                        </div>
+                                      )}
+                                      <div className="text-center leading-tight">
+                                        {ticket.ticket_number}
+                                      </div>
+                                      {ticket.prize_id && (
+                                        <div className="text-center text-[7px] sm:text-[8px] font-bold mt-0.5 leading-none" style={{ color: '#854d0e' }}>
+                                          WIN
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })}
                               </div>
                             </div>
                           )}
                         </div>
-                      )}
-
-                      {/* All Competitions */}
-                      <div className="space-y-6">
-                        {groupTicketsByCompetition(tickets).map((group) => {
-                          const isExpanded = expandedCompetitions.has(group.competitionId)
-                          return (
-                            <div key={group.competitionId} className="bg-white rounded-3xl shadow-sm border" style={{ borderColor: '#e5e7eb' }}>
-                              {/* Competition Header - Always Visible */}
-                              <button
-                                onClick={() => toggleCompetitionExpanded(group.competitionId)}
-                                className="w-full p-6 flex flex-col md:flex-row gap-6 text-left hover:bg-gray-50 transition-colors cursor-pointer"
-                              >
-                                {/* Competition Image */}
-                                <div className="w-full md:w-32 h-32 rounded-2xl overflow-hidden shrink-0">
-                                  {(group.competition?.image_url || (group.competition?.images && group.competition.images.length > 0)) ? (
-                                    <img
-                                      src={group.competition.image_url || group.competition.images![0]}
-                                      alt={group.competition.title}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#f5f5f5' }}>
-                                      <Ticket className="size-12 text-gray-400" />
-                                    </div>
-                                  )}
-                                </div>
-                                {/* Competition Details */}
-                                <div className="grow">
-                                  <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                      <h4 className="font-bold text-xl mb-1" style={{ color: '#1a1a1a' }}>
-                                        {group.competition?.title || 'Competition'}
-                                      </h4>
-                                      {group.competition?.competition_type === 'standard' ? (
-                                        <p className="text-sm" style={{ color: '#666' }}>
-                                          {group.tickets.length} ticket{group.tickets.length > 1 ? 's' : ''}
-                                        </p>
-                                      ) : (
-                                        <>
-                                          <p className="text-sm" style={{ color: '#666' }}>
-                                            Purchased on {group.tickets[0].created_at ? new Date(group.tickets[0].created_at).toLocaleDateString() : 'Recently'}
-                                          </p>
-                                          <p className="text-sm mt-1" style={{ color: '#666' }}>
-                                            {group.tickets.length} ticket{group.tickets.length > 1 ? 's' : ''}
-                                          </p>
-                                        </>
-                                      )}
-                                    </div>
-                                    <div className="ml-4">
-                                      {isExpanded ? (
-                                        <ChevronUp className="size-6" style={{ color: '#666' }} />
-                                      ) : (
-                                        <ChevronDown className="size-6" style={{ color: '#666' }} />
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </button>
-
-                              {/* Collapsible Ticket Numbers Section */}
-                              {isExpanded && (
-                                <div className="px-6 pb-6 border-t" style={{ borderColor: '#e5e7eb' }}>
-                                  <div className="pt-6">
-                                    <div className="rounded-xl p-4" style={{ backgroundColor: '#fffbf7' }}>
-                                      <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: '#999' }}>
-                                        Your Ticket Numbers
-                                      </div>
-                                      <div className="flex flex-wrap gap-2">
-                                        {group.tickets.map((ticket) => {
-                                          const isUnrevealed = !ticket.is_revealed && ticket.competition?.competition_type === 'instant_win'
-                                          const isRevealing = revealingTicketId === ticket.id
-
-                                          if (isUnrevealed) {
-                                            // Unrevealed instant win ticket - show "Tap to Reveal" button
-                                            return (
-                                              <button
-                                                key={ticket.id}
-                                                onClick={() => revealTicket(ticket.id)}
-                                                disabled={isBulkRevealing || isRevealing}
-                                                className={`border font-bold px-4 py-2 rounded-lg text-sm shadow-sm flex items-center gap-1.5 transition-all duration-300 cursor-pointer ${
-                                                  isRevealing
-                                                    ? 'ring-4 ring-orange-500 scale-105 bg-orange-100 text-orange-900'
-                                                    : 'bg-orange-50 text-orange-900 hover:bg-orange-100'
-                                                }`}
-                                                style={{
-                                                  borderColor: '#f97316'
-                                                }}
-                                              >
-                                                {isRevealing ? (
-                                                  <>
-                                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-900"></div>
-                                                    Revealing...
-                                                  </>
-                                                ) : (
-                                                  'Tap to Reveal'
-                                                )}
-                                              </button>
-                                            )
-                                          }
-
-                                          // Revealed ticket or standard competition ticket - show ticket number
-                                          return (
-                                            <span
-                                              key={ticket.id}
-                                              className={`border font-mono font-bold px-3 py-1 rounded-lg text-sm shadow-sm flex items-center gap-1.5 cursor-pointer ${
-                                                ticket.prize_id
-                                                  ? 'bg-yellow-100 text-teal-900'
-                                                  : 'bg-white text-teal-900'
-                                              }`}
-                                              style={{
-                                                borderColor: ticket.prize_id ? '#fcd34d' : '#e5e7eb'
-                                              }}
-                                            >
-                                              {ticket.ticket_number}
-                                              {ticket.prize_id && <Trophy size={12} className="text-yellow-600" />}
-                                            </span>
-                                          )
-                                        })}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
+                      ))}
                     </div>
-                  )}
-
-                  {/* No Tickets Message */}
-                  {tickets.length === 0 && (
-                    <div className="bg-white rounded-xl p-6">
-                      <div className="text-center py-12">
-                        <div className="size-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                          <Ticket className="size-8 text-gray-400" />
-                        </div>
-                        <h3 className="text-xl font-bold mb-2" style={{ color: '#1a1a1a' }}>
-                          No Tickets Yet
-                        </h3>
-                        <p style={{ color: '#666' }}>
-                          Purchase tickets to enter competitions and win prizes!
-                        </p>
+                  ) : (
+                    <div className="bg-white rounded-xl p-6 sm:p-8 md:p-12 text-center">
+                      <div className="size-16 sm:size-20 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-5" style={{ backgroundColor: '#f3f4f6' }}>
+                        <Ticket className="size-8 sm:size-10 text-gray-400" />
                       </div>
+                      <h3 className="text-lg sm:text-xl font-bold mb-2" style={{ color: '#1a1a1a' }}>
+                        No Tickets Yet
+                      </h3>
+                      <p className="text-sm sm:text-base mb-4 sm:mb-5" style={{ color: '#666' }}>
+                        Purchase tickets to enter competitions and win prizes!
+                      </p>
                     </div>
                   )}
                 </div>
@@ -657,10 +715,10 @@ function Account() {
               {activeSection === 'prizes' && (
                 <div className="space-y-6">
                   {/* Prizes Header */}
-                  <div className="bg-white rounded-xl p-6">
-                    <div className="flex items-center gap-3 mb-6">
-                      <Gift size={24} style={{ color: '#335761' }} />
-                      <h2 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                  <div className="bg-white rounded-xl p-4 sm:p-5 md:p-6">
+                    <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                      <Gift size={20} className="sm:w-6 sm:h-6" style={{ color: '#335761' }} />
+                      <h2 className="text-xl sm:text-2xl font-bold" style={{ color: '#1a1a1a' }}>
                         My Prizes
                       </h2>
                     </div>
@@ -912,22 +970,23 @@ function Account() {
               {activeSection === 'wallet' && (
                 <div className="space-y-6">
                   {/* Wallet Summary */}
-                  <div className="bg-white rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-3">
-                        <Wallet size={24} style={{ color: '#335761' }} />
-                        <h2 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                  <div className="bg-white rounded-xl p-4 sm:p-5 md:p-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <Wallet size={20} className="sm:w-6 sm:h-6" style={{ color: '#335761' }} />
+                        <h2 className="text-xl sm:text-2xl font-bold" style={{ color: '#1a1a1a' }}>
                           My Wallet
                         </h2>
                       </div>
                       {summary.availableBalance >= 10000 && (
                         <button
                           onClick={() => setShowWithdrawalModal(true)}
-                          className="px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90 cursor-pointer flex items-center gap-2"
+                          className="w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg font-semibold text-sm sm:text-base text-white transition-all duration-300 hover:opacity-90 cursor-pointer flex items-center justify-center gap-2"
                           style={{ backgroundColor: '#335761' }}
                         >
-                          <ArrowDownToLine size={18} />
-                          Request Withdrawal
+                          <ArrowDownToLine size={16} className="sm:w-[18px] sm:h-[18px]" />
+                          <span className="hidden sm:inline">Request Withdrawal</span>
+                          <span className="sm:hidden">Withdraw</span>
                         </button>
                       )}
                     </div>
@@ -1252,18 +1311,18 @@ function Account() {
               )}
 
               {activeSection === 'addresses' && (
-                <div className="bg-white rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <MapPin size={24} style={{ color: '#335761' }} />
-                      <h2 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                <div className="bg-white rounded-xl p-4 sm:p-5 md:p-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <MapPin size={20} className="sm:w-6 sm:h-6" style={{ color: '#335761' }} />
+                      <h2 className="text-xl sm:text-2xl font-bold" style={{ color: '#1a1a1a' }}>
                         Addresses
                       </h2>
                     </div>
                     {hasAddress && !isEditingAddress && (
                       <button
                         onClick={() => setIsEditingAddress(true)}
-                        className="px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90 cursor-pointer"
+                        className="w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg font-semibold text-sm sm:text-base text-white transition-all duration-300 hover:opacity-90 cursor-pointer"
                         style={{ backgroundColor: '#335761' }}
                       >
                         Edit Address
@@ -1423,18 +1482,18 @@ function Account() {
               )}
 
               {activeSection === 'account-details' && (
-                <div className="bg-white rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <User size={24} style={{ color: '#335761' }} />
-                      <h2 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                <div className="bg-white rounded-xl p-4 sm:p-5 md:p-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <User size={20} className="sm:w-6 sm:h-6" style={{ color: '#335761' }} />
+                      <h2 className="text-xl sm:text-2xl font-bold" style={{ color: '#1a1a1a' }}>
                         Account Details
                       </h2>
                     </div>
                     {!isEditingAccount && (
                       <button
                         onClick={() => setIsEditingAccount(true)}
-                        className="px-4 py-2 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90 cursor-pointer"
+                        className="w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg font-semibold text-sm sm:text-base text-white transition-all duration-300 hover:opacity-90 cursor-pointer"
                         style={{ backgroundColor: '#335761' }}
                       >
                         Edit Details
@@ -1570,10 +1629,10 @@ function Account() {
               )}
 
               {activeSection === 'communication' && (
-                <div className="bg-white rounded-xl p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Bell size={24} style={{ color: '#335761' }} />
-                    <h2 className="text-2xl font-bold" style={{ color: '#1a1a1a' }}>
+                <div className="bg-white rounded-xl p-4 sm:p-5 md:p-6">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-4">
+                    <Bell size={20} className="sm:w-6 sm:h-6" style={{ color: '#335761' }} />
+                    <h2 className="text-xl sm:text-2xl font-bold" style={{ color: '#1a1a1a' }}>
                       Communication Preferences
                     </h2>
                   </div>
@@ -1637,32 +1696,32 @@ function Account() {
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
+          <div className="bg-white rounded-xl p-4 sm:p-5 md:p-6 max-w-md w-full shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold" style={{ color: '#1a1a1a' }}>
+              <h2 className="text-lg sm:text-xl font-bold" style={{ color: '#1a1a1a' }}>
                 Confirm Logout
               </h2>
               <button
                 onClick={() => setShowLogoutModal(false)}
                 className="p-1 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
               >
-                <X size={20} style={{ color: '#666' }} />
+                <X size={18} className="sm:w-5 sm:h-5" style={{ color: '#666' }} />
               </button>
             </div>
-            <p className="mb-6" style={{ color: '#666' }}>
+            <p className="mb-4 sm:mb-6 text-sm sm:text-base" style={{ color: '#666' }}>
               Are you sure you want to log out of your account?
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={() => setShowLogoutModal(false)}
-                className="flex-1 py-3 rounded-lg font-semibold transition-all duration-300 cursor-pointer"
+                className="flex-1 py-2.5 sm:py-3 rounded-lg font-semibold text-sm sm:text-base transition-all duration-300 cursor-pointer"
                 style={{ backgroundColor: '#f3f4f6', color: '#1a1a1a' }}
               >
                 Cancel
               </button>
               <button
                 onClick={confirmLogout}
-                className="flex-1 py-3 rounded-lg font-semibold text-white transition-all duration-300 hover:opacity-90 cursor-pointer"
+                className="flex-1 py-2.5 sm:py-3 rounded-lg font-semibold text-sm sm:text-base text-white transition-all duration-300 hover:opacity-90 cursor-pointer"
                 style={{ backgroundColor: '#dc2626' }}
               >
                 Logout
@@ -1696,6 +1755,15 @@ function Account() {
         availableBalance={summary.availableBalance}
         onSuccess={loadWithdrawalRequests}
       />
+
+      {/* Win Celebration Modal */}
+      {wonPrize && (
+        <WinCelebrationModal
+          isOpen={showWinModal}
+          onClose={() => setShowWinModal(false)}
+          prize={wonPrize}
+        />
+      )}
     </div>
   )
 }
