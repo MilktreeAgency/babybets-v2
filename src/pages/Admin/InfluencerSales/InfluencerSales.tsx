@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo } from 'react'
 import { DashboardHeader } from '../components'
-import { DollarSign, CheckCircle, Clock, TrendingUp } from 'lucide-react'
+import { DollarSign, CheckCircle, Clock, TrendingUp, ArrowDownToLine, AlertCircle, Wallet } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { toast } from 'sonner'
 import {
   Select,
   SelectContent,
@@ -9,6 +10,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
 type InfluencerWithSales = {
@@ -41,6 +52,8 @@ type InfluencerRaw = {
 
 export default function InfluencerSales() {
   const [filter, setFilter] = useState<string>('all')
+  const [payingOut, setPayingOut] = useState<Record<string, boolean>>({})
+  const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerWithSales | null>(null)
 
   // Query builder for infinite scroll
   const queryBuilder = useCallback(() => {
@@ -131,6 +144,52 @@ export default function InfluencerSales() {
       case 3: return '20%'
       case 4: return '25%'
       default: return '10%'
+    }
+  }
+
+  const handleOpenPayoutDialog = (influencer: InfluencerWithSales) => {
+    const pendingAmount = influencer.pending_commission_pence + influencer.approved_commission_pence
+
+    if (pendingAmount <= 0) {
+      toast.error('No pending commission to payout')
+      return
+    }
+
+    setSelectedInfluencer(influencer)
+  }
+
+  const handleConfirmPayout = async () => {
+    if (!selectedInfluencer) return
+
+    setPayingOut(prev => ({ ...prev, [selectedInfluencer.id]: true }))
+    setSelectedInfluencer(null)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) {
+        throw new Error('Not authenticated')
+      }
+
+      const { data, error } = await supabase.rpc('payout_influencer_commission', {
+        p_influencer_id: selectedInfluencer.id,
+        p_admin_id: user.id
+      })
+
+      if (error) throw error
+
+      if (data?.success) {
+        toast.success(data.message || 'Commission paid out successfully')
+        // Reload the page to refresh data
+        window.location.reload()
+      } else {
+        toast.error(data?.message || 'Failed to payout commission')
+      }
+    } catch (error) {
+      console.error('Error paying out commission:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to payout commission')
+    } finally {
+      setPayingOut(prev => ({ ...prev, [selectedInfluencer.id]: false }))
     }
   }
 
@@ -259,6 +318,7 @@ export default function InfluencerSales() {
                       <th className="text-left py-4 px-6 font-bold text-xs text-muted-foreground uppercase tracking-wider">Total Earned</th>
                       <th className="text-left py-4 px-6 font-bold text-xs text-muted-foreground uppercase tracking-wider">Pending</th>
                       <th className="text-left py-4 px-6 font-bold text-xs text-muted-foreground uppercase tracking-wider">Paid Out</th>
+                      <th className="text-left py-4 px-6 font-bold text-xs text-muted-foreground uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -328,6 +388,30 @@ export default function InfluencerSales() {
                             £{(influencer.paid_commission_pence / 100).toFixed(2)}
                           </div>
                         </td>
+                        <td className="py-4 px-6">
+                          {(influencer.pending_commission_pence > 0 || influencer.approved_commission_pence > 0) ? (
+                            <button
+                              onClick={() => handleOpenPayoutDialog(influencer)}
+                              disabled={payingOut[influencer.id]}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-admin-success-bg text-admin-success-fg hover:bg-admin-success-bg/80 font-semibold text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                              title={`Payout £${((influencer.pending_commission_pence + influencer.approved_commission_pence) / 100).toFixed(2)} as site credit`}
+                            >
+                              {payingOut[influencer.id] ? (
+                                <>
+                                  <div className="size-3 border-2 border-admin-success-fg/30 border-t-admin-success-fg rounded-full animate-spin"></div>
+                                  <span>Paying...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ArrowDownToLine className="size-3.5" />
+                                  <span>Payout</span>
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No pending</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -358,6 +442,72 @@ export default function InfluencerSales() {
           )}
         </div>
       </div>
+
+      {/* Payout Confirmation Dialog */}
+      <AlertDialog open={!!selectedInfluencer} onOpenChange={(open) => !open && setSelectedInfluencer(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-admin-success-bg/20">
+                <Wallet className="size-5 text-admin-success-fg" />
+              </div>
+              <AlertDialogTitle className="text-xl">Confirm Commission Payout</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Partner:</span>
+                    <span className="font-semibold text-foreground">{selectedInfluencer?.display_name}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Email:</span>
+                    <span className="font-medium text-foreground text-sm">{selectedInfluencer?.email}</span>
+                  </div>
+                  <div className="border-t border-border pt-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-muted-foreground">Pending:</span>
+                      <span className="font-medium text-foreground">
+                        £{((selectedInfluencer?.pending_commission_pence || 0) / 100).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-muted-foreground">Approved:</span>
+                      <span className="font-medium text-foreground">
+                        £{((selectedInfluencer?.approved_commission_pence || 0) / 100).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-border">
+                      <span className="font-semibold text-foreground">Total Payout:</span>
+                      <span className="text-xl font-bold text-admin-success-fg">
+                        £{(((selectedInfluencer?.pending_commission_pence || 0) + (selectedInfluencer?.approved_commission_pence || 0)) / 100).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2 text-sm">
+                  <AlertCircle className="size-4 text-admin-info-fg mt-0.5 shrink-0" />
+                  <p className="text-muted-foreground">
+                    This will transfer the commission as <strong className="text-foreground">site credit</strong> to the partner's wallet.
+                    They can then request a withdrawal through the standard withdrawal process.
+                  </p>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmPayout}
+              className="bg-admin-success-bg text-admin-success-fg hover:bg-admin-success-bg/90 cursor-pointer"
+            >
+              <ArrowDownToLine className="size-4 mr-2" />
+              Confirm Payout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
