@@ -144,7 +144,7 @@ export default function SignIn() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
-                  className="w-full px-4 py-3 rounded-xl text-base transition-all cursor-pointer"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-all cursor-pointer"
                   style={{
                     borderWidth: '2px',
                     borderColor: '#e7e5e4',
@@ -174,7 +174,7 @@ export default function SignIn() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full px-4 py-3 pr-12 rounded-xl text-base transition-all cursor-pointer"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 pr-10 sm:pr-12 rounded-xl text-sm sm:text-base transition-all cursor-pointer"
                     style={{
                       borderWidth: '2px',
                       borderColor: '#e7e5e4',
@@ -194,13 +194,13 @@ export default function SignIn() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
+                    className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 cursor-pointer"
                     style={{ color: '#78716c' }}
                     tabIndex={-1}
                     onMouseEnter={(e) => e.currentTarget.style.color = '#151e20'}
                     onMouseLeave={(e) => e.currentTarget.style.color = '#78716c'}
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </button>
                 </div>
               </div>
@@ -415,7 +415,7 @@ export default function SignIn() {
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       placeholder="Enter your email"
-                      className="w-full px-4 py-3 rounded-xl text-sm sm:text-base transition-all cursor-pointer"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-all cursor-pointer"
                       style={{
                         borderWidth: '2px',
                         borderColor: '#e7e5e4',

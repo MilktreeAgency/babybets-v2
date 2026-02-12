@@ -307,7 +307,7 @@ export default function SignUp() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="John"
-                    className="w-full px-4 py-3 rounded-xl text-base transition-all cursor-pointer"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-all cursor-pointer"
                     style={{
                       borderWidth: '2px',
                       borderColor: '#e7e5e4',
@@ -335,7 +335,7 @@ export default function SignUp() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="Doe"
-                    className="w-full px-4 py-3 rounded-xl text-base transition-all cursor-pointer"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-all cursor-pointer"
                     style={{
                       borderWidth: '2px',
                       borderColor: '#e7e5e4',
@@ -365,7 +365,7 @@ export default function SignUp() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="john@example.com"
-                  className="w-full px-4 py-3 rounded-xl text-base transition-all cursor-pointer"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-all cursor-pointer"
                   style={{
                     borderWidth: '2px',
                     borderColor: '#e7e5e4',
@@ -396,7 +396,7 @@ export default function SignUp() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="At least 6 characters"
-                    className="w-full px-4 py-3 pr-12 rounded-xl text-base transition-all cursor-pointer"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 pr-10 sm:pr-12 rounded-xl text-sm sm:text-base transition-all cursor-pointer"
                     style={{
                       borderWidth: '2px',
                       borderColor: '#e7e5e4',
@@ -417,13 +417,13 @@ export default function SignUp() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
+                    className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 cursor-pointer"
                     style={{ color: '#78716c' }}
                     tabIndex={-1}
                     onMouseEnter={(e) => e.currentTarget.style.color = '#151e20'}
                     onMouseLeave={(e) => e.currentTarget.style.color = '#78716c'}
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </button>
                 </div>
               </div>
@@ -439,7 +439,7 @@ export default function SignUp() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter password"
-                    className="w-full px-4 py-3 pr-12 rounded-xl text-base transition-all cursor-pointer"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 pr-10 sm:pr-12 rounded-xl text-sm sm:text-base transition-all cursor-pointer"
                     style={{
                       borderWidth: '2px',
                       borderColor: '#e7e5e4',
@@ -460,13 +460,13 @@ export default function SignUp() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer"
+                    className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 cursor-pointer"
                     style={{ color: '#78716c' }}
                     tabIndex={-1}
                     onMouseEnter={(e) => e.currentTarget.style.color = '#151e20'}
                     onMouseLeave={(e) => e.currentTarget.style.color = '#78716c'}
                   >
-                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </button>
                 </div>
               </div>

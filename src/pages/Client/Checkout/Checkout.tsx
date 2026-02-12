@@ -520,20 +520,20 @@ function Checkout() {
         </div>
       )}
 
-      <div className="pt-24 pb-16 px-6">
+      <div className="pt-20 sm:pt-24 pb-12 sm:pb-16 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
           <h1
-            className="text-4xl font-bold mb-10"
+            className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8 md:mb-10"
             style={{ color: '#151e20', fontFamily: "'Fraunces', serif" }}
           >
             Secure Checkout
           </h1>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 md:gap-12">
             {/* Order Summary - Left Column */}
-            <div className="order-2 lg:order-1 space-y-6">
+            <div className="order-2 lg:order-1 space-y-4 sm:space-y-6">
               <div
-                className="p-8 rounded-2xl shadow-sm"
+                className="p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm"
                 style={{
                   backgroundColor: 'white',
                   borderWidth: '1px',
@@ -541,51 +541,51 @@ function Checkout() {
                 }}
               >
                 <h2
-                  className="text-xl font-bold mb-8 flex items-center gap-2"
+                  className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 md:mb-8 flex items-center gap-2"
                   style={{ color: '#151e20', fontFamily: "'Fraunces', serif" }}
                 >
-                  <ShoppingCart className="size-5" />
+                  <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
                   Your Order{' '}
-                  <span className="text-sm font-normal" style={{ color: '#78716c' }}>
+                  <span className="text-xs sm:text-sm font-normal" style={{ color: '#78716c' }}>
                     ({items.length} {items.length === 1 ? 'item' : 'items'})
                   </span>
                 </h2>
 
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   {items.map((item) => (
-                    <div key={item.competitionId} className="flex gap-4 items-start">
+                    <div key={item.competitionId} className="flex gap-3 sm:gap-4 items-start">
                       <img
                         src={item.imageUrl}
                         alt={item.competitionTitle}
-                        className="w-24 h-24 rounded-xl object-cover"
+                        className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg sm:rounded-xl object-cover shrink-0"
                         style={{ backgroundColor: '#f5f5f4' }}
                       />
-                      <div className="grow pt-1">
+                      <div className="grow pt-0.5 sm:pt-1 min-w-0">
                         <h3
-                          className="font-bold leading-tight mb-2 text-lg"
+                          className="font-bold leading-tight mb-1.5 sm:mb-2 text-sm sm:text-base md:text-lg line-clamp-2"
                           style={{ color: '#151e20' }}
                         >
                           {item.competitionTitle}
                         </h3>
                         <span
-                          className="text-sm font-bold inline-block px-2 py-1 rounded-md"
+                          className="text-xs sm:text-sm font-bold inline-block px-2 py-0.5 sm:py-1 rounded-md"
                           style={{ backgroundColor: '#e1eaec', color: '#496B71' }}
                         >
                           {item.quantity} Tickets
                         </span>
                       </div>
-                      <div className="text-right pt-1">
-                        <p className="font-bold text-lg" style={{ color: '#151e20' }}>
+                      <div className="text-right pt-0.5 sm:pt-1 shrink-0">
+                        <p className="font-bold text-base sm:text-lg" style={{ color: '#151e20' }}>
                           £{item.totalPrice.toFixed(2)}
                         </p>
                         <button
                           onClick={() => removeItem(item.competitionId)}
-                          className="transition-colors mt-3 cursor-pointer"
+                          className="transition-colors mt-2 sm:mt-3 cursor-pointer"
                           style={{ color: '#d1d5db' }}
                           onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
                           onMouseLeave={(e) => (e.currentTarget.style.color = '#d1d5db')}
                         >
-                          <Trash2 size={18} />
+                          <Trash2 className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                         </button>
                       </div>
                     </div>
@@ -594,11 +594,11 @@ function Checkout() {
 
                 {/* Promotional Code Section */}
                 <div
-                  className="mt-8 pt-8"
+                  className="mt-6 sm:mt-8 pt-6 sm:pt-8"
                   style={{ borderTopWidth: '1px', borderColor: '#e7e5e4' }}
                 >
                   <label
-                    className="block text-xs font-bold uppercase tracking-wider mb-2"
+                    className="block text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2"
                     style={{ color: '#78716c' }}
                   >
                     Promotional Code
@@ -606,20 +606,20 @@ function Checkout() {
 
                   {appliedPromoCode ? (
                     <div
-                      className="flex justify-between items-center p-4 rounded-xl"
+                      className="flex justify-between items-center p-3 sm:p-4 rounded-xl"
                       style={{
                         backgroundColor: '#e1eaec',
                         borderWidth: '1px',
                         borderColor: '#496B71',
                       }}
                     >
-                      <div className="flex items-center gap-2">
-                        <Tag size={16} style={{ color: '#496B71' }} />
-                        <span className="font-bold" style={{ color: '#151e20' }}>
+                      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                        <Tag className="w-4 h-4 shrink-0" style={{ color: '#496B71' }} />
+                        <span className="font-bold text-sm sm:text-base truncate" style={{ color: '#151e20' }}>
                           {appliedPromoCode}
                         </span>
                         <span
-                          className="text-xs px-2 py-0.5 rounded-full font-bold"
+                          className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0"
                           style={{ backgroundColor: '#496B71', color: 'white' }}
                         >
                           {promoCodeType === 'percentage'
@@ -630,12 +630,12 @@ function Checkout() {
                       </div>
                       <button
                         onClick={handleRemovePromoCode}
-                        className="transition-colors cursor-pointer"
+                        className="transition-colors cursor-pointer shrink-0 ml-2"
                         style={{ color: '#78716c' }}
                         onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
                         onMouseLeave={(e) => (e.currentTarget.style.color = '#78716c')}
                       >
-                        <X size={18} />
+                        <X className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                       </button>
                     </div>
                   ) : (
@@ -652,7 +652,7 @@ function Checkout() {
                           }
                         }}
                         placeholder="Enter code"
-                        className="grow p-3 rounded-xl focus:ring-2 focus:outline-none uppercase font-medium placeholder:normal-case"
+                        className="grow p-2.5 sm:p-3 text-sm sm:text-base rounded-xl focus:ring-2 focus:outline-none uppercase font-medium placeholder:normal-case"
                         style={{
                           backgroundColor: '#f5f5f4',
                           borderWidth: '1px',
@@ -662,7 +662,7 @@ function Checkout() {
                       />
                       <button
                         onClick={handleApplyPromoCode}
-                        className="px-6 rounded-lg transition-colors cursor-pointer font-bold"
+                        className="px-4 sm:px-6 text-sm sm:text-base rounded-lg transition-colors cursor-pointer font-bold"
                         style={{
                           backgroundColor: 'white',
                           borderWidth: '1px',
@@ -686,11 +686,11 @@ function Checkout() {
 
                 {/* Partner Code Section */}
                 <div
-                  className="mt-8 pt-8"
+                  className="mt-6 sm:mt-8 pt-6 sm:pt-8"
                   style={{ borderTopWidth: '1px', borderColor: '#e7e5e4' }}
                 >
                   <label
-                    className="block text-xs font-bold uppercase tracking-wider mb-2"
+                    className="block text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2"
                     style={{ color: '#78716c' }}
                   >
                     Partner Code
@@ -698,42 +698,42 @@ function Checkout() {
 
                   {activeReferral ? (
                     <div
-                      className="flex justify-between items-start p-4 rounded-xl"
+                      className="flex justify-between items-start p-3 sm:p-4 rounded-xl"
                       style={{
                         backgroundColor: '#e1eaec',
                         borderWidth: '1px',
                         borderColor: '#496B71',
                       }}
                     >
-                      <div className="flex items-start gap-3 flex-1">
+                      <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
                         <div
-                          className="p-2 rounded-lg"
+                          className="p-1.5 sm:p-2 rounded-lg shrink-0"
                           style={{ backgroundColor: '#496B71' }}
                         >
-                          <Users size={20} className="text-white" />
+                          <Users className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <a
                             href={`/partner/${activeReferral.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="font-bold text-base mb-1 hover:underline cursor-pointer inline-block"
+                            className="font-bold text-sm sm:text-base mb-1 hover:underline cursor-pointer inline-block truncate max-w-full"
                             style={{ color: '#496B71' }}
                           >
                             {activeReferral.displayName || activeReferral.slug}
                           </a>
-                          <p className="text-xs leading-relaxed mt-1" style={{ color: '#78716c' }}>
+                          <p className="text-[10px] sm:text-xs leading-relaxed mt-1" style={{ color: '#78716c' }}>
                             Shopping with code <span className="font-bold">{activeReferral.slug}</span>. They'll earn a commission on your purchase at no extra cost to you.
                           </p>
                         </div>
                       </div>
                       <button
                         onClick={handleRemoveInfluencerCode}
-                        className="ml-2 p-2 hover:bg-white/50 rounded-lg transition-colors cursor-pointer shrink-0"
+                        className="ml-2 p-1.5 sm:p-2 hover:bg-white/50 rounded-lg transition-colors cursor-pointer shrink-0"
                         style={{ color: '#78716c' }}
                         title="Remove code"
                       >
-                        <X size={18} />
+                        <X className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                       </button>
                     </div>
                   ) : (
@@ -751,7 +751,7 @@ function Checkout() {
                             }
                           }}
                           placeholder="Enter partner code"
-                          className="grow p-3 rounded-xl focus:ring-2 focus:outline-none lowercase font-medium placeholder:normal-case"
+                          className="grow p-2.5 sm:p-3 text-sm sm:text-base rounded-xl focus:ring-2 focus:outline-none lowercase font-medium placeholder:normal-case"
                           style={{
                             backgroundColor: '#f5f5f4',
                             borderWidth: '1px',
@@ -763,7 +763,7 @@ function Checkout() {
                         <button
                           onClick={handleApplyInfluencerCode}
                           disabled={checkingCode}
-                          className="px-6 rounded-lg transition-colors cursor-pointer font-bold disabled:opacity-50"
+                          className="px-4 sm:px-6 text-sm sm:text-base rounded-lg transition-colors cursor-pointer font-bold disabled:opacity-50"
                           style={{
                             backgroundColor: 'white',
                             borderWidth: '1px',
@@ -784,7 +784,7 @@ function Checkout() {
                           {checkingCode ? 'Checking...' : 'Apply'}
                         </button>
                       </div>
-                      <p className="text-xs mt-2" style={{ color: '#78716c' }}>
+                      <p className="text-[10px] sm:text-xs mt-2" style={{ color: '#78716c' }}>
                         Have a partner code? Enter it here to support your favorite influencer.
                       </p>
                     </>
