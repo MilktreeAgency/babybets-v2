@@ -530,8 +530,8 @@ export default function Withdrawals() {
                           {withdrawal.bank_account_name || 'N/A'}
                         </p>
                         <div className="flex items-center gap-4 text-muted-foreground">
-                          <span>Sort Code: {maskSortCode(withdrawal.bank_sort_code)}</span>
-                          <span>Account: {maskAccountNumber(withdrawal.bank_account_number)}</span>
+                          <span>Sort Code: {withdrawal.bank_sort_code || 'N/A'}</span>
+                          <span>Account: {withdrawal.bank_account_number || 'N/A'}</span>
                         </div>
                       </div>
                     </div>

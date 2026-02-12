@@ -95,7 +95,7 @@ export default function Fulfillments() {
         ),
         competition:competitions!competition_id(title)
       `)
-      .order('created_at', { ascending: false })
+      .order('updated_at', { ascending: false })
 
     if (statusFilter !== 'all') {
       query = query.eq('status', statusFilter as FulfillmentStatus)
@@ -305,6 +305,7 @@ export default function Fulfillments() {
       await refresh()
       await refreshCounts()
       await fetchStatusCounts()
+      console.log('Cash alternative approved, closing modal')
       setDetailsOpen(false)
     } catch (error) {
       console.error('Error approving cash alternative:', error)
@@ -319,6 +320,7 @@ export default function Fulfillments() {
     newStatus: FulfillmentStatus,
     trackingNumber?: string
   ) => {
+    console.log('handleUpdateStatus called with status:', newStatus)
     try {
       setProcessingId(id)
       const updates: Partial<PrizeFulfillment> = {
@@ -376,11 +378,25 @@ export default function Fulfillments() {
 
       // Close details dialog if the fulfillment is completed
       if (newStatus === 'completed') {
+        console.log('Closing modal because status is completed')
         setDetailsOpen(false)
         showSuccessToast('Fulfillment marked as completed')
-      } else if (selectedFulfillment?.id === id) {
-        const updated = fulfillments.find(f => f.id === id)
-        if (updated) setSelectedFulfillment(updated)
+      } else {
+        console.log('Status is not completed, keeping modal open')
+        if (selectedFulfillment?.id === id) {
+          // Update the selected fulfillment with the new status immediately
+          console.log('Updating selectedFulfillment with new status:', newStatus)
+          const updatedFulfillment = {
+            ...selectedFulfillment,
+            status: newStatus,
+            updated_at: updates.updated_at,
+            ...(newStatus === 'dispatched' && trackingNumber ? { tracking_number: trackingNumber, dispatched_at: updates.dispatched_at } : {}),
+            ...(newStatus === 'dispatched' && !trackingNumber ? { dispatched_at: updates.dispatched_at } : {}),
+            ...(newStatus === 'delivered' ? { delivered_at: updates.delivered_at } : {})
+          }
+          console.log('Updated fulfillment:', updatedFulfillment)
+          setSelectedFulfillment(updatedFulfillment)
+        }
       }
     } catch (error) {
       console.error('Error updating fulfillment status:', error)
@@ -462,6 +478,7 @@ export default function Fulfillments() {
   }
 
   const openDetails = (fulfillment: FulfillmentWithDetails) => {
+    console.log('Opening fulfillment details modal for:', fulfillment.id)
     setSelectedFulfillment(fulfillment)
     setDetailsOpen(true)
   }
@@ -749,15 +766,22 @@ export default function Fulfillments() {
       </div>
 
       {/* Details Dialog */}
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={detailsOpen} onOpenChange={(open) => {
+        console.log('Dialog onOpenChange called with:', open)
+        setDetailsOpen(open)
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0">
           {selectedFulfillment && (
             <>
-              <DialogHeader>
-                <DialogTitle className="text-xl">Fulfillment Details</DialogTitle>
-              </DialogHeader>
+              {/* Fixed Header */}
+              <div className="shrink-0 px-6 pt-6 pb-4 border-b border-gray-200">
+                <DialogHeader>
+                  <DialogTitle className="text-xl">Fulfillment Details</DialogTitle>
+                </DialogHeader>
+              </div>
 
-              <div className="space-y-6">
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
                 {/* User Information */}
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                   <h4 className="font-semibold mb-3 flex items-center gap-2 text-gray-900">
@@ -999,19 +1023,24 @@ export default function Fulfillments() {
                     </p>
                   </div>
                 )}
+              </div>
 
-                {/* Actions */}
-                <div className="flex gap-2 flex-wrap pt-4 border-t border-gray-200">
+              {/* Fixed Footer - Actions */}
+              <div className="shrink-0 px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg">
+                <div className="flex gap-2 flex-wrap">
                   {/* Cash Prize - Simple Paid button */}
                   {selectedFulfillment.prize_type === 'Cash' && selectedFulfillment.status !== 'completed' && (
                     <Button
-                      onClick={() => {
+                      onClick={(e) => {
+                        console.log('Mark as Paid button clicked')
+                        e.stopPropagation()
                         setConfirmDialog({
                           open: true,
                           title: 'Mark as Paid',
                           description: `Mark £${selectedFulfillment.prize_value_gbp?.toFixed(2)} cash prize as paid for ${selectedFulfillment.user_email}?`,
                           confirmText: 'Mark as Paid',
                           onConfirm: async () => {
+                            console.log('Confirming mark as paid')
                             setConfirmDialog(prev => ({ ...prev, open: false }))
                             await handleUpdateStatus(selectedFulfillment.id, 'completed')
                           }
@@ -1036,7 +1065,11 @@ export default function Fulfillments() {
                     selectedFulfillment.status === 'prize_selected' &&
                     (selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize') && (
                       <Button
-                        onClick={() => handleUpdateStatus(selectedFulfillment.id, 'processing')}
+                        onClick={(e) => {
+                          console.log('Start Processing button clicked')
+                          e.stopPropagation()
+                          handleUpdateStatus(selectedFulfillment.id, 'processing')
+                        }}
                         disabled={processingId === selectedFulfillment.id}
                         className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer disabled:opacity-50"
                       >
@@ -1054,7 +1087,9 @@ export default function Fulfillments() {
                     selectedFulfillment.prize_type !== 'Voucher' &&
                     selectedFulfillment.prize_type !== 'GiftCard' && (
                       <Button
-                        onClick={() => {
+                        onClick={(e) => {
+                          console.log('Mark Dispatched button clicked')
+                          e.stopPropagation()
                           setTrackingNumberInput('')
                           setTrackingDialogOpen(true)
                         }}
@@ -1071,7 +1106,9 @@ export default function Fulfillments() {
                     (selectedFulfillment.status === 'prize_selected' || selectedFulfillment.status === 'processing') &&
                     (selectedFulfillment.choice === 'physical' || selectedFulfillment.choice === 'prize') && (
                       <Button
-                        onClick={() => {
+                        onClick={(e) => {
+                          console.log('Provide Voucher Code button clicked')
+                          e.stopPropagation()
                           setVoucherCodeInput('')
                           setVoucherDescriptionInput('')
                           setVoucherDialogOpen(true)
@@ -1094,13 +1131,16 @@ export default function Fulfillments() {
                     selectedFulfillment.choice === 'cash' &&
                     user?.id && (
                       <Button
-                        onClick={() => {
+                        onClick={(e) => {
+                          console.log('Approve Wallet Credit button clicked')
+                          e.stopPropagation()
                           setConfirmDialog({
                             open: true,
                             title: 'Approve Wallet Credit',
                             description: `Add £${selectedFulfillment.prize_value_gbp?.toFixed(2)} to ${selectedFulfillment.user_email}'s wallet?`,
                             confirmText: 'Approve',
                             onConfirm: async () => {
+                              console.log('Confirming wallet credit approval')
                               setConfirmDialog(prev => ({ ...prev, open: false }))
                               if (user?.id) {
                                 await handleApproveCashAlternative(selectedFulfillment.id, user.id)
@@ -1122,7 +1162,11 @@ export default function Fulfillments() {
 
                   {selectedFulfillment.prize_type !== 'Cash' && selectedFulfillment.status === 'dispatched' && (
                     <Button
-                      onClick={() => handleUpdateStatus(selectedFulfillment.id, 'delivered')}
+                      onClick={(e) => {
+                        console.log('Mark Delivered button clicked')
+                        e.stopPropagation()
+                        handleUpdateStatus(selectedFulfillment.id, 'delivered')
+                      }}
                       disabled={processingId === selectedFulfillment.id}
                       className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer disabled:opacity-50"
                     >
@@ -1137,7 +1181,11 @@ export default function Fulfillments() {
 
                   {selectedFulfillment.prize_type !== 'Cash' && selectedFulfillment.status === 'delivered' && (
                     <Button
-                      onClick={() => handleUpdateStatus(selectedFulfillment.id, 'completed')}
+                      onClick={(e) => {
+                        console.log('Complete button clicked')
+                        e.stopPropagation()
+                        handleUpdateStatus(selectedFulfillment.id, 'completed')
+                      }}
                       disabled={processingId === selectedFulfillment.id}
                       className="bg-gray-900 hover:bg-gray-800 text-white cursor-pointer disabled:opacity-50"
                     >
@@ -1166,14 +1214,20 @@ export default function Fulfillments() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setConfirmDialog({ ...confirmDialog, open: false })}
+              onClick={(e) => {
+                console.log('Confirm dialog Cancel clicked')
+                e.stopPropagation()
+                setConfirmDialog({ ...confirmDialog, open: false })
+              }}
               className="cursor-pointer"
               disabled={confirmDialog.loading}
             >
               Cancel
             </Button>
             <Button
-              onClick={async () => {
+              onClick={async (e) => {
+                console.log('Confirm dialog Confirm clicked')
+                e.stopPropagation()
                 setConfirmDialog(prev => ({ ...prev, loading: true }))
                 try {
                   await confirmDialog.onConfirm()
@@ -1221,7 +1275,8 @@ export default function Fulfillments() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation()
                 setTrackingDialogOpen(false)
                 setTrackingNumberInput('')
               }}
@@ -1230,7 +1285,8 @@ export default function Fulfillments() {
               Cancel
             </Button>
             <Button
-              onClick={async () => {
+              onClick={async (e) => {
+                e.stopPropagation()
                 if (trackingNumberInput.trim() && selectedFulfillment) {
                   setTrackingDialogOpen(false)
                   await handleUpdateStatus(selectedFulfillment.id, 'dispatched', trackingNumberInput.trim())
@@ -1286,7 +1342,8 @@ export default function Fulfillments() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation()
                 setVoucherDialogOpen(false)
                 setVoucherCodeInput('')
                 setVoucherDescriptionInput('')
@@ -1296,7 +1353,8 @@ export default function Fulfillments() {
               Cancel
             </Button>
             <Button
-              onClick={async () => {
+              onClick={async (e) => {
+                e.stopPropagation()
                 if (voucherCodeInput.trim() && selectedFulfillment) {
                   setVoucherDialogOpen(false)
                   await handleProvideVoucherCode(

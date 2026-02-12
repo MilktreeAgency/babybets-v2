@@ -18,7 +18,7 @@ export default function KPICard({
   const isPositive = change !== undefined && change >= 0
 
   return (
-    <div className="bg-admin-card-bg border border-border rounded-lg p-6 hover:shadow-md transition-shadow">
+    <div className="bg-admin-card-bg border border-border rounded-lg p-6">
       <div className="flex flex-col">
         <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
         {loading ? (

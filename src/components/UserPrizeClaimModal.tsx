@@ -45,8 +45,10 @@ export function UserPrizeClaimModal({
   const needsDeliveryAddress = prize.type === 'Physical' && selectedChoice === 'prize'
 
   const handleSubmit = async () => {
+    console.log('handleSubmit clicked')
     // For physical prizes, show address form first
     if (needsDeliveryAddress && !showAddressForm) {
+      console.log('Showing address form')
       setShowAddressForm(true)
       return
     }
@@ -79,6 +81,7 @@ export function UserPrizeClaimModal({
   }
 
   const handleBack = () => {
+    console.log('handleBack clicked')
     setShowAddressForm(false)
   }
 
@@ -92,7 +95,10 @@ export function UserPrizeClaimModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 z-50"
-            onClick={onClose}
+            onClick={() => {
+              console.log('Backdrop clicked - closing modal')
+              onClose()
+            }}
           />
 
           {/* Modal */}
@@ -100,6 +106,10 @@ export function UserPrizeClaimModal({
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            onClick={(e) => {
+              console.log('Modal content clicked - stopping propagation')
+              e.stopPropagation()
+            }}
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-2xl shadow-2xl z-50 p-6 max-h-[90vh] overflow-y-auto"
           >
             {success ? (
@@ -130,7 +140,10 @@ export function UserPrizeClaimModal({
                     <p className="text-sm text-gray-600 mt-1">Where should we send your prize?</p>
                   </div>
                   <button
-                    onClick={onClose}
+                    onClick={() => {
+                      console.log('Close button (X) clicked in address form')
+                      onClose()
+                    }}
                     className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                   >
                     <X className="size-5" />
@@ -244,7 +257,10 @@ export function UserPrizeClaimModal({
                     <p className="text-sm text-gray-600 mt-1">Choose how you'd like to receive it</p>
                   </div>
                   <button
-                    onClick={onClose}
+                    onClick={() => {
+                      console.log('Close button (X) clicked in claim form')
+                      onClose()
+                    }}
                     className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                   >
                     <X className="size-5" />
@@ -276,7 +292,10 @@ export function UserPrizeClaimModal({
                 <div className="space-y-3 mb-6">
                   {/* Physical Prize Option */}
                   <button
-                    onClick={() => setSelectedChoice('prize')}
+                    onClick={() => {
+                      console.log('Prize option clicked')
+                      setSelectedChoice('prize')
+                    }}
                     className={`w-full p-4 rounded-xl border-2 transition-all cursor-pointer ${
                       selectedChoice === 'prize'
                         ? 'border-orange-500 bg-orange-50'
@@ -312,7 +331,10 @@ export function UserPrizeClaimModal({
                   {/* Cash Alternative Option */}
                   {prize.cash_alternative_gbp && (
                     <button
-                      onClick={() => setSelectedChoice('cash')}
+                      onClick={() => {
+                        console.log('Cash option clicked')
+                        setSelectedChoice('cash')
+                      }}
                       className={`w-full p-4 rounded-xl border-2 transition-all cursor-pointer ${
                         selectedChoice === 'cash'
                           ? 'border-orange-500 bg-orange-50'
