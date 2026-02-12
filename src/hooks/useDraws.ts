@@ -26,12 +26,9 @@ export function useDraws() {
     const { data, error } = await (supabase.from as (table: string) => ReturnType<typeof supabase.from>)('draws')
       .select('*')
       .eq('competition_id', competitionId)
-      .single()
+      .maybeSingle()
 
-    if (error) {
-      if (error.code === 'PGRST116') return null // Not found
-      throw error
-    }
+    if (error) throw error
 
     return data as unknown as Draw
   }
