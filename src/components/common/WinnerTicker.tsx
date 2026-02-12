@@ -170,17 +170,27 @@ export default function WinnerTicker({
         }
       `}</style>
 
-      <div className="flex">
-        {/* First set - this is what we measure and what scrolls out */}
-        <div ref={contentRef} className="ticker-animate flex shrink-0">
+      <div className="ticker-animate">
+        {/* First set - this is what we measure */}
+        <div ref={contentRef} className="flex shrink-0">
           {winners.map((winner, idx) => (
             <WinnerItem key={`set1-${winner.id}-${idx}`} winner={winner} idx={idx} />
           ))}
         </div>
-        {/* Second set - duplicate that follows seamlessly */}
-        <div className="ticker-animate flex shrink-0" aria-hidden="true">
+        {/* Duplicate sets to ensure seamless infinite scroll */}
+        <div className="flex shrink-0" aria-hidden="true">
           {winners.map((winner, idx) => (
             <WinnerItem key={`set2-${winner.id}-${idx}`} winner={winner} idx={idx} />
+          ))}
+        </div>
+        <div className="flex shrink-0" aria-hidden="true">
+          {winners.map((winner, idx) => (
+            <WinnerItem key={`set3-${winner.id}-${idx}`} winner={winner} idx={idx} />
+          ))}
+        </div>
+        <div className="flex shrink-0" aria-hidden="true">
+          {winners.map((winner, idx) => (
+            <WinnerItem key={`set4-${winner.id}-${idx}`} winner={winner} idx={idx} />
           ))}
         </div>
       </div>
