@@ -23,11 +23,18 @@ interface HeroContentSettings {
   description: string
 }
 
+interface FeaturedPartnerSettings {
+  enabled: boolean
+  mode: 'auto' | 'manual'
+  manual_partner_id: string | null
+}
+
 interface SystemSettings {
   maintenance_mode: MaintenanceModeSettings
   live_ticker: LiveTickerSettings
   withdrawal_limits: WithdrawalLimitsSettings
   hero_content: HeroContentSettings
+  featured_partner: FeaturedPartnerSettings
 }
 
 interface SystemSettingsReturn {
@@ -38,6 +45,7 @@ interface SystemSettingsReturn {
   liveTicker: LiveTickerSettings | undefined
   withdrawalLimits: WithdrawalLimitsSettings | undefined
   heroContent: HeroContentSettings | undefined
+  featuredPartner: FeaturedPartnerSettings | undefined
 }
 
 export function useSystemSettings(): SystemSettingsReturn {
@@ -74,7 +82,7 @@ export function useSystemSettings(): SystemSettingsReturn {
       const { data, error } = await supabase
         .from('system_settings')
         .select('setting_key, setting_value')
-        .in('setting_key', ['maintenance_mode', 'live_ticker', 'withdrawal_limits', 'hero_content'])
+        .in('setting_key', ['maintenance_mode', 'live_ticker', 'withdrawal_limits', 'hero_content', 'featured_partner'])
 
       if (error) throw error
 
@@ -83,6 +91,7 @@ export function useSystemSettings(): SystemSettingsReturn {
       let liveTicker: LiveTickerSettings | undefined
       let withdrawalLimits: WithdrawalLimitsSettings | undefined
       let heroContent: HeroContentSettings | undefined
+      let featuredPartner: FeaturedPartnerSettings | undefined
 
       data?.forEach((item) => {
         if (item.setting_key === 'maintenance_mode' && item.setting_value && typeof item.setting_value === 'object' && !Array.isArray(item.setting_value)) {
@@ -93,6 +102,8 @@ export function useSystemSettings(): SystemSettingsReturn {
           withdrawalLimits = item.setting_value as unknown as WithdrawalLimitsSettings
         } else if (item.setting_key === 'hero_content' && item.setting_value && typeof item.setting_value === 'object' && !Array.isArray(item.setting_value)) {
           heroContent = item.setting_value as unknown as HeroContentSettings
+        } else if (item.setting_key === 'featured_partner' && item.setting_value && typeof item.setting_value === 'object' && !Array.isArray(item.setting_value)) {
+          featuredPartner = item.setting_value as unknown as FeaturedPartnerSettings
         }
       })
 
@@ -105,6 +116,11 @@ export function useSystemSettings(): SystemSettingsReturn {
           hero_content: heroContent || {
             title: 'Win Premium Baby Gear Instantly',
             description: 'Enter our instant win competitions for a chance to win iCandy prams, car seats, and cash prizes. Over 1,900 instant wins available now.'
+          },
+          featured_partner: featuredPartner || {
+            enabled: true,
+            mode: 'auto',
+            manual_partner_id: null
           }
         })
       } else {
@@ -120,6 +136,11 @@ export function useSystemSettings(): SystemSettingsReturn {
         hero_content: {
           title: 'Win Premium Baby Gear Instantly',
           description: 'Enter our instant win competitions for a chance to win iCandy prams, car seats, and cash prizes. Over 1,900 instant wins available now.'
+        },
+        featured_partner: {
+          enabled: true,
+          mode: 'auto',
+          manual_partner_id: null
         }
       })
     } finally {
@@ -151,6 +172,7 @@ export function useSystemSettings(): SystemSettingsReturn {
     maintenanceMode: settings?.maintenance_mode,
     liveTicker: settings?.live_ticker,
     withdrawalLimits: settings?.withdrawal_limits,
-    heroContent: settings?.hero_content
+    heroContent: settings?.hero_content,
+    featuredPartner: settings?.featured_partner
   }
 }

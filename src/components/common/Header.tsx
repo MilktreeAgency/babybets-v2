@@ -2,7 +2,25 @@ import { Link, useLocation } from 'react-router-dom'
 import { ShoppingBag, User, Menu, X } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+
+interface NavLink {
+  name: string
+  path: string
+  isNew?: boolean
+}
+
+interface FeaturedPartner {
+  display_name: string
+  slug: string
+}
+
+interface FeaturedPartnerSettings {
+  enabled: boolean
+  mode: 'auto' | 'manual'
+  manual_partner_id: string | null
+}
 
 export default function Header() {
   const { isAuthenticated, user } = useAuthStore()
@@ -11,10 +29,67 @@ export default function Header() {
   const location = useLocation()
   const isAdmin = user?.isAdmin || false
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [featuredPartner, setFeaturedPartner] = useState<FeaturedPartner | null>(null)
 
-  const navLinks = [
+  // Fetch featured partner based on admin settings
+  useEffect(() => {
+    const fetchFeaturedPartner = async () => {
+      try {
+        // First, get the featured_partner settings
+        const { data: settingsData, error: settingsError } = await supabase
+          .from('system_settings')
+          .select('setting_value')
+          .eq('setting_key', 'featured_partner')
+          .single()
+
+        if (settingsError) throw settingsError
+
+        const settings = settingsData.setting_value as unknown as FeaturedPartnerSettings
+
+        // Only proceed if feature is enabled
+        if (!settings.enabled) {
+          setFeaturedPartner(null)
+          return
+        }
+
+        // Fetch partner based on mode
+        if (settings.mode === 'manual' && settings.manual_partner_id) {
+          // Manual mode: fetch specific partner
+          const { data, error } = await supabase
+            .from('influencers')
+            .select('display_name, slug')
+            .eq('id', settings.manual_partner_id)
+            .eq('is_active', true)
+            .single()
+
+          if (error) throw error
+          setFeaturedPartner(data)
+        } else {
+          // Auto mode: fetch latest active partner
+          const { data, error } = await supabase
+            .from('influencers')
+            .select('display_name, slug')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+
+          if (error) throw error
+          setFeaturedPartner(data)
+        }
+      } catch (error) {
+        console.error('Error fetching featured partner:', error)
+        setFeaturedPartner(null)
+      }
+    }
+
+    fetchFeaturedPartner()
+  }, [])
+
+  const navLinks: NavLink[] = [
     { name: 'Competitions', path: '/competitions' },
     { name: 'How it works', path: '/how-it-works' },
+    ...(featuredPartner ? [{ name: featuredPartner.display_name, path: `/partner/${featuredPartner.slug}`, isNew: true }] : []),
     { name: 'Partners', path: '/partners' },
   ]
 
@@ -52,6 +127,11 @@ export default function Header() {
                 style={{ color: isActive(link.path) ? '#496B71' : '#78716c' }}
               >
                 {link.name}
+                {link.isNew && (
+                  <span className="text-[9px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: '#ff4b5f', color: 'white', boxShadow: '0 2px 8px rgba(255, 75, 95, 0.3)' }}>
+                    Our New Official Partner
+                  </span>
+                )}
               </Link>
             ))}
           </div>
@@ -151,13 +231,20 @@ export default function Header() {
                   key={link.name}
                   to={link.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block py-3 px-4 rounded-lg text-base font-bold transition-colors cursor-pointer"
+                  className="flex items-center justify-between py-3 px-4 rounded-lg text-base font-bold transition-colors cursor-pointer"
                   style={{
                     color: isActive(link.path) ? '#496B71' : '#78716c',
                     backgroundColor: isActive(link.path) ? 'rgba(73, 107, 113, 0.1)' : 'transparent'
                   }}
                 >
-                  {link.name}
+                  <span className="flex items-center gap-2">
+                    {link.name}
+                    {link.isNew && (
+                      <span className="text-[9px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: '#ff4b5f', color: 'white', boxShadow: '0 2px 8px rgba(255, 75, 95, 0.3)' }}>
+                        Our New Official Partner
+                      </span>
+                    )}
+                  </span>
                 </Link>
               ))}
               <div className="border-t pt-3" style={{ borderColor: '#f0e0ca' }}>

@@ -7,10 +7,25 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { Construction, Radio, Landmark, Sparkles } from 'lucide-react'
+import { Construction, Radio, Landmark, Sparkles, Users } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+
+interface Influencer {
+  id: string
+  display_name: string
+  is_active: boolean
+}
 
 export default function SystemSettings() {
-  const { settings, updateSetting, loading } = useSystemSettings()
+  const { settings, updateSetting, loading, featuredPartner } = useSystemSettings()
 
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false)
   const [maintenanceMessage, setMaintenanceMessage] = useState('')
@@ -21,6 +36,12 @@ export default function SystemSettings() {
   const [maxWithdrawalAmount, setMaxWithdrawalAmount] = useState('10000.00')
   const [heroTitle, setHeroTitle] = useState('Win Premium Baby Gear Instantly')
   const [heroDescription, setHeroDescription] = useState('Enter our instant win competitions for a chance to win iCandy prams, car seats, and cash prizes. Over 1,900 instant wins available now.')
+
+  // Featured Partner settings
+  const [featuredPartnerEnabled, setFeaturedPartnerEnabled] = useState(true)
+  const [featuredPartnerMode, setFeaturedPartnerMode] = useState<'auto' | 'manual'>('auto')
+  const [manualPartnerId, setManualPartnerId] = useState<string>('')
+  const [influencers, setInfluencers] = useState<Influencer[]>([])
 
   const [saving, setSaving] = useState(false)
 
@@ -46,6 +67,35 @@ export default function SystemSettings() {
       }
     }
   }, [settings])
+
+  // Load featured partner settings from hook and fetch influencers list
+  useEffect(() => {
+    if (featuredPartner) {
+      setFeaturedPartnerEnabled(featuredPartner.enabled)
+      setFeaturedPartnerMode(featuredPartner.mode)
+      setManualPartnerId(featuredPartner.manual_partner_id || '')
+    }
+  }, [featuredPartner])
+
+  // Load influencers list for manual selection dropdown
+  useEffect(() => {
+    const loadInfluencers = async () => {
+      try {
+        const { data: influencersData, error: influencersError } = await supabase
+          .from('influencers')
+          .select('id, display_name, is_active')
+          .eq('is_active', true)
+          .order('display_name', { ascending: true })
+
+        if (influencersError) throw influencersError
+        setInfluencers(influencersData || [])
+      } catch (error) {
+        console.error('Error loading influencers:', error)
+      }
+    }
+
+    loadInfluencers()
+  }, [])
 
   const handleToggleMaintenanceMode = async (enabled: boolean) => {
     setMaintenanceEnabled(enabled)
@@ -168,6 +218,45 @@ export default function SystemSettings() {
     } catch (error) {
       console.error('Error updating hero content:', error)
       toast.error('Failed to update hero content')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleToggleFeaturedPartner = async (enabled: boolean) => {
+    setFeaturedPartnerEnabled(enabled)
+    try {
+      await updateSetting('featured_partner', {
+        enabled,
+        mode: featuredPartnerMode,
+        manual_partner_id: manualPartnerId || null
+      })
+      toast.success(`Featured partner ${enabled ? 'enabled' : 'disabled'}`)
+    } catch (error) {
+      console.error('Error updating featured partner:', error)
+      toast.error('Failed to update featured partner')
+      setFeaturedPartnerEnabled(!enabled)
+    }
+  }
+
+  const handleSaveFeaturedPartnerSettings = async () => {
+    try {
+      // Validate manual mode has a partner selected
+      if (featuredPartnerMode === 'manual' && !manualPartnerId) {
+        toast.error('Please select a partner for manual mode')
+        return
+      }
+
+      setSaving(true)
+      await updateSetting('featured_partner', {
+        enabled: featuredPartnerEnabled,
+        mode: featuredPartnerMode,
+        manual_partner_id: manualPartnerId || null
+      })
+      toast.success('Featured partner settings updated')
+    } catch (error) {
+      console.error('Error updating featured partner settings:', error)
+      toast.error('Failed to update featured partner settings')
     } finally {
       setSaving(false)
     }
@@ -399,6 +488,114 @@ export default function SystemSettings() {
               >
                 Save Hero Content
               </Button>
+            </div>
+          </div>
+
+          {/* Featured Partner Section */}
+          <div className="bg-admin-card-bg border border-border rounded-lg p-6 space-y-6">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg" style={{ backgroundColor: '#ffe5f0' }}>
+                <Users className="size-5" style={{ color: '#ff4b5f' }} />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold">Featured Partner in Header</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Control which partner appears in the navigation header with a special badge
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="featured-partner-enabled" className="cursor-pointer">
+                    Show Featured Partner in Header
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Display a partner link with "Our New Official Partner" badge
+                  </p>
+                </div>
+                <Switch
+                  id="featured-partner-enabled"
+                  checked={featuredPartnerEnabled}
+                  onCheckedChange={handleToggleFeaturedPartner}
+                  className="cursor-pointer data-[state=checked]:bg-green-500"
+                />
+              </div>
+
+              {featuredPartnerEnabled && (
+                <>
+                  <div className="space-y-3">
+                    <Label className="cursor-pointer">Selection Mode</Label>
+                    <RadioGroup
+                      value={featuredPartnerMode}
+                      onValueChange={(value) => setFeaturedPartnerMode(value as 'auto' | 'manual')}
+                      className="space-y-3"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="auto" id="mode-auto" className="cursor-pointer" />
+                        <Label htmlFor="mode-auto" className="cursor-pointer font-normal">
+                          <div>
+                            <div className="font-medium">Automatic (Latest Partner)</div>
+                            <p className="text-xs text-muted-foreground">
+                              Always show the most recently added active partner
+                            </p>
+                          </div>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="manual" id="mode-manual" className="cursor-pointer" />
+                        <Label htmlFor="mode-manual" className="cursor-pointer font-normal">
+                          <div>
+                            <div className="font-medium">Manual Selection</div>
+                            <p className="text-xs text-muted-foreground">
+                              Choose a specific partner to feature
+                            </p>
+                          </div>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {featuredPartnerMode === 'manual' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="manual-partner" className="cursor-pointer">
+                        Select Partner
+                      </Label>
+                      <Select value={manualPartnerId} onValueChange={setManualPartnerId}>
+                        <SelectTrigger id="manual-partner" className="cursor-pointer">
+                          <SelectValue placeholder="Choose a partner..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {influencers.map((influencer) => (
+                            <SelectItem key={influencer.id} value={influencer.id} className="cursor-pointer">
+                              {influencer.display_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Only active partners are shown in the list
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="p-4 rounded-lg bg-purple-50 border border-purple-200">
+                    <p className="text-sm text-purple-900">
+                      <strong>Note:</strong> The selected partner will appear in the header navigation
+                      with a red "Our New Official Partner" badge. Changes are reflected immediately.
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={handleSaveFeaturedPartnerSettings}
+                    disabled={saving || loading}
+                    className="cursor-pointer"
+                  >
+                    Save Featured Partner Settings
+                  </Button>
+                </>
+              )}
             </div>
           </div>
 
