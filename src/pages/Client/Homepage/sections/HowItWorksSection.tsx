@@ -34,13 +34,13 @@ export default function HowItWorksSection() {
   ]
 
   return (
-    <section className="py-16 md:py-24 relative overflow-hidden" style={{ backgroundColor: '#47676d' }}>
+    <section className="py-12 sm:py-16 md:py-20 lg:py-24 relative overflow-hidden" style={{ backgroundColor: '#47676d' }}>
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 relative z-10">
         {/* Header */}
-        <div className="text-center mb-12 md:mb-16">
-          <div className="inline-block mb-4">
+        <div className="text-center mb-10 sm:mb-12 md:mb-16">
+          <div className="inline-block mb-3 sm:mb-4">
             <span
-              className="inline-flex items-center px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wider shadow-sm"
+              className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-bold uppercase tracking-wider shadow-sm"
               style={{
                 backgroundColor: 'rgba(254, 208, 185, 0.2)',
                 color: '#FED0B9',
@@ -52,13 +52,13 @@ export default function HowItWorksSection() {
             </span>
           </div>
           <h2
-            className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 tracking-tight"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 tracking-tight px-4"
             style={{ fontFamily: "'Fraunces', serif", color: '#ffffff' }}
           >
             How It Works
           </h2>
           <p
-            className="text-xl md:text-2xl max-w-3xl mx-auto leading-relaxed"
+            className="text-base sm:text-lg md:text-xl lg:text-2xl max-w-3xl mx-auto leading-relaxed px-4"
             style={{ color: '#e1eaec' }}
           >
             Enter our instant win competition and discover if you've won straight away. Over 1,900 prizes available to win instantly!
@@ -66,7 +66,7 @@ export default function HowItWorksSection() {
         </div>
 
         {/* Steps Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-12 relative">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 md:gap-8 mb-8 sm:mb-10 md:mb-12 relative">
           {/* Connector line - desktop only */}
           <div
             className="hidden lg:block absolute top-16 left-0 right-0 h-[2px] mx-auto"
@@ -85,7 +85,7 @@ export default function HowItWorksSection() {
             >
               {/* Card */}
               <div
-                className="relative rounded-2xl p-6 h-full flex flex-col transition-all duration-300 hover:-translate-y-2 cursor-pointer"
+                className="relative rounded-xl sm:rounded-2xl p-5 sm:p-6 h-full flex flex-col transition-all duration-300 hover:-translate-y-2 cursor-pointer"
                 style={{
                   backgroundColor: 'white',
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
@@ -103,7 +103,7 @@ export default function HowItWorksSection() {
               >
                 {/* Number badge */}
                 <div
-                  className="absolute -top-4 -right-4 w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl shadow-lg z-10"
+                  className="absolute -top-3 -right-3 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-lg sm:text-xl shadow-lg z-10"
                   style={{
                     backgroundColor: step.color,
                     color: step.number === 2 ? '#151e20' : '#ffffff'
@@ -114,18 +114,19 @@ export default function HowItWorksSection() {
 
                 {/* Icon */}
                 <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 transition-all duration-300"
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 transition-all duration-300"
                   style={{
                     backgroundColor: `${step.color}15`,
                     color: step.color
                   }}
                 >
-                  <step.icon size={32} strokeWidth={2} />
+                  <step.icon size={28} className="sm:hidden" strokeWidth={2} />
+                  <step.icon size={32} className="hidden sm:block" strokeWidth={2} />
                 </div>
 
                 {/* Content */}
                 <h3
-                  className="text-xl font-bold mb-3 leading-tight"
+                  className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 leading-tight"
                   style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
                 >
                   {step.title}
@@ -142,10 +143,10 @@ export default function HowItWorksSection() {
         </div>
 
         {/* CTA Button */}
-        <div className="text-center">
+        <div className="text-center px-4">
           <Link to="/how-it-works">
             <button
-              className="inline-flex items-center justify-center rounded-xl px-10 py-6 text-lg font-bold transition-all duration-300 shadow-lg hover:shadow-xl cursor-pointer"
+              className="inline-flex items-center justify-center rounded-xl px-6 sm:px-8 md:px-10 py-4 sm:py-5 md:py-6 text-base sm:text-lg font-bold transition-all duration-300 shadow-lg hover:shadow-xl cursor-pointer"
               style={{
                 backgroundColor: '#FED0B9',
                 color: '#151e20'
@@ -159,8 +160,10 @@ export default function HowItWorksSection() {
                 e.currentTarget.style.transform = 'scale(1)'
               }}
             >
-              Learn More About How It Works
-              <ArrowRight size={20} className="ml-2" />
+              <span className="hidden sm:inline">Learn More About How It Works</span>
+              <span className="sm:hidden">Learn More</span>
+              <ArrowRight size={18} className="sm:hidden ml-2" />
+              <ArrowRight size={20} className="hidden sm:block ml-2" />
             </button>
           </Link>
         </div>

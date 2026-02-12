@@ -53,32 +53,33 @@ export default function WinnersSection() {
   }
 
   return (
-    <section className="py-16 md:py-24" style={{ backgroundColor: '#fffbf7' }}>
-      <div className="max-w-[1300px] mx-auto px-6">
+    <section className="py-12 sm:py-16 md:py-20 lg:py-24" style={{ backgroundColor: '#fffbf7' }}>
+      <div className="max-w-[1300px] mx-auto px-4 sm:px-6">
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4" style={{ backgroundColor: 'rgba(254, 208, 185, 0.2)' }}>
-            <Trophy size={20} style={{ color: '#496B71' }} />
-            <span className="text-sm font-bold" style={{ color: '#496B71' }}>RECENT WINNERS</span>
+        <div className="text-center mb-8 sm:mb-10 md:mb-12">
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full mb-3 sm:mb-4" style={{ backgroundColor: 'rgba(254, 208, 185, 0.2)' }}>
+            <Trophy size={18} className="sm:hidden" style={{ color: '#496B71' }} />
+            <Trophy size={20} className="hidden sm:block" style={{ color: '#496B71' }} />
+            <span className="text-xs sm:text-sm font-bold" style={{ color: '#496B71' }}>RECENT WINNERS</span>
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4 px-4" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
             Meet Our Winners
           </h2>
-          <p className="text-lg max-w-2xl mx-auto" style={{ color: '#78716c' }}>
+          <p className="text-base sm:text-lg max-w-2xl mx-auto px-4" style={{ color: '#78716c' }}>
             Real people winning amazing prizes every day
           </p>
         </div>
 
         {/* Winners Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 md:gap-6 mb-8 sm:mb-10 md:mb-12">
           {winners.map((winner) => (
             <div
               key={winner.id}
-              className="rounded-2xl overflow-hidden border transition-all duration-300"
+              className="rounded-xl sm:rounded-2xl overflow-hidden border transition-all duration-300"
               style={{ backgroundColor: 'white', borderColor: '#e7e5e4' }}
             >
               {/* Image */}
-              <div className="relative h-64 overflow-hidden" style={{ backgroundColor: '#FBEFDF' }}>
+              <div className="relative h-48 sm:h-56 md:h-64 overflow-hidden" style={{ backgroundColor: '#FBEFDF' }}>
                 {winner.winner_photo_url ? (
                   <img
                     src={winner.winner_photo_url}
@@ -105,37 +106,39 @@ export default function WinnersSection() {
               </div>
 
               {/* Content */}
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-3">
+              <div className="p-4 sm:p-5 md:p-6">
+                <div className="flex items-start justify-between mb-2 sm:mb-3">
                   <div>
-                    <h3 className="text-xl font-bold mb-1" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
+                    <h3 className="text-lg sm:text-xl font-bold mb-1" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
                       {winner.display_name}
                     </h3>
                     {winner.location && (
-                      <div className="flex items-center gap-1 text-sm" style={{ color: '#78716c' }}>
-                        <MapPin size={14} />
+                      <div className="flex items-center gap-1 text-xs sm:text-sm" style={{ color: '#78716c' }}>
+                        <MapPin size={12} className="sm:hidden" />
+                        <MapPin size={14} className="hidden sm:block" />
                         {winner.location}
                       </div>
                     )}
                   </div>
-                  <div className="p-2 rounded-full" style={{ backgroundColor: 'rgba(254, 208, 185, 0.2)' }}>
-                    <Trophy size={20} style={{ color: '#496B71' }} />
+                  <div className="p-1.5 sm:p-2 rounded-full" style={{ backgroundColor: 'rgba(254, 208, 185, 0.2)' }}>
+                    <Trophy size={18} className="sm:hidden" style={{ color: '#496B71' }} />
+                    <Trophy size={20} className="hidden sm:block" style={{ color: '#496B71' }} />
                   </div>
                 </div>
 
-                <div className="mb-3">
-                  <div className="text-sm font-medium mb-1" style={{ color: '#78716c' }}>Won</div>
-                  <div className="font-bold" style={{ color: '#151e20' }}>{winner.prize_name}</div>
+                <div className="mb-2 sm:mb-3">
+                  <div className="text-xs sm:text-sm font-medium mb-1" style={{ color: '#78716c' }}>Won</div>
+                  <div className="text-sm sm:text-base font-bold" style={{ color: '#151e20' }}>{winner.prize_name}</div>
                   {winner.prize_value_gbp && winner.prize_value_gbp > 0 && (
-                    <div className="text-lg font-bold mt-1" style={{ color: '#496B71' }}>
+                    <div className="text-base sm:text-lg font-bold mt-1" style={{ color: '#496B71' }}>
                       £{winner.prize_value_gbp.toLocaleString()}
                     </div>
                   )}
                 </div>
 
                 {winner.testimonial && (
-                  <div className="p-3 rounded-lg mb-3" style={{ backgroundColor: '#FBEFDF' }}>
-                    <p className="text-sm italic line-clamp-3" style={{ color: '#78716c' }}>
+                  <div className="p-2.5 sm:p-3 rounded-lg mb-2 sm:mb-3" style={{ backgroundColor: '#FBEFDF' }}>
+                    <p className="text-xs sm:text-sm italic line-clamp-3" style={{ color: '#78716c' }}>
                       "{winner.testimonial}"
                     </p>
                   </div>
@@ -150,10 +153,11 @@ export default function WinnersSection() {
         </div>
 
         {/* CTA */}
-        <div className="text-center">
-          <Link to="/winners" className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-bold transition-all hover:scale-105 cursor-pointer" style={{ backgroundColor: '#496B71', color: 'white' }}>
+        <div className="text-center px-4">
+          <Link to="/winners" className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-sm sm:text-base font-bold transition-all hover:scale-105 cursor-pointer" style={{ backgroundColor: '#496B71', color: 'white' }}>
             View All Winners
-            <ArrowRight size={20} />
+            <ArrowRight size={18} className="sm:hidden" />
+            <ArrowRight size={20} className="hidden sm:block" />
           </Link>
         </div>
       </div>

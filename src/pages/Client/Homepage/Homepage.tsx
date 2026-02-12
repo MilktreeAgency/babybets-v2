@@ -12,7 +12,6 @@ import JustLaunchedSection from './sections/JustLaunchedSection'
 import MeetPartnerSection from './sections/MeetPartnerSection'
 import WinAmazingPrizesSection from './sections/WinAmazingPrizesSection'
 import WinnersSection from './sections/WinnersSection'
-import NewsletterSection from './sections/NewsletterSection'
 
 function Homepage() {
   const { isLoading } = useAuth()
@@ -43,7 +42,6 @@ function Homepage() {
       <MeetPartnerSection />
       <WinAmazingPrizesSection />
       <WinnersSection />
-      <NewsletterSection />
       <Footer />
     </div>
   )
