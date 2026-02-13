@@ -28,17 +28,11 @@ async function createSignature(data: Record<string, string | number>, signatureK
 
   const messageToHash = signatureString + signatureKey
 
-  // Debug logging
-  console.log('[createSignature] Debug:', {
-    signatureStringLength: signatureString.length,
-    signatureStringFirst100: signatureString.substring(0, 100),
-    messageToHashLength: messageToHash.length,
-  })
-
   const msgBuffer = new TextEncoder().encode(messageToHash)
   const hashBuffer = await crypto.subtle.digest('SHA-512', msgBuffer)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
   const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+
   return hashHex
 }
 
@@ -294,36 +288,8 @@ serve(async (req) => {
       ...(customerName && { customerName }),
     }
 
-    // Debug: Log request data before signature
-    console.log('[Edge Function] Request data before signature:', {
-      amount: requestData.amount,
-      merchantID: requestData.merchantID,
-      orderRef: requestData.orderRef,
-      allFields: Object.keys(requestData).sort().join(', '),
-    })
-
-    // For Direct Integration, exclude card fields and callbackURL from signature
-    // Card details and callback URL are sent but not included in signature calculation
-    const signatureData = { ...requestData }
-    delete signatureData.cardNumber
-    delete signatureData.cardExpiryMonth
-    delete signatureData.cardExpiryYear
-    delete signatureData.cardCVV
-    delete signatureData.callbackURL  // Callback URL may be pre-configured in G2Pay portal
-
-    console.log('[Edge Function] Signature fields (after excluding card data):', {
-      fieldsForSignature: Object.keys(signatureData).sort().join(', '),
-    })
-
-    // Generate signature using G2Pay's method
-    const signature = await createSignature(signatureData, G2PAY_SIGNATURE_KEY)
-
-    console.log('[Edge Function] Signature generation debug:', {
-      merchantID: G2PAY_MERCHANT_ID,
-      signatureKeyLength: G2PAY_SIGNATURE_KEY?.length,
-      signatureKeyFirst4: G2PAY_SIGNATURE_KEY?.substring(0, 4),
-      generatedSignature: signature,
-    })
+    // Generate signature using G2Pay's method (includes ALL fields)
+    const signature = await createSignature(requestData, G2PAY_SIGNATURE_KEY)
 
     // Add signature to request
     const finalRequest = {
