@@ -1098,6 +1098,42 @@ export type Database = {
           },
         ]
       }
+      testimonials: {
+        Row: {
+          author_name: string
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          quote: string
+          updated_at: string
+          url: string | null
+          video_url: string
+        }
+        Insert: {
+          author_name: string
+          created_at?: string
+          display_order: number
+          id?: string
+          is_active?: boolean
+          quote: string
+          updated_at?: string
+          url?: string | null
+          video_url: string
+        }
+        Update: {
+          author_name?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          quote?: string
+          updated_at?: string
+          url?: string | null
+          video_url?: string
+        }
+        Relationships: []
+      }
       ticket_allocations: {
         Row: {
           competition_id: string

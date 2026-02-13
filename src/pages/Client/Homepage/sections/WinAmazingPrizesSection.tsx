@@ -15,6 +15,11 @@ interface SectionSettings {
   description: string
 }
 
+interface TestimonialsSectionSettings {
+  headline: string
+  description: string
+}
+
 export default function WinAmazingPrizesSection() {
   const [videoTestimonials, setVideoTestimonials] = useState<Testimonial[]>([])
   const [loading, setLoading] = useState(true)
@@ -45,9 +50,10 @@ export default function WinAmazingPrizesSection() {
           .single()
 
         if (!settingsError && settingsData?.setting_value) {
+          const settingValue = settingsData.setting_value as unknown as TestimonialsSectionSettings
           setSectionSettings({
-            headline: settingsData.setting_value.headline || sectionSettings.headline,
-            description: settingsData.setting_value.description || sectionSettings.description
+            headline: settingValue.headline || sectionSettings.headline,
+            description: settingValue.description || sectionSettings.description
           })
         }
       } catch (error) {

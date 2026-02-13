@@ -32,7 +32,6 @@ import {
   Eye,
   EyeOff,
   GripVertical,
-  Upload,
   Save
 } from 'lucide-react'
 
@@ -46,6 +45,11 @@ interface Testimonial {
   url?: string | null
   created_at: string
   updated_at: string
+}
+
+interface TestimonialsSectionSettings {
+  headline: string
+  description: string
 }
 
 const VIDEOS_BUCKET = 'videos'
@@ -110,9 +114,10 @@ export default function Testimonials() {
       if (error) throw error
 
       if (data && data.setting_value) {
+        const settingValue = data.setting_value as unknown as TestimonialsSectionSettings
         setSectionSettings({
-          headline: data.setting_value.headline || '',
-          description: data.setting_value.description || ''
+          headline: settingValue.headline || '',
+          description: settingValue.description || ''
         })
       }
     } catch (error) {
