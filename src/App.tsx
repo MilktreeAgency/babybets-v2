@@ -38,6 +38,7 @@ import InfluencerSales from './pages/Admin/InfluencerSales'
 import Activity from './pages/Admin/Activity'
 import EmailLogs from './pages/Admin/EmailLogs'
 import Assets from './pages/Admin/Assets/Assets'
+import Testimonials from './pages/Admin/Testimonials'
 import { DashboardLayout } from './pages/Admin/components'
 import { AdminRoute, CartDrawer } from './components/common'
 import ScrollToTop from './components/common/ScrollToTop'
@@ -118,6 +119,7 @@ function App() {
           <Route path="fulfillments" element={<Fulfillments />} />
           <Route path="withdrawals" element={<Withdrawals />} />
           <Route path="assets" element={<Assets />} />
+          <Route path="testimonials" element={<Testimonials />} />
           <Route path="activity" element={<Activity />} />
           <Route path="email-logs" element={<EmailLogs />} />
           <Route path="system-settings" element={<SystemSettings />} />

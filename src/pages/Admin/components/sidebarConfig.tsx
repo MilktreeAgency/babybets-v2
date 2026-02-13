@@ -13,7 +13,8 @@ import {
   Activity,
   Mail,
   User,
-  FolderOpen
+  FolderOpen,
+  Video
 } from 'lucide-react'
 import { type ReactNode } from 'react'
 
@@ -102,6 +103,11 @@ export const sidebarConfig: NavGroup[] = [
         label: 'Assets',
         href: '/admin/dashboard/assets',
         icon: <FolderOpen className="size-4" />,
+      },
+      {
+        label: 'Testimonials',
+        href: '/admin/dashboard/testimonials',
+        icon: <Video className="size-4" />,
       },
       {
         label: 'Activity',
