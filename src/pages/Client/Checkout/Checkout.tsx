@@ -17,6 +17,7 @@ function Checkout() {
   const { isAuthenticated, isLoading: authLoading, isInitialized } = useAuthStore()
   const { summary } = useWallet()
   const [loading, setLoading] = useState(false)
+  const [purchaseCompleted, setPurchaseCompleted] = useState(false)
 
   // Referral tracking state (handles both link referrals and manual codes)
   const [activeReferral, setActiveReferral] = useState<{ slug: string; influencerId: string; displayName?: string } | null>(null)
@@ -60,12 +61,12 @@ function Checkout() {
       return
     }
 
-    // Redirect if cart is empty
-    if (items.length === 0) {
+    // Redirect if cart is empty (but not if purchase was just completed)
+    if (items.length === 0 && !purchaseCompleted) {
       navigate('/')
       return
     }
-  }, [isAuthenticated, items, isInitialized])
+  }, [isAuthenticated, items, isInitialized, purchaseCompleted])
 
   // Load active referral on mount
   useEffect(() => {
@@ -397,9 +398,10 @@ function Checkout() {
           throw new Error(completeError.message || 'Failed to process wallet payment')
         }
 
-        // Clear cart and redirect with success indicator
+        // Mark purchase as completed and clear cart
+        setPurchaseCompleted(true)
         clearCart()
-        window.location.href = '/account?tab=tickets&purchase=success'
+        navigate('/account?tab=tickets&purchase=success')
         return
       }
 
@@ -462,9 +464,10 @@ function Checkout() {
           throw new Error(completeError.message || 'Failed to complete order')
         }
 
-        // Clear cart and redirect with success indicator
+        // Mark purchase as completed and clear cart
+        setPurchaseCompleted(true)
         clearCart()
-        window.location.href = '/account?tab=tickets&purchase=success'
+        navigate('/account?tab=tickets&purchase=success')
       } else {
         // Payment declined or failed
         throw new Error(paymentResult.message || 'Payment was declined')

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LogOut, MapPin, User, Bell, LayoutDashboard, X, Save, Wallet, Clock, TrendingUp, Gift, Ticket, Trophy, ChevronDown, ChevronUp, UserCheck, ArrowDownToLine, CheckCircle, XCircle, AlertCircle as AlertCircleIcon, Menu } from 'lucide-react'
 import Header from '@/components/common/Header'
@@ -67,12 +67,25 @@ function Account() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [showWinModal, setShowWinModal] = useState(false)
   const [wonPrize, setWonPrize] = useState<PrizeTemplate | null>(null)
+  const purchaseToastShown = useRef(false)
 
   useEffect(() => {
     if (!isLoading && isInitialized && !isAuthenticated) {
       navigate('/login?redirect=/account')
     }
   }, [isAuthenticated, isLoading, isInitialized, navigate])
+
+  // Handle purchase success toast
+  useEffect(() => {
+    if (searchParams.get('purchase') === 'success' && !purchaseToastShown.current) {
+      purchaseToastShown.current = true
+      showSuccessToast('Purchase successful! Your tickets are ready.')
+      // Remove the purchase param after showing toast
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('purchase')
+      setSearchParams(newParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   // Sync activeSection with URL tab parameter
   useEffect(() => {
@@ -82,17 +95,8 @@ function Account() {
 
       // Scroll to top when switching tabs
       window.scrollTo({ top: 0, behavior: 'smooth' })
-
-      // If coming from a successful purchase, show success toast and remove the purchase param
-      if (searchParams.get('purchase') === 'success') {
-        showSuccessToast('Purchase successful! Your tickets are ready.')
-        // Remove the purchase param after acknowledging
-        const newParams = new URLSearchParams(searchParams)
-        newParams.delete('purchase')
-        setSearchParams(newParams, { replace: true })
-      }
     }
-  }, [searchParams, setSearchParams])
+  }, [searchParams])
 
   // Load address data when profile is available
   useEffect(() => {
