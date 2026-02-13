@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { Construction, Radio, Landmark, Sparkles, Users } from 'lucide-react'
+import { Construction, Radio, Landmark, Sparkles, Users, Mail } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
   Select,
@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { ImageUpload } from '@/components/ImageUpload'
 
 interface Influencer {
   id: string
@@ -25,7 +26,7 @@ interface Influencer {
 }
 
 export default function SystemSettings() {
-  const { settings, updateSetting, loading, featuredPartner } = useSystemSettings()
+  const { settings, updateSetting, loading, featuredPartner, emailLogo } = useSystemSettings()
 
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false)
   const [maintenanceMessage, setMaintenanceMessage] = useState('')
@@ -42,6 +43,9 @@ export default function SystemSettings() {
   const [featuredPartnerMode, setFeaturedPartnerMode] = useState<'auto' | 'manual'>('auto')
   const [manualPartnerId, setManualPartnerId] = useState<string>('')
   const [influencers, setInfluencers] = useState<Influencer[]>([])
+
+  // Email Logo settings
+  const [emailLogoUrl, setEmailLogoUrl] = useState<string | null>(null)
 
   const [saving, setSaving] = useState(false)
 
@@ -76,6 +80,13 @@ export default function SystemSettings() {
       setManualPartnerId(featuredPartner.manual_partner_id || '')
     }
   }, [featuredPartner])
+
+  // Load email logo settings
+  useEffect(() => {
+    if (emailLogo) {
+      setEmailLogoUrl(emailLogo.url)
+    }
+  }, [emailLogo])
 
   // Load influencers list for manual selection dropdown
   useEffect(() => {
@@ -257,6 +268,21 @@ export default function SystemSettings() {
     } catch (error) {
       console.error('Error updating featured partner settings:', error)
       toast.error('Failed to update featured partner settings')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSaveEmailLogo = async () => {
+    try {
+      setSaving(true)
+      await updateSetting('email_logo', {
+        url: emailLogoUrl
+      })
+      toast.success('Email logo updated successfully')
+    } catch (error) {
+      console.error('Error updating email logo:', error)
+      toast.error('Failed to update email logo')
     } finally {
       setSaving(false)
     }
@@ -487,6 +513,49 @@ export default function SystemSettings() {
                 className="cursor-pointer"
               >
                 Save Hero Content
+              </Button>
+            </div>
+          </div>
+
+          {/* Email Logo Section */}
+          <div className="bg-admin-card-bg border border-border rounded-lg p-6 space-y-6">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg" style={{ backgroundColor: '#e0f2fe' }}>
+                <Mail className="size-5" style={{ color: '#0284c7' }} />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold">Email Logo</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Upload a logo to be displayed in all email notifications sent to customers
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="cursor-pointer">Logo Image</Label>
+                <ImageUpload
+                  value={emailLogoUrl}
+                  onChange={setEmailLogoUrl}
+                />
+                <p className="text-xs text-muted-foreground">
+                  This logo will appear at the top of all email templates (order confirmations, prize wins, etc.)
+                </p>
+              </div>
+
+              <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                <p className="text-sm text-blue-900">
+                  <strong>Important:</strong> After uploading a new logo, make sure to save the settings.
+                  The logo will be displayed in all future emails sent from the system.
+                </p>
+              </div>
+
+              <Button
+                onClick={handleSaveEmailLogo}
+                disabled={saving || loading}
+                className="cursor-pointer"
+              >
+                Save Email Logo
               </Button>
             </div>
           </div>
