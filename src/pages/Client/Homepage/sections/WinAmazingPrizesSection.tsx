@@ -1,26 +1,90 @@
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+
+interface Testimonial {
+  id: string
+  video_url: string
+  quote: string
+  author_name: string
+  display_order: number
+  url?: string | null
+}
+
+interface SectionSettings {
+  headline: string
+  description: string
+}
+
 export default function WinAmazingPrizesSection() {
-  const videoTestimonials = [
-    {
-      video: "https://res.cloudinary.com/dkew5dwgo/video/upload/v1768531254/Untitled_design_jiwqlw.mp4",
-      quote: "The instant win feature is amazing - I couldn't believe it when I won!",
-      name: "Happy Winner"
-    },
-    {
-      video: "https://res.cloudinary.com/dkew5dwgo/video/upload/v1768531246/Untitled_design_1_g8expr.mp4",
-      quote: "Such great prizes and the whole experience is so easy and fun.",
-      name: "Delighted Parent"
-    },
-    {
-      video: "https://res.cloudinary.com/dkew5dwgo/video/upload/v1768530339/ugc-1_htgxzf.mp4",
-      quote: "BabyBets is serving us so we can serve our little ones with the best gear.",
-      name: "Sarah Dengate"
-    },
-    {
-      video: "https://res.cloudinary.com/dkew5dwgo/video/upload/v1768530338/ugc-4_ix3qkq.mp4",
-      quote: "It's a trusted platform that helps us afford premium nursery essentials.",
-      name: "David Mitchell"
+  const [videoTestimonials, setVideoTestimonials] = useState<Testimonial[]>([])
+  const [loading, setLoading] = useState(true)
+  const [sectionSettings, setSectionSettings] = useState<SectionSettings>({
+    headline: 'Win amazing prizes at unbeatable odds',
+    description: 'Real families winning real prizes every week. Affordable entry prices with genuine chances to win premium baby gear.'
+  })
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load testimonials
+        const { data: testimonialsData, error: testimonialsError } = await supabase
+          .from('testimonials')
+          .select('*')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true })
+
+        if (testimonialsError) throw testimonialsError
+
+        setVideoTestimonials(testimonialsData || [])
+
+        // Load section settings
+        const { data: settingsData, error: settingsError } = await supabase
+          .from('system_settings')
+          .select('setting_value')
+          .eq('setting_key', 'testimonials_section')
+          .single()
+
+        if (!settingsError && settingsData?.setting_value) {
+          setSectionSettings({
+            headline: settingsData.setting_value.headline || sectionSettings.headline,
+            description: settingsData.setting_value.description || sectionSettings.description
+          })
+        }
+      } catch (error) {
+        console.error('Error loading testimonials data:', error)
+        // Fallback to default testimonials if database fetch fails
+        setVideoTestimonials([
+          {
+            id: '1',
+            video_url: "https://res.cloudinary.com/dkew5dwgo/video/upload/v1768531254/Untitled_design_jiwqlw.mp4",
+            quote: "The instant win feature is amazing - I couldn't believe it when I won!",
+            author_name: "Happy Winner",
+            display_order: 1
+          }
+        ])
+      } finally {
+        setLoading(false)
+      }
     }
-  ]
+
+    loadData()
+  }, [])
+
+  if (loading) {
+    return (
+      <section className="py-12 sm:py-16 md:py-20 lg:py-24">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="text-center">
+            <p className="text-muted-foreground">Loading testimonials...</p>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (videoTestimonials.length === 0) {
+    return null
+  }
 
   return (
     <section className="py-12 sm:py-16 md:py-20 lg:py-24">
@@ -28,20 +92,31 @@ export default function WinAmazingPrizesSection() {
         {/* Headline */}
         <div className="text-center mb-10 sm:mb-12 md:mb-14 lg:mb-16">
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 md:mb-6 max-w-6xl mx-auto px-4" style={{ fontFamily: "'Baloo Chettan 2', sans-serif", color: '#000000' }}>
-            Win amazing prizes
-            at unbeatable odds
+            {sectionSettings.headline}
           </h2>
           <p className="text-base sm:text-lg max-w-2xl mx-auto px-4" style={{ color: '#666666' }}>
-            Real families winning real prizes every week. Affordable entry prices with genuine chances to win premium baby gear.
+            {sectionSettings.description}
           </p>
         </div>
 
         {/* Videos Grid - Desktop/Tablet */}
         <div className="hidden sm:grid sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-          {videoTestimonials.map((card, index) => (
-            <div key={index} className="relative aspect-9/16 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl">
+          {videoTestimonials.map((card) => (
+            <div
+              key={card.id}
+              className={`relative aspect-9/16 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl ${card.url ? 'cursor-pointer transition-transform hover:scale-105' : ''}`}
+              onClick={() => card.url && window.open(card.url, '_blank', 'noopener,noreferrer')}
+              role={card.url ? 'button' : undefined}
+              tabIndex={card.url ? 0 : undefined}
+              onKeyDown={(e) => {
+                if (card.url && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault()
+                  window.open(card.url, '_blank', 'noopener,noreferrer')
+                }
+              }}
+            >
               <video
-                src={card.video}
+                src={card.video_url}
                 className="absolute inset-0 w-full h-full object-cover"
                 autoPlay
                 loop
@@ -51,30 +126,43 @@ export default function WinAmazingPrizesSection() {
               <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 md:p-6 text-white">
                 <p className="text-xs sm:text-sm italic mb-1.5 sm:mb-2">"{card.quote}"</p>
-                <p className="text-[10px] sm:text-xs font-semibold">{card.name}</p>
+                <p className="text-[10px] sm:text-xs font-semibold">{card.author_name}</p>
               </div>
             </div>
           ))}
         </div>
 
         {/* Video Carousel - Mobile */}
-        <div className="sm:hidden relative">
-          <div className="relative aspect-9/16 rounded-2xl overflow-hidden shadow-xl max-w-xs mx-auto">
-            <video
-              src="https://res.cloudinary.com/dkew5dwgo/video/upload/v1768531254/Untitled_design_jiwqlw.mp4"
-              className="absolute inset-0 w-full h-full object-cover"
-              autoPlay
-              loop
-              muted
-              playsInline
-            />
-            <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
-              <p className="text-sm italic mb-2">"The instant win feature is amazing - I couldn't believe it when I won!"</p>
-              <p className="text-xs font-semibold">Happy Winner</p>
+        {videoTestimonials.length > 0 && (
+          <div className="sm:hidden relative">
+            <div
+              className={`relative aspect-9/16 rounded-2xl overflow-hidden shadow-xl max-w-xs mx-auto ${videoTestimonials[0].url ? 'cursor-pointer' : ''}`}
+              onClick={() => videoTestimonials[0].url && window.open(videoTestimonials[0].url, '_blank', 'noopener,noreferrer')}
+              role={videoTestimonials[0].url ? 'button' : undefined}
+              tabIndex={videoTestimonials[0].url ? 0 : undefined}
+              onKeyDown={(e) => {
+                if (videoTestimonials[0].url && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault()
+                  window.open(videoTestimonials[0].url, '_blank', 'noopener,noreferrer')
+                }
+              }}
+            >
+              <video
+                src={videoTestimonials[0].video_url}
+                className="absolute inset-0 w-full h-full object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+              <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
+                <p className="text-sm italic mb-2">"{videoTestimonials[0].quote}"</p>
+                <p className="text-xs font-semibold">{videoTestimonials[0].author_name}</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </section>
   )
