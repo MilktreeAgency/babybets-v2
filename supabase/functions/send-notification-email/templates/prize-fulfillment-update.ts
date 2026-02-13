@@ -1,6 +1,6 @@
 import { getEmailLayout } from './layout.ts'
 
-export function getPrizeFulfillmentUpdateHTML(name: string, data: Record<string, unknown>): string {
+export function getPrizeFulfillmentUpdateHTML(name: string, data: Record<string, unknown>, logoUrl?: string): string {
   const statusMessages: Record<string, string> = {
     'processing': 'Your prize is being prepared for shipment',
     'shipped': 'Your prize has been shipped!',
@@ -66,7 +66,7 @@ export function getPrizeFulfillmentUpdateHTML(name: string, data: Record<string,
 
     <p style="margin-top: 24px; color: #09090b; font-weight: 600;">The BabyBets Team</p>
   `
-  return getEmailLayout('Prize Update', content)
+  return getEmailLayout('Prize Update', content, logoUrl)
 }
 
 export function getPrizeFulfillmentUpdateText(name: string, data: Record<string, unknown>): string {

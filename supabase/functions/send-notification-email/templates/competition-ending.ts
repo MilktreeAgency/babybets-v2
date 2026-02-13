@@ -1,6 +1,6 @@
 import { getEmailLayout } from './layout.ts'
 
-export function getCompetitionEndingHTML(name: string, data: Record<string, unknown>): string {
+export function getCompetitionEndingHTML(name: string, data: Record<string, unknown>, logoUrl?: string): string {
   const content = `
     <h2>Competition Ending Soon</h2>
     <p>Hi ${name},</p>
@@ -20,7 +20,7 @@ export function getCompetitionEndingHTML(name: string, data: Record<string, unkn
 
     <p style="margin-top: 24px; color: #09090b; font-weight: 600;">The BabyBets Team</p>
   `
-  return getEmailLayout('Competition Ending Soon', content)
+  return getEmailLayout('Competition Ending Soon', content, logoUrl)
 }
 
 export function getCompetitionEndingText(name: string, data: Record<string, unknown>): string {

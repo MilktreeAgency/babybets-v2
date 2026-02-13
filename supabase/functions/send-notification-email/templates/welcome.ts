@@ -1,6 +1,6 @@
 import { getEmailLayout } from './layout.ts'
 
-export function getWelcomeHTML(name: string, data: Record<string, unknown>): string {
+export function getWelcomeHTML(name: string, data: Record<string, unknown>, logoUrl?: string): string {
   const content = `
     <h2>Welcome to BabyBets, ${name}</h2>
     <p>Thank you for joining our community. We're excited to have you here.</p>
@@ -22,7 +22,7 @@ export function getWelcomeHTML(name: string, data: Record<string, unknown>): str
     <p>If you have any questions, our support team is here to help.</p>
     <p style="margin-top: 24px; color: #09090b; font-weight: 600;">The BabyBets Team</p>
   `
-  return getEmailLayout('Welcome to BabyBets', content)
+  return getEmailLayout('Welcome to BabyBets', content, logoUrl)
 }
 
 export function getWelcomeText(name: string, data: Record<string, unknown>): string {

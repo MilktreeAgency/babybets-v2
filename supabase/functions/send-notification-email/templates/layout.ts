@@ -2,7 +2,10 @@
  * Common email layout wrapper - Matches BabyBets branding
  * Clean, minimal black & white aesthetic
  */
-export function getEmailLayout(title: string, content: string): string {
+export function getEmailLayout(title: string, content: string, logoUrl?: string): string {
+  // Default logo URL if none provided
+  const defaultLogoUrl = 'https://eooebphyjhrgzmfroaaq.supabase.co/storage/v1/object/public/babybets-assets/email-logo.png'
+  const emailLogoUrl = logoUrl || defaultLogoUrl
   return `
 <!DOCTYPE html>
 <html>
@@ -153,7 +156,7 @@ export function getEmailLayout(title: string, content: string): string {
 <body>
   <div class="container">
     <div class="header">
-      <img src="https://babybets.co.uk/babybets-logo.png" alt="BabyBets" />
+      <img src="${emailLogoUrl}" alt="BabyBets" />
     </div>
     <div class="content">
       ${content}

@@ -29,92 +29,109 @@ interface EmailNotification {
  * Get email template based on notification type
  * Templates are imported from separate files in ./templates/
  */
-function getEmailTemplate(notification: EmailNotification): { subject: string; html: string; text: string } {
+async function getEmailTemplate(notification: EmailNotification, supabaseClient: ReturnType<typeof createClient>): Promise<{ subject: string; html: string; text: string }> {
   const { type, recipientName, data } = notification
   const firstName = recipientName || 'there'
+
+  // Fetch email logo from system settings
+  let emailLogoUrl: string | undefined
+  try {
+    const { data: settingsData } = await supabaseClient
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', 'email_logo')
+      .single()
+
+    if (settingsData && settingsData.setting_value && typeof settingsData.setting_value === 'object' && !Array.isArray(settingsData.setting_value)) {
+      const emailLogoSettings = settingsData.setting_value as { url?: string | null }
+      emailLogoUrl = emailLogoSettings.url || undefined
+    }
+  } catch (error) {
+    console.warn('Failed to fetch email logo from settings, using default:', error)
+  }
 
   switch (type) {
     case 'prize_win':
       return {
         subject: `🎉 Congratulations! You've Won ${data.prizeName || 'a Prize'}!`,
-        html: getPrizeWinHTML(firstName, data),
+        html: getPrizeWinHTML(firstName, data, emailLogoUrl),
         text: getPrizeWinText(firstName, data),
       }
 
     case 'order_confirmation':
       return {
         subject: `Order Confirmation - ${data.orderNumber || 'Your Order'}`,
-        html: getOrderConfirmationHTML(firstName, data),
+        html: getOrderConfirmationHTML(firstName, data, emailLogoUrl),
         text: getOrderConfirmationText(firstName, data),
       }
 
     case 'withdrawal_request':
       return {
         subject: 'Withdrawal Request Received',
-        html: getWithdrawalRequestHTML(firstName, data),
+        html: getWithdrawalRequestHTML(firstName, data, emailLogoUrl),
         text: getWithdrawalRequestText(firstName, data),
       }
 
     case 'withdrawal_approved':
       return {
         subject: '✅ Withdrawal Approved - Payment Processing',
-        html: getWithdrawalApprovedHTML(firstName, data),
+        html: getWithdrawalApprovedHTML(firstName, data, emailLogoUrl),
         text: getWithdrawalApprovedText(firstName, data),
       }
 
     case 'withdrawal_rejected':
       return {
         subject: 'Withdrawal Request Declined',
-        html: getWithdrawalRejectedHTML(firstName, data),
+        html: getWithdrawalRejectedHTML(firstName, data, emailLogoUrl),
         text: getWithdrawalRejectedText(firstName, data),
       }
 
     case 'competition_ending':
       return {
         subject: `⏰ Last Chance! ${data.competitionTitle || 'Competition'} Ending Soon`,
-        html: getCompetitionEndingHTML(firstName, data),
+        html: getCompetitionEndingHTML(firstName, data, emailLogoUrl),
         text: getCompetitionEndingText(firstName, data),
       }
 
     case 'welcome':
       return {
         subject: '🎉 Welcome to BabyBets!',
-        html: getWelcomeHTML(firstName, data),
+        html: getWelcomeHTML(firstName, data, emailLogoUrl),
         text: getWelcomeText(firstName, data),
       }
 
     case 'influencer_application_submitted':
       return {
         subject: 'BabyBets Partner Application Received',
-        html: getInfluencerApplicationSubmittedHTML(firstName, data),
+        html: getInfluencerApplicationSubmittedHTML(firstName, data, emailLogoUrl),
         text: getInfluencerApplicationSubmittedText(firstName, data),
       }
 
     case 'influencer_approved':
       return {
         subject: '🎉 Welcome to BabyBets Partners!',
-        html: getInfluencerApprovedHTML(firstName, data),
+        html: getInfluencerApprovedHTML(firstName, data, emailLogoUrl),
         text: getInfluencerApprovedText(firstName, data),
       }
 
     case 'influencer_rejected':
       return {
         subject: 'BabyBets Partner Application Update',
-        html: getInfluencerRejectedHTML(firstName, data),
+        html: getInfluencerRejectedHTML(firstName, data, emailLogoUrl),
         text: getInfluencerRejectedText(firstName, data),
       }
 
     case 'prize_fulfillment_update':
       return {
         subject: `Prize Update: ${data.prizeName || 'Your Prize'}`,
-        html: getPrizeFulfillmentUpdateHTML(firstName, data),
+        html: getPrizeFulfillmentUpdateHTML(firstName, data, emailLogoUrl),
         text: getPrizeFulfillmentUpdateText(firstName, data),
       }
 
     case 'wallet_credit':
       return {
         subject: `£${data.amount || '0.00'} Added to Your BabyBets Wallet!`,
-        html: getWalletCreditHTML(firstName, data),
+        html: getWalletCreditHTML(firstName, data, emailLogoUrl),
         text: getWalletCreditText(firstName, data),
       }
 
@@ -154,7 +171,7 @@ serve(async (req) => {
     }
 
     // Get email template
-    const { subject, html, text } = getEmailTemplate(notification)
+    const { subject, html, text } = await getEmailTemplate(notification, supabaseClient)
 
     // Get Mailgun settings
     const mailgunApiKey = Deno.env.get('MAILGUN_API_KEY')

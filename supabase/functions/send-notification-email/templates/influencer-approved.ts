@@ -1,6 +1,6 @@
 import { getEmailLayout } from './layout.ts'
 
-export function getInfluencerApprovedHTML(name: string, data: Record<string, unknown>): string {
+export function getInfluencerApprovedHTML(name: string, data: Record<string, unknown>, logoUrl?: string): string {
   const commissionTier = data.commissionTier || 1
   const content = `
     <h2>🎉 Welcome to BabyBets Partners!</h2>
@@ -47,7 +47,7 @@ export function getInfluencerApprovedHTML(name: string, data: Record<string, unk
 
     <p style="margin-top: 24px; color: #09090b; font-weight: 600;">Welcome aboard! 🚀<br>The BabyBets Team</p>
   `
-  return getEmailLayout('Welcome to BabyBets Partners!', content)
+  return getEmailLayout('Welcome to BabyBets Partners!', content, logoUrl)
 }
 
 export function getInfluencerApprovedText(name: string, data: Record<string, unknown>): string {

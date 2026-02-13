@@ -1,6 +1,6 @@
 import { getEmailLayout } from './layout.ts'
 
-export function getWalletCreditHTML(name: string, data: Record<string, unknown>): string {
+export function getWalletCreditHTML(name: string, data: Record<string, unknown>, logoUrl?: string): string {
   const amount = data.amount as string
   const description = data.description as string
   const expiryDate = data.expiryDate as string
@@ -44,7 +44,7 @@ export function getWalletCreditHTML(name: string, data: Record<string, unknown>)
 
     <p style="margin-top: 24px; color: #09090b; font-weight: 600;">The BabyBets Team</p>
   `
-  return getEmailLayout('Wallet Credited', content)
+  return getEmailLayout('Wallet Credited', content, logoUrl)
 }
 
 export function getWalletCreditText(name: string, data: Record<string, unknown>): string {

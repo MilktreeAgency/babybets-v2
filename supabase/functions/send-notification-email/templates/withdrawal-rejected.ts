@@ -1,6 +1,6 @@
 import { getEmailLayout } from './layout.ts'
 
-export function getWithdrawalRejectedHTML(name: string, data: Record<string, unknown>): string {
+export function getWithdrawalRejectedHTML(name: string, data: Record<string, unknown>, logoUrl?: string): string {
   const content = `
     <h2>Withdrawal Request Declined</h2>
     <p>Hi ${name},</p>
@@ -37,7 +37,7 @@ export function getWithdrawalRejectedHTML(name: string, data: Record<string, unk
 
     <p style="margin-top: 24px; color: #09090b; font-weight: 600;">The BabyBets Team</p>
   `
-  return getEmailLayout('Withdrawal Request Declined', content)
+  return getEmailLayout('Withdrawal Request Declined', content, logoUrl)
 }
 
 export function getWithdrawalRejectedText(name: string, data: Record<string, unknown>): string {

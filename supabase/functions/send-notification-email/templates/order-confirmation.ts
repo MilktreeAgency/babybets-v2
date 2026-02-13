@@ -1,6 +1,6 @@
 import { getEmailLayout } from './layout.ts'
 
-export function getOrderConfirmationHTML(name: string, data: Record<string, unknown>): string {
+export function getOrderConfirmationHTML(name: string, data: Record<string, unknown>, logoUrl?: string): string {
   const content = `
     <h2>Thank you for your order, ${name}!</h2>
     <p>Your order has been confirmed and your tickets have been allocated.</p>
@@ -32,7 +32,7 @@ export function getOrderConfirmationHTML(name: string, data: Record<string, unkn
 
     <p style="margin-top: 24px; color: #09090b; font-weight: 600;">The BabyBets Team</p>
   `
-  return getEmailLayout('Order Confirmation', content)
+  return getEmailLayout('Order Confirmation', content, logoUrl)
 }
 
 export function getOrderConfirmationText(name: string, data: Record<string, unknown>): string {

@@ -1,6 +1,6 @@
 import { getEmailLayout } from './layout.ts'
 
-export function getPrizeWinHTML(name: string, data: Record<string, unknown>): string {
+export function getPrizeWinHTML(name: string, data: Record<string, unknown>, logoUrl?: string): string {
   const content = `
     <h2>Congratulations, ${name}!</h2>
     <p>Great news! You've won a prize in our competition.</p>
@@ -26,7 +26,7 @@ export function getPrizeWinHTML(name: string, data: Record<string, unknown>): st
     <p>If you have any questions about your prize, our support team is here to help.</p>
     <p style="margin-top: 24px; color: #09090b; font-weight: 600;">The BabyBets Team</p>
   `
-  return getEmailLayout('Prize Win Notification', content)
+  return getEmailLayout('Prize Win Notification', content, logoUrl)
 }
 
 export function getPrizeWinText(name: string, data: Record<string, unknown>): string {

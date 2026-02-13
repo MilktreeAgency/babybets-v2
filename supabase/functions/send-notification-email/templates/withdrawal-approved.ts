@@ -1,6 +1,6 @@
 import { getEmailLayout } from './layout.ts'
 
-export function getWithdrawalApprovedHTML(name: string, data: Record<string, unknown>): string {
+export function getWithdrawalApprovedHTML(name: string, data: Record<string, unknown>, logoUrl?: string): string {
   const content = `
     <h2>Withdrawal Approved</h2>
     <p>Hi ${name},</p>
@@ -33,7 +33,7 @@ export function getWithdrawalApprovedHTML(name: string, data: Record<string, unk
 
     <p style="margin-top: 24px; color: #09090b; font-weight: 600;">The BabyBets Team</p>
   `
-  return getEmailLayout('Withdrawal Approved', content)
+  return getEmailLayout('Withdrawal Approved', content, logoUrl)
 }
 
 export function getWithdrawalApprovedText(name: string, data: Record<string, unknown>): string {

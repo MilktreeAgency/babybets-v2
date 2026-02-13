@@ -1,6 +1,6 @@
 import { getEmailLayout } from './layout.ts'
 
-export function getWithdrawalRequestHTML(name: string, data: Record<string, unknown>): string {
+export function getWithdrawalRequestHTML(name: string, data: Record<string, unknown>, logoUrl?: string): string {
   const content = `
     <h2>Withdrawal Request Received</h2>
     <p>Hi ${name},</p>
@@ -31,7 +31,7 @@ export function getWithdrawalRequestHTML(name: string, data: Record<string, unkn
     <p>If you have any questions, please contact our support team.</p>
     <p>The BabyBets Team</p>
   `
-  return getEmailLayout('Withdrawal Request', content)
+  return getEmailLayout('Withdrawal Request', content, logoUrl)
 }
 
 export function getWithdrawalRequestText(name: string, data: Record<string, unknown>): string {

@@ -1,6 +1,6 @@
 import { getEmailLayout } from './layout.ts'
 
-export function getInfluencerRejectedHTML(name: string, data: Record<string, unknown>): string {
+export function getInfluencerRejectedHTML(name: string, data: Record<string, unknown>, logoUrl?: string): string {
   const content = `
     <h2>Partner Application Update</h2>
     <p>Hi ${name},</p>
@@ -34,7 +34,7 @@ export function getInfluencerRejectedHTML(name: string, data: Record<string, unk
 
     <p style="margin-top: 24px; color: #09090b; font-weight: 600;">The BabyBets Team</p>
   `
-  return getEmailLayout('Partner Application Update', content)
+  return getEmailLayout('Partner Application Update', content, logoUrl)
 }
 
 export function getInfluencerRejectedText(name: string, data: Record<string, unknown>): string {

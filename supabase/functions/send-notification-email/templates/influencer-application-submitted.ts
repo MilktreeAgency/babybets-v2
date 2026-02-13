@@ -1,6 +1,6 @@
 import { getEmailLayout } from './layout.ts'
 
-export function getInfluencerApplicationSubmittedHTML(name: string, data: Record<string, unknown>): string {
+export function getInfluencerApplicationSubmittedHTML(name: string, data: Record<string, unknown>, logoUrl?: string): string {
   const content = `
     <h2>Partner Application Received</h2>
     <p>Hi ${name},</p>
@@ -43,7 +43,7 @@ export function getInfluencerApplicationSubmittedHTML(name: string, data: Record
 
     <p style="margin-top: 24px; color: #09090b; font-weight: 600;">The BabyBets Team</p>
   `
-  return getEmailLayout('Partner Application Received', content)
+  return getEmailLayout('Partner Application Received', content, logoUrl)
 }
 
 export function getInfluencerApplicationSubmittedText(name: string, data: Record<string, unknown>): string {
