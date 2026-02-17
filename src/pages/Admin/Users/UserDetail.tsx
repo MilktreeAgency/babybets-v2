@@ -80,6 +80,8 @@ export default function UserDetail() {
         .single()
 
       if (error) throw error
+      console.log('User profile data:', data)
+      console.log('Phone number:', data.phone)
       setUser(data)
       setSelectedRole(data.role)
     } catch (error) {
@@ -328,6 +330,12 @@ export default function UserDetail() {
                   <Mail className="size-4" />
                   <span>{user.email}</span>
                 </div>
+                {user.phone && (
+                  <div className="flex items-center gap-2 mt-2 text-muted-foreground">
+                    <Phone className="size-4" />
+                    <span>{user.phone}</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-4 mt-4">
                   <div className="text-sm">
                     <div className="text-muted-foreground">Joined</div>
