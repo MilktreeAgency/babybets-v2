@@ -11,6 +11,15 @@ import { ShoppingCart, Trash2, Wallet, ShieldCheck, Tag, X, Check, Users } from 
 import { getReferral, clearReferral, setReferral } from '@/lib/referralTracking'
 import { showErrorToast, showWarningToast } from '@/lib/toast'
 
+// Type declarations for Apple Pay and Payment Request API
+declare global {
+  interface Window {
+    ApplePaySession?: {
+      canMakePayments(): boolean
+    }
+  }
+}
+
 function Checkout() {
   const navigate = useNavigate()
   const { items, removeItem, clearCart, getTotalPrice, validateCart } = useCartStore()
@@ -29,6 +38,7 @@ function Checkout() {
   const [cardExpiry, setCardExpiry] = useState('')
   const [cardCVV, setCardCVV] = useState('')
   const [cardName, setCardName] = useState('')
+  const [mobileNumber, setMobileNumber] = useState('')
   const [appliedCredit, setAppliedCredit] = useState(0)
   const [promoCode, setPromoCode] = useState('')
   const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null)
@@ -39,8 +49,19 @@ function Checkout() {
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [isUKResident, setIsUKResident] = useState(false)
   const [isOver18, setIsOver18] = useState(false)
+  const [applePayAvailable, setApplePayAvailable] = useState(false)
+  const [googlePayAvailable, setGooglePayAvailable] = useState(false)
 
-  const canProceed = agreeTerms && isUKResident && isOver18
+  // Validate UK mobile number format
+  const validateMobileNumber = (mobile: string): boolean => {
+    // Remove spaces and check if it's a valid UK mobile
+    const cleaned = mobile.replace(/\s/g, '')
+    // UK mobile: starts with 07 and is 11 digits long
+    return /^07\d{9}$/.test(cleaned)
+  }
+
+  const isMobileValid = validateMobileNumber(mobileNumber)
+  const canProceed = agreeTerms && isUKResident && isOver18 && isMobileValid
 
   const totalPrice = getTotalPrice()
   const availableCreditGBP = summary.availableBalance / 100
@@ -93,6 +114,31 @@ function Checkout() {
     loadReferral()
   }, [])
 
+  // Load user's existing phone number from profile
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('phone')
+            .eq('id', user.id)
+            .single()
+
+          if (profile?.phone) {
+            // Format the phone number with spaces for better readability
+            const formatted = profile.phone.replace(/(\d{5})(\d{6})/, '$1 $2')
+            setMobileNumber(formatted)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error)
+      }
+    }
+    loadUserProfile()
+  }, [])
+
   // Validate cart on mount
   useEffect(() => {
     const validateCartOnLoad = async () => {
@@ -104,6 +150,58 @@ function Checkout() {
       }
     }
     validateCartOnLoad()
+  }, [])
+
+  // Detect Apple Pay and Google Pay availability
+  useEffect(() => {
+    // Check for Apple Pay support
+    if (window.ApplePaySession && window.ApplePaySession.canMakePayments()) {
+      setApplePayAvailable(true)
+    }
+
+    // Check for Google Pay support (Payment Request API)
+    if (window.PaymentRequest) {
+      try {
+        const supportedPaymentMethods = [
+          {
+            supportedMethods: 'https://google.com/pay',
+            data: {
+              environment: 'TEST',
+              apiVersion: 2,
+              apiVersionMinor: 0,
+              merchantInfo: {
+                merchantName: 'BabyBets'
+              },
+              allowedPaymentMethods: [{
+                type: 'CARD',
+                parameters: {
+                  allowedAuthMethods: ['PAN_ONLY', 'CRYPTOGRAM_3DS'],
+                  allowedCardNetworks: ['MASTERCARD', 'VISA']
+                }
+              }]
+            }
+          }
+        ]
+
+        const details = {
+          total: {
+            label: 'Total',
+            amount: { currency: 'GBP', value: '0.01' }
+          }
+        }
+
+        const request = new PaymentRequest(supportedPaymentMethods, details)
+        request.canMakePayment().then((result) => {
+          if (result) {
+            setGooglePayAvailable(true)
+          }
+        }).catch(() => {
+          // Google Pay not available
+        })
+      } catch (e) {
+        // Payment Request API not supported
+      }
+    }
   }, [])
 
   // Handle applying influencer code
@@ -384,6 +482,26 @@ function Checkout() {
         throw itemsError
       }
 
+      // Update user's phone number if provided
+      if (mobileNumber) {
+        const cleanedPhone = mobileNumber.replace(/\s/g, '')
+        console.log('Saving phone number:', cleanedPhone, 'for user:', authenticatedUserId)
+        const { data: updateData, error: phoneUpdateError } = await supabase
+          .from('profiles')
+          .update({ phone: cleanedPhone })
+          .eq('id', authenticatedUserId)
+          .select()
+
+        if (phoneUpdateError) {
+          console.error('Warning: Could not update phone number:', phoneUpdateError)
+          // Don't fail the entire payment if phone update fails
+        } else {
+          console.log('Phone number saved successfully:', updateData)
+        }
+      } else {
+        console.log('No mobile number provided, skipping phone update')
+      }
+
       // If fully paid with wallet credit, complete order immediately
       if (finalPrice === 0) {
         // Complete order with wallet payment
@@ -403,6 +521,11 @@ function Checkout() {
         clearCart()
         navigate('/account?tab=tickets&purchase=success')
         return
+      }
+
+      // Validate mobile number
+      if (!validateMobileNumber(mobileNumber)) {
+        throw new Error('Please enter a valid UK mobile number (e.g., 07xxx xxxxxx)')
       }
 
       // Validate card details
@@ -1008,6 +1131,79 @@ function Checkout() {
                     Payment Details
                   </h2>
 
+                  {/* Express Checkout */}
+                  {(applePayAvailable || googlePayAvailable) && (
+                    <>
+                      <div className="mb-6">
+                        <p className="text-sm font-medium mb-3" style={{ color: '#78716c' }}>
+                          Express Checkout
+                        </p>
+                        <div className="space-y-2">
+                          {applePayAvailable && (
+                            <button
+                              onClick={() => {
+                                showErrorToast('Apple Pay integration coming soon')
+                              }}
+                              className="w-full h-12 rounded-lg transition-all cursor-pointer flex items-center justify-center"
+                              style={{
+                                backgroundColor: '#000000',
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#333333'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#000000'}
+                            >
+                              <img
+                                src="/apple-pay.png"
+                                alt="Apple Pay"
+                                className="h-8"
+                                style={{ objectFit: 'contain' }}
+                              />
+                            </button>
+                          )}
+
+                          {googlePayAvailable && (
+                            <button
+                              onClick={() => {
+                                showErrorToast('Google Pay integration coming soon')
+                              }}
+                              className="w-full h-12 rounded-lg transition-all cursor-pointer flex items-center justify-center"
+                              style={{
+                                backgroundColor: '#ffffff',
+                                borderWidth: '1px',
+                                borderColor: '#dadce0',
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+                            >
+                              <img
+                                src="/google-pay.png"
+                                alt="Google Pay"
+                                className="h-8"
+                                style={{ objectFit: 'contain' }}
+                              />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="relative mb-6">
+                        <div
+                          className="absolute inset-0 flex items-center"
+                          style={{ borderTopWidth: '1px', borderColor: '#e7e5e4' }}
+                        >
+                          <span className="sr-only">Or continue with</span>
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span
+                            className="px-2"
+                            style={{ backgroundColor: 'white', color: '#78716c' }}
+                          >
+                            Or pay with card
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
                   {/* Card Details Form */}
                   <div className="space-y-4 mb-6">
                     <div>
@@ -1110,6 +1306,49 @@ function Checkout() {
                     </div>
                   </div>
 
+                  {/* Contact Information */}
+                  <div className="mb-6">
+                    <h3
+                      className="text-lg font-bold mb-4"
+                      style={{ color: '#151e20', fontFamily: "'Fraunces', serif" }}
+                    >
+                      Contact & Delivery
+                    </h3>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: '#151e20' }}>
+                        Mobile Number <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={mobileNumber}
+                        onChange={(e) => {
+                          // Allow only numbers and spaces
+                          const value = e.target.value.replace(/[^\d\s]/g, '')
+                          setMobileNumber(value)
+                        }}
+                        placeholder="07xxx xxxxxx"
+                        autoComplete="tel"
+                        className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:outline-none"
+                        style={{
+                          backgroundColor: '#f5f5f4',
+                          borderWidth: '1px',
+                          borderColor: mobileNumber && !isMobileValid ? '#ef4444' : '#e7e5e4',
+                          color: '#151e20',
+                        }}
+                      />
+                      {mobileNumber && !isMobileValid ? (
+                        <p className="text-xs mt-1.5" style={{ color: '#ef4444' }}>
+                          Please enter a valid UK mobile number (e.g., 07xxx xxxxxx)
+                        </p>
+                      ) : (
+                        <p className="text-xs mt-1.5" style={{ color: '#78716c' }}>
+                          Required for winner contact and delivery coordination
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Entry Requirements */}
                   <div
                     className="rounded-xl p-6 mb-6 space-y-4"
@@ -1202,7 +1441,11 @@ function Checkout() {
 
                     {!canProceed && (
                       <p className="text-xs pt-2" style={{ color: '#78716c' }}>
-                        Please confirm all boxes above to complete your purchase
+                        {!isMobileValid && mobileNumber
+                          ? 'Please enter a valid UK mobile number and confirm all requirements above'
+                          : !isMobileValid
+                          ? 'Please enter a mobile number and confirm all requirements above'
+                          : 'Please confirm all boxes above to complete your purchase'}
                       </p>
                     )}
                   </div>
@@ -1261,6 +1504,49 @@ function Checkout() {
                     </p>
                   </div>
 
+                  {/* Contact Information */}
+                  <div className="mb-6">
+                    <h3
+                      className="text-lg font-bold mb-4"
+                      style={{ color: '#151e20', fontFamily: "'Fraunces', serif" }}
+                    >
+                      Contact & Delivery
+                    </h3>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: '#151e20' }}>
+                        Mobile Number <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={mobileNumber}
+                        onChange={(e) => {
+                          // Allow only numbers and spaces
+                          const value = e.target.value.replace(/[^\d\s]/g, '')
+                          setMobileNumber(value)
+                        }}
+                        placeholder="07xxx xxxxxx"
+                        autoComplete="tel"
+                        className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:outline-none"
+                        style={{
+                          backgroundColor: '#f5f5f4',
+                          borderWidth: '1px',
+                          borderColor: mobileNumber && !isMobileValid ? '#ef4444' : '#e7e5e4',
+                          color: '#151e20',
+                        }}
+                      />
+                      {mobileNumber && !isMobileValid ? (
+                        <p className="text-xs mt-1.5" style={{ color: '#ef4444' }}>
+                          Please enter a valid UK mobile number (e.g., 07xxx xxxxxx)
+                        </p>
+                      ) : (
+                        <p className="text-xs mt-1.5" style={{ color: '#78716c' }}>
+                          Required for winner contact and delivery coordination
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Entry Requirements */}
                   <div
                     className="rounded-xl p-6 mb-6 space-y-4"
@@ -1353,7 +1639,11 @@ function Checkout() {
 
                     {!canProceed && (
                       <p className="text-xs pt-2" style={{ color: '#78716c' }}>
-                        Please confirm all boxes above to complete your purchase
+                        {!isMobileValid && mobileNumber
+                          ? 'Please enter a valid UK mobile number and confirm all requirements above'
+                          : !isMobileValid
+                          ? 'Please enter a mobile number and confirm all requirements above'
+                          : 'Please confirm all boxes above to complete your purchase'}
                       </p>
                     )}
                   </div>
