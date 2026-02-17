@@ -21,7 +21,7 @@ export default function Terms() {
               Prize Competition Terms & Conditions
             </h1>
             <p className="text-sm mb-12" style={{ color: '#78716c' }}>
-              Last Updated: April 2025
+              Last Updated: February 2026
             </p>
 
             <div className="prose prose-stone max-w-none" style={{ color: '#78716c' }}>
@@ -31,7 +31,7 @@ export default function Terms() {
                     1. The Promoter
                   </h2>
                   <p className="leading-relaxed mb-2">
-                    The promoter is: Ulaunch Ltd trading as "Babybets", Company Number 16453042 and whose registered office is at Unit B2, Beacon House, Cumberland Business Centre, Portsmouth PO5 1DS.
+                    The promoter is: Babybets Ltd trading as "Babybets", Company Number 16963672 and whose registered office is at Unit B2, Beacon House, Cumberland Business Centre, Portsmouth PO5 1DS.
                   </p>
                   <p className="leading-relaxed mb-4">
                     Our correspondence address is <a href="mailto:hello@babybets.co.uk" className="font-bold" style={{ color: '#496B71' }}>hello@babybets.co.uk</a>

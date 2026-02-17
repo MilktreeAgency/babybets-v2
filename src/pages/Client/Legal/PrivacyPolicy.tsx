@@ -30,10 +30,10 @@ export default function PrivacyPolicy() {
                 <section>
                   <p className="font-bold mb-2" style={{ color: '#151e20' }}>Introduction</p>
                   <p className="leading-relaxed mb-4">
-                    Welcome to ULaunch Ltd's (trading as "Babybets") privacy policy.
+                    Welcome to Babybets Ltd's (trading as "Babybets") privacy policy.
                   </p>
                   <p className="leading-relaxed mb-4">
-                    ULaunch Ltd respects your privacy and is committed to protecting your personal data. This privacy policy will inform you as to how we process and look after your personal data when you visit our website (regardless of where you visit it from).
+                    Babybets Ltd respects your privacy and is committed to protecting your personal data. This privacy policy will inform you as to how we process and look after your personal data when you visit our website (regardless of where you visit it from).
                   </p>
                   <p className="leading-relaxed mb-4">
                     It also tells you about your privacy rights and how the law protects you.
@@ -51,7 +51,7 @@ export default function PrivacyPolicy() {
 
                   <p className="font-bold mb-2 mt-4" style={{ color: '#151e20' }}>Purpose of this privacy policy</p>
                   <p className="leading-relaxed mb-4">
-                    This privacy policy aims to give you information on how ULaunch Ltd collects and processes your personal data through your use of this website, including any data you may provide through this website when you sign up to our newsletter, purchase any products or services or take part in a prize draw or competition.
+                    This privacy policy aims to give you information on how Babybets Ltd collects and processes your personal data through your use of this website, including any data you may provide through this website when you sign up to our newsletter, purchase any products or services or take part in a prize draw or competition.
                   </p>
                   <p className="leading-relaxed mb-4">
                     This website is not intended for children and we do not knowingly collect data relating to children.
@@ -62,7 +62,7 @@ export default function PrivacyPolicy() {
 
                   <p className="font-bold mb-2 mt-4" style={{ color: '#151e20' }}>Controller</p>
                   <p className="leading-relaxed mb-4">
-                    ULaunch Ltd is the controller and responsible for your personal data (collectively referred to as "ULaunch Ltd", "we", "us" or "our" in this privacy policy).
+                    Babybets Ltd is the controller and responsible for your personal data (collectively referred to as "Babybets", "we", "us" or "our" in this privacy policy).
                   </p>
                   <p className="leading-relaxed mb-4">
                     We have appointed a data privacy manager who is responsible for overseeing questions in relation to this privacy policy. If you have any questions about this privacy policy, including any requests to exercise your legal rights, please contact the data privacy manager using the details set out below.
@@ -70,8 +70,8 @@ export default function PrivacyPolicy() {
 
                   <p className="font-bold mb-2 mt-4" style={{ color: '#151e20' }}>Contact details</p>
                   <p className="leading-relaxed mb-2">If you have any questions about this privacy policy or our privacy practices, please contact our data privacy manager in the following ways:</p>
-                  <p className="leading-relaxed mb-2">Full name of legal entity: ULaunch Ltd</p>
-                  <p className="leading-relaxed mb-2">Email address: <a href="mailto:hello@babybets.co.uk" className="font-bold" style={{ color: '#496B71' }}>hello@babybets.co.uk</a></p>
+                  <p className="leading-relaxed mb-2">Full name of legal entity: Babybets Ltd</p>
+                  <p className="leading-relaxed mb-2">Email address: <a href="mailto:hello@babybets.co.uk" className="font-bold cursor-pointer" style={{ color: '#496B71' }}>hello@babybets.co.uk</a></p>
                   <p className="leading-relaxed mb-4">Postal address: Unit B2, Beacon House, Cumberland Business Centre, Portsmouth, PO5 1DS</p>
                   <p className="leading-relaxed mb-4">
                     You have the right to make a complaint at any time to the Information Commissioner's Office (ICO), the UK supervisory authority for data protection issues (www.ico.org.uk). We would, however, appreciate the chance to deal with your concerns before you approach the ICO so please contact us in the first instance.
