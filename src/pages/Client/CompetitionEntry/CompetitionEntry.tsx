@@ -35,6 +35,7 @@ interface InstantWinPrize {
   winning_tickets?: Array<{
     ticket_number: string
     ticket_id: string
+    is_sold: boolean
   }>
 }
 
@@ -51,12 +52,55 @@ function CompetitionEntry() {
   const [modalImageIndex, setModalImageIndex] = useState(0)
   const [activeTab, setActiveTab] = useState<'prize' | 'details'>('details')
   const [entryMode, setEntryMode] = useState<'paid' | 'postal'>('paid')
+  const [showStickyBar, setShowStickyBar] = useState(false)
 
   useEffect(() => {
     if (slug) {
       loadCompetition()
     }
   }, [slug])
+
+  // Real-time subscription for instant win prize updates
+  useEffect(() => {
+    if (!competition) return
+
+    // Subscribe to ticket allocation changes (when prizes are won)
+    const channel = supabase
+      .channel('instant-win-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ticket_allocations',
+          filter: `competition_id=eq.${competition.id}`,
+        },
+        () => {
+          // Reload instant win prizes when any ticket allocation changes
+          loadInstantWinPrizes(competition.id)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [competition])
+
+  // Scroll detection for sticky bottom bar (mobile)
+  useEffect(() => {
+    const handleScroll = () => {
+      const ticketSelector = document.getElementById('ticket-selector')
+      if (ticketSelector) {
+        const rect = ticketSelector.getBoundingClientRect()
+        // Show sticky bar when ticket selector scrolls out of view
+        setShowStickyBar(rect.bottom < 0)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   // Set default tab based on competition type
   useEffect(() => {
@@ -90,6 +134,67 @@ function CompetitionEntry() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isImageModalOpen, competition])
 
+  const loadInstantWinPrizes = async (competitionId: string) => {
+    try {
+      const { data: prizes, error: prizesError } = await supabase
+        .from('competition_instant_win_prizes')
+        .select(`
+          id,
+          competition_id,
+          prize_code,
+          total_quantity,
+          remaining_quantity,
+          tier,
+          prize_templates (
+            id,
+            name,
+            short_name,
+            type,
+            value_gbp,
+            cash_alternative_gbp,
+            description,
+            image_url
+          )
+        `)
+        .eq('competition_id', competitionId)
+        .order('tier', { ascending: true })
+
+      if (!prizesError && prizes) {
+        // Fetch ALL tickets assigned to prizes (both sold and unsold)
+        const { data: allPrizeTickets } = await supabase
+          .from('ticket_allocations')
+          .select('id, ticket_number, prize_id, is_sold')
+          .eq('competition_id', competitionId)
+          .not('prize_id', 'is', null)
+
+        const mappedPrizes = prizes.map((p: Record<string, unknown>) => {
+          const prizeTickets = allPrizeTickets?.filter(
+            (ticket) => ticket.prize_id === p.id
+          ).map((ticket) => ({
+            ticket_number: ticket.ticket_number,
+            ticket_id: ticket.id,
+            is_sold: ticket.is_sold || false
+          })) || []
+
+          return {
+            id: p.id,
+            competition_id: p.competition_id,
+            prize_code: p.prize_code,
+            total_quantity: p.total_quantity,
+            remaining_quantity: p.remaining_quantity,
+            tier: p.tier,
+            prize_template: p.prize_templates,
+            winning_tickets: prizeTickets
+          }
+        }) as InstantWinPrize[]
+
+        setInstantWinPrizes(mappedPrizes)
+      }
+    } catch (error) {
+      console.error('Error loading instant win prizes:', error)
+    }
+  }
+
   const loadCompetition = async () => {
     try {
       setLoading(true)
@@ -115,60 +220,7 @@ function CompetitionEntry() {
         data.competition_type === 'instant_win' ||
         data.competition_type === 'instant_win_with_end_prize'
       ) {
-        const { data: prizes, error: prizesError } = await supabase
-          .from('competition_instant_win_prizes')
-          .select(`
-            id,
-            competition_id,
-            prize_code,
-            total_quantity,
-            remaining_quantity,
-            tier,
-            prize_templates (
-              id,
-              name,
-              short_name,
-              type,
-              value_gbp,
-              cash_alternative_gbp,
-              description,
-              image_url
-            )
-          `)
-          .eq('competition_id', data.id)
-          .order('tier', { ascending: true })
-
-        if (!prizesError && prizes) {
-          // Fetch winning tickets for each prize
-          const { data: winningTickets } = await supabase
-            .from('ticket_allocations')
-            .select('id, ticket_number, prize_id')
-            .eq('competition_id', data.id)
-            .not('prize_id', 'is', null)
-            .eq('is_sold', true)
-
-          const mappedPrizes = prizes.map((p: Record<string, unknown>) => {
-            const wonTickets = winningTickets?.filter(
-              (ticket) => ticket.prize_id === p.id
-            ).map((ticket) => ({
-              ticket_number: ticket.ticket_number,
-              ticket_id: ticket.id
-            })) || []
-
-            return {
-              id: p.id,
-              competition_id: p.competition_id,
-              prize_code: p.prize_code,
-              total_quantity: p.total_quantity,
-              remaining_quantity: p.remaining_quantity,
-              tier: p.tier,
-              prize_template: p.prize_templates,
-              winning_tickets: wonTickets
-            }
-          }) as InstantWinPrize[]
-
-          setInstantWinPrizes(mappedPrizes)
-        }
+        await loadInstantWinPrizes(data.id)
       }
     } catch (error) {
       console.error('Error loading competition:', error)
@@ -178,10 +230,12 @@ function CompetitionEntry() {
   }
 
   // Calculate number of postal entries based on ticket price
+  // Formula: entries_per_postcard = max(1, ceil(stamp_price_pence / ticket_price_pence))
   const calculatePostalEntries = () => {
-    if (!competition?.base_ticket_price_pence) return 1
-    const ticketPriceGBP = competition.base_ticket_price_pence / 100
-    const entries = Math.floor(0.87 / ticketPriceGBP)
+    if (!competition?.base_ticket_price_pence || competition.base_ticket_price_pence <= 0) return 1
+    const stampPricePence = 87 // UK Second Class stamp price
+    const ticketPricePence = competition.base_ticket_price_pence
+    const entries = Math.ceil(stampPricePence / ticketPricePence)
     return Math.max(1, entries)
   }
 
@@ -378,16 +432,25 @@ function CompetitionEntry() {
   const images = (competition.images as string[]) || []
   const allImages = images.length > 0 ? images : [competition.image_url]
 
+  // Scroll to ticket selector
+  const scrollToTicketSelector = () => {
+    const element = document.getElementById('ticket-selector')
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FFFCF9', color: '#2D251E' }}>
       <Header />
 
       {/* Main Content */}
-      <div className="pt-16 sm:pt-20 pb-8 sm:pb-12">
+      <div className="pt-16 sm:pt-20 pb-24 md:pb-12">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-            {/* Left: Image and Description */}
-            <div className="space-y-3 sm:space-y-4">
+          {/* Mobile-First Layout: Image, Title, Ticket Selector stacked */}
+          <div className="lg:hidden space-y-4 sm:space-y-6">
+            {/* Image Gallery - Mobile */}
+            <div className="space-y-3">
               {/* Main Competition Image */}
               <div
                 className="relative aspect-square rounded-xl overflow-hidden cursor-pointer"
@@ -501,7 +564,7 @@ function CompetitionEntry() {
               </div>
 
               {/* Ticket Selector */}
-              <div className="mb-4 sm:mb-6">
+              <div id="ticket-selector" className="mb-4 sm:mb-6">
                 <div className="rounded-lg p-3 sm:p-4" style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#f0e0ca' }}>
                   {/* Entry Mode Toggle */}
                   <div className="flex items-stretch gap-0 mb-4 sm:mb-6">
@@ -686,53 +749,144 @@ function CompetitionEntry() {
 
               {/* Postal Entry Section */}
               {entryMode === 'postal' && (
-                <div className="space-y-3 sm:space-y-4">
-                  <div className="text-center mb-3 sm:mb-4">
-                    <p className="text-xl sm:text-2xl font-bold mb-2" style={{ color: '#496B71' }}>
+                <div className="space-y-4">
+                  {/* Free Postal Entry Box */}
+                  <div
+                    className="rounded-lg p-4 text-center"
+                    style={{
+                      backgroundColor: '#e1eaec',
+                      borderWidth: '2px',
+                      borderColor: '#496B71'
+                    }}
+                  >
+                    <p className="text-xs font-bold uppercase mb-2" style={{ color: '#78716c' }}>
+                      FREE POSTAL ENTRY
+                    </p>
+                    <p className="text-3xl sm:text-4xl font-bold mb-2" style={{ color: '#496B71' }}>
                       {calculatePostalEntries()} {calculatePostalEntries() === 1 ? 'Entry' : 'Entries'}
                     </p>
-                    <p className="text-xs sm:text-sm" style={{ color: '#78716c' }}>
-                      You can enter this competition for free by post
+                    <p className="text-xs" style={{ color: '#78716c' }}>
+                      Based on ticket price of £{(competition.base_ticket_price_pence / 100).toFixed(2)}
                     </p>
                   </div>
 
-                  <div className="space-y-2 sm:space-y-3">
-                    <h3 className="font-bold text-sm sm:text-base mb-2 sm:mb-3" style={{ color: '#151e20' }}>How to Enter by Post:</h3>
-                    <ol className="space-y-2 text-xs sm:text-sm" style={{ color: '#78716c' }}>
-                      <li className="flex gap-2">
-                        <span className="font-bold shrink-0">1.</span>
-                        <span>Write your full name, email address, phone number, and the competition name on a postcard or envelope.</span>
-                      </li>
-                      <li className="flex gap-2">
-                        <span className="font-bold shrink-0">2.</span>
-                        <span>Include {calculatePostalEntries()} separate {calculatePostalEntries() === 1 ? 'entry' : 'entries'} (one per envelope/postcard) to increase your chances.</span>
-                      </li>
-                      <li className="flex gap-2">
-                        <span className="font-bold shrink-0">3.</span>
-                        <span>Post to: BabyBets Free Entry, PO Box 12345, London, UK, SW1A 1AA</span>
-                      </li>
-                      <li className="flex gap-2">
-                        <span className="font-bold shrink-0">4.</span>
-                        <span>Entries must be received before the competition closing date: {formatDate(competition.end_datetime)}</span>
-                      </li>
-                    </ol>
+                  {/* Competition-level line */}
+                  <div className="text-sm text-center" style={{ color: '#151e20' }}>
+                    <p>
+                      <strong>Postal entries to this competition receive {calculatePostalEntries()} {calculatePostalEntries() === 1 ? 'ticket' : 'tickets'}.</strong>
+                    </p>
+                  </div>
 
-                    <div className="mt-3 sm:mt-4 pt-3 sm:pt-4" style={{ borderTopWidth: '1px', borderColor: '#f0e0ca' }}>
-                      <p className="text-[10px] sm:text-xs" style={{ color: '#78716c' }}>
-                        <strong>Important:</strong> Based on the £{(competition.base_ticket_price_pence / 100).toFixed(2)} ticket price, you can receive up to {calculatePostalEntries()} {calculatePostalEntries() === 1 ? 'entry' : 'entries'} per postal submission. Standard postage costs apply (87p for a first-class stamp).
+                  {/* Postal Entry Terms */}
+                  <div className="space-y-3 text-xs sm:text-sm" style={{ color: '#78716c' }}>
+                    <div>
+                      <h3 className="font-bold mb-2" style={{ color: '#151e20' }}>Postal Entry Route</h3>
+                      <p>
+                        You may enter a BabyBets competition for free using our Postal Entry Route by complying with the conditions below.
                       </p>
                     </div>
 
-                    <div className="mt-3 sm:mt-4">
-                      <Link
-                        to="/terms"
-                        className="text-xs sm:text-sm font-bold underline cursor-pointer"
-                        style={{ color: '#496B71' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#3a565a'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = '#496B71'}
-                      >
-                        Read full Terms & Conditions
-                      </Link>
+                    <div>
+                      <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>1. Where to send your entry</h4>
+                      <p className="mb-2">
+                        Send your entry on an unenclosed postcard by First or Second Class post to:
+                      </p>
+                      <div className="pl-4 mb-2" style={{ color: '#151e20' }}>
+                        <p className="font-medium">BabyBets</p>
+                        <p>Unit B2, Beacon House</p>
+                        <p>Cumberland Business Centre</p>
+                        <p>Portsmouth, Hampshire</p>
+                        <p>PO5 1DS</p>
+                      </div>
+                      <p className="italic">Hand delivered entries will not be accepted.</p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>2. What to include on the postcard</h4>
+                      <p className="mb-2">Your postcard must clearly include:</p>
+                      <ul className="list-disc pl-6 space-y-1">
+                        <li>Your full name</li>
+                        <li>Your full postal address</li>
+                        <li>A contact telephone number</li>
+                        <li>The email address linked to your BabyBets account</li>
+                        <li>The name of the competition you want to enter</li>
+                        <li>The answer to the competition question (where a question applies)</li>
+                      </ul>
+                      <p className="mt-2 italic">Incomplete or illegible entries will be disqualified.</p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>3. Account requirement</h4>
+                      <p className="mb-2">
+                        Entrants must have created a BabyBets account for a free postal entry to be processed.
+                      </p>
+                      <ul className="list-disc pl-6 space-y-1">
+                        <li>The details on the postcard must match the details on the account.</li>
+                        <li>Postal entries received without a matching registered account cannot be processed.</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>4. One postcard per entry request (no bundles)</h4>
+                      <p className="mb-2">Each postcard counts as one postal entry request.</p>
+                      <ul className="list-disc pl-6 space-y-1">
+                        <li>You may make multiple free entries for any competition (up to any entry limit stated on the competition page).</li>
+                        <li>Each free entry must be sent on a separate postcard and posted separately.</li>
+                        <li>Bulk entries in one envelope will not be accepted as multiple entries. If bulk entries are received, they will be counted as one single entry request.</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>5. Entry limits still apply</h4>
+                      <p className="mb-2">
+                        If a competition has a maximum entry limit per person, that limit applies to postal entries too.
+                      </p>
+                      <p>If you send entries above the stated limit, we will only process entries up to the limit.</p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>6. Closing dates, sell-outs and late entries</h4>
+                      <p className="mb-2">
+                        Your postcard must be received before the competition closing date and time shown on the competition page.
+                      </p>
+                      <ul className="list-disc pl-6 space-y-1">
+                        <li>Entries received after the closing date will not be entered into the competition.</li>
+                        <li>If the competition sells out before your valid postal entry is received, your entry will not be entered.</li>
+                        <li>Postal entries received after a competition has closed or sold out are void and will not be credited or transferred.</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>7. No confirmation of entry</h4>
+                      <p className="mb-2">
+                        We do not acknowledge receipt of postal entries and we do not confirm whether your entry has been successfully processed.
+                      </p>
+                      <p>
+                        If your postal entry is valid and received before the closing date, it will be entered into the relevant competition automatically. You will only be contacted if you win.
+                      </p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>8. General</h4>
+                      <p className="mb-2">
+                        By entering using the Postal Entry Route, you confirm that you are eligible to enter and that you accept our Terms and Conditions.
+                      </p>
+                      <p>
+                        For full details, please refer to our{' '}
+                        <Link to="/terms" className="font-bold underline cursor-pointer" style={{ color: '#496B71' }}>
+                          Website Terms of Use, Terms and Conditions and Privacy Policy
+                        </Link>.
+                      </p>
+                    </div>
+
+                    <div
+                      className="mt-4 p-3 rounded-lg"
+                      style={{ backgroundColor: '#fff0e6', borderWidth: '1px', borderColor: '#ffdec9' }}
+                    >
+                      <p className="font-bold mb-1" style={{ color: '#151e20' }}>Postal service disclaimer</p>
+                      <p>
+                        We are not responsible for postal entries that are lost, delayed, damaged, or misdirected in the post. Proof of posting is not proof of receipt. Only postal entries received by us before the competition closing date and time will be valid.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -742,6 +896,467 @@ function CompetitionEntry() {
 
               {/* Share Button */}
               <div className="mt-6 flex justify-center">
+                <button
+                  onClick={handleShare}
+                  className="flex items-center gap-2 text-sm transition-colors cursor-pointer"
+                  style={{ color: '#78716c' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#151e20'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#78716c'}
+                >
+                  <Share2 className="size-4" />
+                  Share this competition
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Layout: 2-Column Grid */}
+          <div className="hidden lg:grid grid-cols-2 gap-8">
+            {/* Left Column: Images */}
+            <div className="space-y-4">
+              {/* Main Competition Image */}
+              <div
+                className="relative aspect-square rounded-xl overflow-hidden cursor-pointer"
+                style={{
+                  backgroundColor: '#FBEFDF',
+                  borderWidth: '1px',
+                  borderColor: '#f0e0ca'
+                }}
+                onClick={() => {
+                  setModalImageIndex(currentImageIndex)
+                  setIsImageModalOpen(true)
+                }}
+              >
+                <img
+                  src={allImages[currentImageIndex]}
+                  alt={competition.title}
+                  className="w-full h-full object-cover"
+                />
+
+                {competition.status === 'ending_soon' && (
+                  <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-2 rounded-full text-sm font-bold">
+                    Ending Soon!
+                  </div>
+                )}
+                {competition.status === 'scheduled' && (
+                  <div className="absolute top-4 left-4 bg-blue-500 text-white px-4 py-2 rounded-full text-sm font-bold">
+                    Coming Soon
+                  </div>
+                )}
+              </div>
+
+              {/* Thumbnail Images */}
+              {allImages.length > 1 && (
+                <div className="grid grid-cols-4 gap-3">
+                  {allImages.slice(1).map((image, index) => (
+                    <button
+                      key={index + 1}
+                      onClick={() => {
+                        setModalImageIndex(index + 1)
+                        setIsImageModalOpen(true)
+                      }}
+                      className="relative aspect-square rounded-lg overflow-hidden cursor-pointer transition-all"
+                      style={{
+                        backgroundColor: '#FBEFDF',
+                        borderWidth: '1px',
+                        borderColor: '#f0e0ca'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.borderColor = '#e7e5e4'}
+                      onMouseLeave={(e) => e.currentTarget.style.borderColor = '#f0e0ca'}
+                    >
+                      <img
+                        src={image}
+                        alt={`${competition.title} - Image ${index + 2}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: Entry Details */}
+            <div className="flex flex-col">
+              {/* Category Badge */}
+              <div className="mb-4 text-center">
+                <span
+                  className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase cursor-pointer"
+                  style={{
+                    backgroundColor: '#fff0e6',
+                    borderWidth: '1px',
+                    borderColor: '#ffdec9',
+                    color: '#151e20'
+                  }}
+                >
+                  {competition.category}
+                </span>
+              </div>
+
+              {/* Title */}
+              <h1 className="text-3xl font-bold mb-6 leading-tight text-center">
+                {competition.title}
+              </h1>
+
+              {/* Price */}
+              <div className="text-center mb-6">
+                <p className="text-xs font-bold uppercase mb-1" style={{ color: '#78716c' }}>From</p>
+                <div className="text-3xl font-bold" style={{ color: '#496B71' }}>
+                  £{(competition.base_ticket_price_pence / 100).toFixed(2)}
+                </div>
+                <p className="text-xs mt-1" style={{ color: '#78716c' }}>per ticket</p>
+              </div>
+
+              {/* Progress */}
+              <div className="mb-6">
+                <div className="flex justify-between text-xs font-bold mb-2" style={{ color: '#666666' }}>
+                  <span>{percentSold.toFixed(0)}% Sold</span>
+                </div>
+                <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#e7e5e4' }}>
+                  <div
+                    className="h-full transition-all duration-300"
+                    style={{
+                      width: `${getProgressPercentage()}%`,
+                      background: 'linear-gradient(to right, #FED0B9, #fa8c61)'
+                    }}
+                  />
+                </div>
+                <div className="text-xs font-semibold mt-2 text-center" style={{ color: '#666666' }}>
+                  {competition.tickets_sold || 0}/{competition.max_tickets}
+                </div>
+              </div>
+
+              {/* Ticket Selector - Same as mobile but without sm: responsive classes */}
+              <div className="mb-6">
+                <div className="rounded-lg p-4" style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#f0e0ca' }}>
+                  {/* Entry Mode Toggle */}
+                  <div className="flex items-stretch gap-0 mb-6">
+                    <button
+                      onClick={() => setEntryMode('paid')}
+                      className="flex-1 py-3 font-bold text-sm transition-all cursor-pointer"
+                      style={{
+                        backgroundColor: entryMode === 'paid' ? '#496B71' : 'transparent',
+                        color: entryMode === 'paid' ? 'white' : '#78716c',
+                        borderWidth: '2px',
+                        borderColor: entryMode === 'paid' ? '#496B71' : '#e7e5e4',
+                        borderTopLeftRadius: '0.5rem',
+                        borderBottomLeftRadius: '0.5rem',
+                        borderRight: 'none'
+                      }}
+                    >
+                      Paid Entry
+                    </button>
+                    <button
+                      onClick={() => setEntryMode('postal')}
+                      className="flex-1 py-3 font-bold text-sm transition-all cursor-pointer"
+                      style={{
+                        backgroundColor: entryMode === 'postal' ? '#496B71' : 'transparent',
+                        color: entryMode === 'postal' ? 'white' : '#78716c',
+                        borderWidth: '2px',
+                        borderColor: entryMode === 'postal' ? '#496B71' : '#e7e5e4',
+                        borderTopRightRadius: '0.5rem',
+                        borderBottomRightRadius: '0.5rem',
+                        borderLeft: 'none'
+                      }}
+                    >
+                      Free Postal Entry
+                    </button>
+                  </div>
+
+                  {/* Paid Entry Section */}
+                  {entryMode === 'paid' && (
+                    <>
+                      {/* Quick Select Buttons */}
+                      {tieredPricing.length > 0 && quickSelectOptions.length > 0 && (
+                        <>
+                          <h3 className="font-bold text-sm mb-3">Choose Your Tickets</h3>
+                          <div className="grid grid-cols-4 gap-2 mb-4">
+                            {quickSelectOptions.map((option) => {
+                              const optionPrice = calculatePrice(option)
+                              const basePrice = (option * (competition.base_ticket_price_pence / 100))
+                              const savings = basePrice - optionPrice
+                              return (
+                                <button
+                                  key={option}
+                                  onClick={() => setQuantity(option)}
+                                  className="relative pt-3 p-2 rounded-lg transition-all cursor-pointer"
+                                  style={{
+                                    borderWidth: '1px',
+                                    borderColor: quantity === option ? '#496B71' : '#f0e0ca',
+                                    backgroundColor: quantity === option ? '#e1eaec' : 'white'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    if (quantity !== option) {
+                                      e.currentTarget.style.borderColor = '#e7e5e4'
+                                    }
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    if (quantity !== option) {
+                                      e.currentTarget.style.borderColor = '#f0e0ca'
+                                    }
+                                  }}
+                                >
+                                  {savings > 0 && (
+                                    <div
+                                      className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap"
+                                      style={{
+                                        backgroundColor: 'white',
+                                        borderWidth: '1px',
+                                        borderColor: '#22c55e',
+                                        color: '#22c55e'
+                                      }}
+                                    >
+                                      Save £{savings.toFixed(2)}
+                                    </div>
+                                  )}
+                                  <div className="font-bold text-base">{option}</div>
+                                  <div className="text-xs" style={{ color: '#78716c' }}>
+                                    £{optionPrice.toFixed(2)}
+                                  </div>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Custom Amount */}
+                      <div>
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="font-medium text-xs" style={{ color: '#78716c' }}>Custom Amount</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => adjustQuantity(-1)}
+                              disabled={quantity <= 1}
+                              className="w-7 h-7 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                              style={{ backgroundColor: '#FBEFDF' }}
+                              onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#f0e0ca')}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FBEFDF'}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <div className="rounded px-3 py-1 font-bold text-lg min-w-[50px] text-center" style={{ backgroundColor: '#fff0e6', borderWidth: '1px', borderColor: '#f0e0ca' }}>
+                              {quantity}
+                            </div>
+                            <button
+                              onClick={() => adjustQuantity(1)}
+                              disabled={quantity >= maxPurchase}
+                              className="w-7 h-7 rounded-full flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                              style={{ backgroundColor: '#FBEFDF' }}
+                              onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#f0e0ca')}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FBEFDF'}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <input
+                          type="range"
+                          min="1"
+                          max={maxPurchase}
+                          value={quantity}
+                          onChange={(e) => setQuantity(parseInt(e.target.value))}
+                          className="w-full h-1.5 rounded-lg appearance-none cursor-pointer"
+                          style={{ backgroundColor: '#e7e5e4', accentColor: '#496B71' }}
+                        />
+                        <div className="flex justify-between text-xs mt-1.5" style={{ color: '#a8a29e' }}>
+                          <span>1</span>
+                          <span>{maxPurchase}</span>
+                        </div>
+                      </div>
+
+                      {/* Divider */}
+                      <div className="my-4" style={{ borderTopWidth: '1px', borderColor: '#f0e0ca' }}></div>
+
+                      {/* Total and CTA */}
+                      <div>
+                        <div className="flex justify-between items-center pb-4 mb-4">
+                          <div>
+                            <span className="font-medium block text-xs" style={{ color: '#78716c' }}>Total Price</span>
+                            {pricingDetails.savings > 0 && (
+                              <span className="text-xs font-bold" style={{ color: '#22c55e' }}>
+                                You save £{pricingDetails.savings.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <span className="block text-2xl font-bold" style={{ color: '#496B71' }}>£{pricingDetails.total.toFixed(2)}</span>
+                            {quantity > 1 && (
+                              <span className="text-xs font-medium" style={{ color: '#78716c' }}>
+                                £{pricingDetails.perTicket.toFixed(2)} per ticket
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleAddToCart}
+                          className="w-full font-bold py-4 text-base rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                          style={{
+                            backgroundColor: '#496B71',
+                            color: 'white'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3a565a'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#496B71'}
+                          disabled={competition.status === 'scheduled'}
+                        >
+                          {competition.status === 'scheduled' ? 'Coming Soon' : 'Add to Basket'}
+                        </button>
+                        <p className="text-xs text-center mt-3" style={{ color: '#78716c' }}>
+                          By entering, you agree to our Terms & Conditions
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Postal Entry Section */}
+                  {entryMode === 'postal' && (
+                    <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                      {/* Free Postal Entry Box */}
+                      <div
+                        className="rounded-lg p-4 text-center"
+                        style={{
+                          backgroundColor: '#e1eaec',
+                          borderWidth: '2px',
+                          borderColor: '#496B71'
+                        }}
+                      >
+                        <p className="text-xs font-bold uppercase mb-2" style={{ color: '#78716c' }}>
+                          FREE POSTAL ENTRY
+                        </p>
+                        <p className="text-4xl font-bold mb-2" style={{ color: '#496B71' }}>
+                          {calculatePostalEntries()} {calculatePostalEntries() === 1 ? 'Entry' : 'Entries'}
+                        </p>
+                        <p className="text-xs" style={{ color: '#78716c' }}>
+                          Based on ticket price of £{(competition.base_ticket_price_pence / 100).toFixed(2)}
+                        </p>
+                      </div>
+
+                      {/* Competition-level line */}
+                      <div className="text-sm text-center" style={{ color: '#151e20' }}>
+                        <p>
+                          <strong>Postal entries to this competition receive {calculatePostalEntries()} {calculatePostalEntries() === 1 ? 'ticket' : 'tickets'}.</strong>
+                        </p>
+                      </div>
+
+                      {/* Postal Entry Terms */}
+                      <div className="space-y-3 text-xs" style={{ color: '#78716c' }}>
+                        <div>
+                          <h3 className="font-bold mb-2" style={{ color: '#151e20' }}>Postal Entry Route</h3>
+                          <p>
+                            You may enter a BabyBets competition for free using our Postal Entry Route by complying with the conditions below.
+                          </p>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>1. Where to send your entry</h4>
+                          <p className="mb-2">
+                            Send your entry on an unenclosed postcard by First or Second Class post to:
+                          </p>
+                          <div className="pl-4 mb-2" style={{ color: '#151e20' }}>
+                            <p className="font-medium">BabyBets</p>
+                            <p>Unit B2, Beacon House</p>
+                            <p>Cumberland Business Centre</p>
+                            <p>Portsmouth, Hampshire</p>
+                            <p>PO5 1DS</p>
+                          </div>
+                          <p className="italic">Hand delivered entries will not be accepted.</p>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>2. What to include on the postcard</h4>
+                          <p className="mb-2">Your postcard must clearly include:</p>
+                          <ul className="list-disc pl-6 space-y-1">
+                            <li>Your full name</li>
+                            <li>Your full postal address</li>
+                            <li>A contact telephone number</li>
+                            <li>The email address linked to your BabyBets account</li>
+                            <li>The name of the competition you want to enter</li>
+                            <li>The answer to the competition question (where a question applies)</li>
+                          </ul>
+                          <p className="mt-2 italic">Incomplete or illegible entries will be disqualified.</p>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>3. Account requirement</h4>
+                          <p className="mb-2">
+                            Entrants must have created a BabyBets account for a free postal entry to be processed.
+                          </p>
+                          <ul className="list-disc pl-6 space-y-1">
+                            <li>The details on the postcard must match the details on the account.</li>
+                            <li>Postal entries received without a matching registered account cannot be processed.</li>
+                          </ul>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>4. One postcard per entry request (no bundles)</h4>
+                          <p className="mb-2">Each postcard counts as one postal entry request.</p>
+                          <ul className="list-disc pl-6 space-y-1">
+                            <li>You may make multiple free entries for any competition (up to any entry limit stated on the competition page).</li>
+                            <li>Each free entry must be sent on a separate postcard and posted separately.</li>
+                            <li>Bulk entries in one envelope will not be accepted as multiple entries. If bulk entries are received, they will be counted as one single entry request.</li>
+                          </ul>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>5. Entry limits still apply</h4>
+                          <p className="mb-2">
+                            If a competition has a maximum entry limit per person, that limit applies to postal entries too.
+                          </p>
+                          <p>If you send entries above the stated limit, we will only process entries up to the limit.</p>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>6. Closing dates, sell-outs and late entries</h4>
+                          <p className="mb-2">
+                            Your postcard must be received before the competition closing date and time shown on the competition page.
+                          </p>
+                          <ul className="list-disc pl-6 space-y-1">
+                            <li>Entries received after the closing date will not be entered into the competition.</li>
+                            <li>If the competition sells out before your valid postal entry is received, your entry will not be entered.</li>
+                            <li>Postal entries received after a competition has closed or sold out are void and will not be credited or transferred.</li>
+                          </ul>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>7. No confirmation of entry</h4>
+                          <p className="mb-2">
+                            We do not acknowledge receipt of postal entries and we do not confirm whether your entry has been successfully processed.
+                          </p>
+                          <p>
+                            If your postal entry is valid and received before the closing date, it will be entered into the relevant competition automatically. You will only be contacted if you win.
+                          </p>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold mb-1" style={{ color: '#151e20' }}>8. General</h4>
+                          <p className="mb-2">
+                            By entering using the Postal Entry Route, you confirm that you are eligible to enter and that you accept our Terms and Conditions.
+                          </p>
+                          <p>
+                            For full details, please refer to our{' '}
+                            <Link to="/terms" className="font-bold underline cursor-pointer" style={{ color: '#496B71' }}>
+                              Website Terms of Use, Terms and Conditions and Privacy Policy
+                            </Link>.
+                          </p>
+                        </div>
+
+                        <div
+                          className="mt-4 p-3 rounded-lg"
+                          style={{ backgroundColor: '#fff0e6', borderWidth: '1px', borderColor: '#ffdec9' }}
+                        >
+                          <p className="font-bold mb-1" style={{ color: '#151e20' }}>Postal service disclaimer</p>
+                          <p>
+                            We are not responsible for postal entries that are lost, delayed, damaged, or misdirected in the post. Proof of posting is not proof of receipt. Only postal entries received by us before the competition closing date and time will be valid.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Share Button */}
+              <div className="mt-auto flex justify-center">
                 <button
                   onClick={handleShare}
                   className="flex items-center gap-2 text-sm transition-colors cursor-pointer"
@@ -1173,64 +1788,82 @@ function CompetitionEntry() {
                 {(competition.competition_type === 'instant_win' || competition.competition_type === 'instant_win_with_end_prize') && instantWinPrizes.length > 0 ? (
                   <div className="space-y-3">
                     {instantWinPrizes.map((prize) => {
-                      const isWon = prize.winning_tickets && prize.winning_tickets.length > 0
-                      const wonCount = prize.total_quantity - prize.remaining_quantity
+                      const wonTickets = prize.winning_tickets?.filter(t => t.is_sold) || []
+                      const hasWonTickets = wonTickets.length > 0
+                      const allWon = prize.remaining_quantity === 0
 
                       return (
                         <div
                           key={prize.id}
-                          className="flex items-center gap-4 p-4 rounded-xl transition-all"
+                          className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl transition-all"
                           style={{
-                            backgroundColor: isWon ? '#dcfce7' : 'white',
+                            backgroundColor: hasWonTickets ? '#dcfce7' : 'white',
                             borderWidth: '1px',
-                            borderColor: isWon ? '#86efac' : '#e7e5e4'
+                            borderColor: hasWonTickets ? '#86efac' : '#e7e5e4'
                           }}
                         >
-                          {prize.prize_template.image_url && (
-                            <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0" style={{ backgroundColor: '#FBEFDF' }}>
-                              <img
-                                src={prize.prize_template.image_url}
-                                alt={prize.prize_template.name}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          )}
-                          <div className="grow">
-                            <p className="font-bold mb-1" style={{ color: '#151e20' }}>
-                              {prize.prize_template.name}
-                            </p>
-                            <p className="text-sm" style={{ color: '#78716c' }}>
-                              Quantity: {prize.remaining_quantity}/{prize.total_quantity}
-                            </p>
-                            {isWon && prize.winning_tickets && (
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                {prize.winning_tickets.map((ticket) => (
-                                  <span
-                                    key={ticket.ticket_id}
-                                    className="inline-block px-2 py-0.5 rounded text-xs font-medium"
-                                    style={{ backgroundColor: '#22c55e', color: 'white' }}
-                                  >
-                                    #{ticket.ticket_number}
-                                  </span>
-                                ))}
+                          <div className="flex items-center gap-4 flex-1">
+                            {prize.prize_template.image_url && (
+                              <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0" style={{ backgroundColor: '#FBEFDF' }}>
+                                <img
+                                  src={prize.prize_template.image_url}
+                                  alt={prize.prize_template.name}
+                                  className="w-full h-full object-cover"
+                                />
                               </div>
                             )}
+                            <div className="grow">
+                              <p className="font-bold mb-1" style={{ color: '#151e20' }}>
+                                {prize.prize_template.name}
+                              </p>
+                              <p className="text-sm mb-2" style={{ color: '#78716c' }}>
+                                £{prize.prize_template.value_gbp.toFixed(2)} • {prize.remaining_quantity}/{prize.total_quantity} Available
+                              </p>
+
+                              {/* Winning Ticket Numbers */}
+                              {prize.winning_tickets && prize.winning_tickets.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-xs font-bold" style={{ color: '#78716c' }}>
+                                    Winning Ticket{prize.winning_tickets.length > 1 ? 's' : ''}:
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {prize.winning_tickets.map((ticket) => (
+                                      <span
+                                        key={ticket.ticket_id}
+                                        className="inline-block px-2 py-0.5 rounded text-xs font-bold cursor-pointer"
+                                        style={{
+                                          backgroundColor: ticket.is_sold ? '#22c55e' : '#fbbf24',
+                                          color: 'white'
+                                        }}
+                                        title={ticket.is_sold ? 'Already Won' : 'Win Now'}
+                                      >
+                                        #{ticket.ticket_number}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex flex-col items-end gap-2">
-                            {isWon ? (
+
+                          {/* Status Badges */}
+                          <div className="flex sm:flex-col items-center sm:items-end gap-2">
+                            {allWon ? (
+                              <span className="inline-block px-3 py-1.5 rounded-full text-xs font-bold uppercase whitespace-nowrap" style={{ backgroundColor: '#ef4444', color: 'white' }}>
+                                All Won
+                              </span>
+                            ) : hasWonTickets ? (
                               <>
                                 <span className="inline-block px-3 py-1.5 rounded-full text-xs font-bold uppercase whitespace-nowrap" style={{ backgroundColor: '#22c55e', color: 'white' }}>
-                                  Won ({wonCount})
+                                  {wonTickets.length} Won
                                 </span>
-                                {prize.remaining_quantity > 0 && (
-                                  <span className="inline-block px-3 py-1.5 rounded-full text-xs font-bold uppercase whitespace-nowrap" style={{ backgroundColor: '#496B71', color: 'white' }}>
-                                    {prize.remaining_quantity} Left
-                                  </span>
-                                )}
+                                <span className="inline-block px-3 py-1.5 rounded-full text-xs font-bold uppercase whitespace-nowrap" style={{ backgroundColor: '#496B71', color: 'white' }}>
+                                  {prize.remaining_quantity} Left
+                                </span>
                               </>
                             ) : (
                               <span className="inline-block px-3 py-1.5 rounded-full text-xs font-bold uppercase whitespace-nowrap" style={{ backgroundColor: '#496B71', color: 'white' }}>
-                                To Be Won
+                                Win Now
                               </span>
                             )}
                           </div>
@@ -1337,6 +1970,44 @@ function CompetitionEntry() {
               <ChevronRight size={48} />
             </button>
           )}
+        </div>
+      )}
+
+      {/* Mobile Sticky Bottom Bar */}
+      {showStickyBar && entryMode === 'paid' && (
+        <div
+          className="md:hidden fixed bottom-0 left-0 right-0 z-40 p-4 shadow-lg transition-transform duration-300"
+          style={{
+            backgroundColor: 'white',
+            borderTopWidth: '2px',
+            borderColor: '#496B71'
+          }}
+        >
+          <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto">
+            <div>
+              <p className="text-xs font-bold uppercase" style={{ color: '#78716c' }}>
+                From
+              </p>
+              <p className="text-xl font-bold" style={{ color: '#496B71' }}>
+                £{(competition.base_ticket_price_pence / 100).toFixed(2)}
+              </p>
+              <p className="text-xs" style={{ color: '#78716c' }}>
+                per ticket
+              </p>
+            </div>
+            <button
+              onClick={scrollToTicketSelector}
+              className="flex-1 max-w-xs font-bold py-3 px-6 text-sm rounded-lg transition-colors cursor-pointer"
+              style={{
+                backgroundColor: '#496B71',
+                color: 'white'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3a565a'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#496B71'}
+            >
+              Enter Now
+            </button>
+          </div>
         </div>
       )}
 
