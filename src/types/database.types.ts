@@ -1360,6 +1360,66 @@ export type Database = {
           },
         ]
       }
+      wheel_claims: {
+        Row: {
+          claimed_at: string
+          created_at: string
+          email: string
+          email_sent: boolean | null
+          email_sent_at: string | null
+          id: string
+          prize_amount: number | null
+          prize_label: string
+          prize_type: string
+          prize_value: string
+          promo_code_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          claimed_at?: string
+          created_at?: string
+          email: string
+          email_sent?: boolean | null
+          email_sent_at?: string | null
+          id?: string
+          prize_amount?: number | null
+          prize_label: string
+          prize_type: string
+          prize_value: string
+          promo_code_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          claimed_at?: string
+          created_at?: string
+          email?: string
+          email_sent?: boolean | null
+          email_sent_at?: string | null
+          id?: string
+          prize_amount?: number | null
+          prize_label?: string
+          prize_type?: string
+          prize_value?: string
+          promo_code_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wheel_claims_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wheel_claims_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       winners: {
         Row: {
           competition_id: string | null
