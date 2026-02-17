@@ -1,21 +1,25 @@
 import { useAuth } from '@/hooks/useAuth'
 import { useSystemSettings } from '@/hooks/useSystemSettings'
+import { useSpinWheelModal } from '@/hooks/useSpinWheelModal'
 import Header from '@/components/common/Header'
 import Footer from '@/components/common/Footer'
 import WinnerTicker from '@/components/common/WinnerTicker'
 import LiveTicker from '@/components/common/LiveTicker'
+import { SpinWheelModal } from '@/components/ui/SpinWheelModal'
 import HeroSection from './sections/HeroSection'
 import FeaturedCompetitionsSection from './sections/FeaturedCompetitionsSection'
-import InstantWinsSection from './sections/InstantWinsSection'
+import AllCompetitionsSection from './sections/AllCompetitionsSection'
 import HowItWorksSection from './sections/HowItWorksSection'
 import JustLaunchedSection from './sections/JustLaunchedSection'
 import MeetPartnerSection from './sections/MeetPartnerSection'
+import MeetFoundersSection from './sections/MeetFoundersSection'
 import WinAmazingPrizesSection from './sections/WinAmazingPrizesSection'
 import WinnersSection from './sections/WinnersSection'
 
 function Homepage() {
   const { isLoading } = useAuth()
   const { liveTicker, loading: settingsLoading } = useSystemSettings()
+  const { isOpen: isWheelOpen, closeModal: closeWheel } = useSpinWheelModal()
 
   if (isLoading || settingsLoading) {
     return null
@@ -36,13 +40,15 @@ function Homepage() {
       <WinnerTicker speed="fast" />
       <HeroSection />
       <FeaturedCompetitionsSection />
-      <InstantWinsSection />
+      <AllCompetitionsSection />
       <HowItWorksSection />
       <JustLaunchedSection />
       <MeetPartnerSection />
+      <MeetFoundersSection />
       <WinAmazingPrizesSection />
       <WinnersSection />
       <Footer />
+      <SpinWheelModal isOpen={isWheelOpen} onClose={closeWheel} />
     </div>
   )
 }

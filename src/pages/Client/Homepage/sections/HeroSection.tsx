@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Star, Zap } from 'lucide-react'
+import { ArrowRight, Zap } from 'lucide-react'
 import { useCompetitions } from '@/hooks/useCompetitions'
 import { useSystemSettings } from '@/hooks/useSystemSettings'
 import { supabase } from '@/lib/supabase'
@@ -10,10 +10,10 @@ export default function HeroSection() {
   // Fetch system settings for hero content
   const { heroContent } = useSystemSettings()
 
-  // Fetch featured competition for hero
+  // Fetch featured competitions for hero carousel
   const { competitions: heroCompetitions, isLoading: heroLoading } = useCompetitions({
     showOnHomepage: true,
-    limit: 1
+    limit: 5
   })
 
   // Fetch total instant win prize count
@@ -60,30 +60,127 @@ export default function HeroSection() {
     fetchInstantWinPrizeCount()
   }, [])
 
-  const heroCompetition = heroCompetitions[0]
-
   // Get hero text content from settings (with fallback defaults)
-  const heroTitle = heroContent?.title || 'Win Premium Baby Gear Instantly'
+  const heroTitle = heroContent?.title || 'Win Premium Prizes For Parents & Little Ones'
   const heroDesc = heroContent?.description || 'Enter our instant win competitions for a chance to win iCandy prams, car seats, and cash prizes. Over 1,900 instant wins available now.'
 
-  // Get all images for carousel
-  const heroImages = heroCompetition?.images && Array.isArray(heroCompetition.images) && heroCompetition.images.length > 0
-    ? heroCompetition.images
-    : [heroCompetition?.image_url || '/images/competitions/PRIZE 1 ICANDY PEACH 7.png']
+  // Carousel state for competitions
+  const [currentCompetitionIndex, setCurrentCompetitionIndex] = useState(0)
 
-  // Carousel state
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  // Touch/swipe state
+  const [touchStart, setTouchStart] = useState(0)
+  const [touchEnd, setTouchEnd] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
 
-  // Auto-rotate carousel
+  // Minimum swipe distance (in px) to trigger navigation
+  const minSwipeDistance = 50
+
+  // Auto-rotate competition carousel
   useEffect(() => {
-    if (heroImages.length <= 1) return
+    if (!heroCompetitions || heroCompetitions.length <= 1) return
 
     const interval = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % heroImages.length)
-    }, 3000) // Change image every 3 seconds
+      setCurrentCompetitionIndex((prev) => (prev + 1) % heroCompetitions.length)
+    }, 5000) // Change competition every 5 seconds
 
     return () => clearInterval(interval)
-  }, [heroImages.length])
+  }, [heroCompetitions?.length])
+
+  // Get current competition being displayed
+  const currentCompetition = heroCompetitions?.[currentCompetitionIndex]
+
+  // Get primary image for current competition
+  const currentCompetitionImage = currentCompetition?.images && Array.isArray(currentCompetition.images) && currentCompetition.images.length > 0
+    ? currentCompetition.images[0]
+    : currentCompetition?.image_url || '/images/competitions/PRIZE 1 ICANDY PEACH 7.png'
+
+  // Touch swipe handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!heroCompetitions || heroCompetitions.length <= 1) return
+    setTouchEnd(0) // Reset touch end
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!heroCompetitions || heroCompetitions.length <= 1) return
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd || isTransitioning || !heroCompetitions || heroCompetitions.length <= 1) return
+
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe) {
+      // Swipe left - go to next competition
+      setIsTransitioning(true)
+      setCurrentCompetitionIndex((prev) => (prev + 1) % heroCompetitions.length)
+      setTimeout(() => setIsTransitioning(false), 500)
+    } else if (isRightSwipe) {
+      // Swipe right - go to previous competition
+      setIsTransitioning(true)
+      setCurrentCompetitionIndex((prev) => (prev - 1 + heroCompetitions.length) % heroCompetitions.length)
+      setTimeout(() => setIsTransitioning(false), 500)
+    }
+
+    // Reset touch states
+    setTouchStart(0)
+    setTouchEnd(0)
+  }
+
+  // Mouse drag handlers for desktop
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!heroCompetitions || heroCompetitions.length <= 1) return
+    e.preventDefault() // Prevent text/image selection
+    setIsDragging(true)
+    setTouchEnd(0)
+    setTouchStart(e.clientX)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return
+    e.preventDefault() // Prevent default drag behavior
+    setTouchEnd(e.clientX)
+  }
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!isDragging) return
+    e.preventDefault()
+    setIsDragging(false)
+
+    if (!touchStart || !touchEnd || isTransitioning || !heroCompetitions || heroCompetitions.length <= 1) return
+
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe) {
+      // Drag left - go to next competition
+      setIsTransitioning(true)
+      setCurrentCompetitionIndex((prev) => (prev + 1) % heroCompetitions.length)
+      setTimeout(() => setIsTransitioning(false), 500)
+    } else if (isRightSwipe) {
+      // Drag right - go to previous competition
+      setIsTransitioning(true)
+      setCurrentCompetitionIndex((prev) => (prev - 1 + heroCompetitions.length) % heroCompetitions.length)
+      setTimeout(() => setIsTransitioning(false), 500)
+    }
+
+    // Reset states
+    setTouchStart(0)
+    setTouchEnd(0)
+  }
+
+  const handleMouseLeave = () => {
+    if (isDragging) {
+      setIsDragging(false)
+      setTouchStart(0)
+      setTouchEnd(0)
+    }
+  }
 
   return (
     <section className="relative overflow-hidden border-b" style={{
@@ -108,9 +205,26 @@ export default function HeroSection() {
         <div className="flex flex-col-reverse lg:flex-row gap-8 md:gap-12 lg:gap-20 items-center">
           {/* Left Column - Text content */}
           <div className="w-full lg:w-[55%] text-left z-10 space-y-4 sm:space-y-6 lg:space-y-8">
+            {/* Social Proof - Trustpilot */}
+            <div className="flex items-center">
+              <a
+                href="https://uk.trustpilot.com/review/www.babybets.co.uk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="cursor-pointer transition-opacity hover:opacity-80"
+              >
+                <img
+                  src="https://cdn.trustpilot.net/brand-assets/4.1.0/logo-black.svg"
+                  alt="Trustpilot"
+                  className="h-6 sm:h-7"
+                  loading="lazy"
+                />
+              </a>
+            </div>
+
             {/* Headline */}
             <h1
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight leading-[1.05] mb-0"
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] mb-0"
               style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
             >
               {heroTitle.split(' ').slice(0, -1).join(' ')}{' '}
@@ -170,43 +284,26 @@ export default function HeroSection() {
                 </button>
               </Link>
             </div>
-
-            {/* Social Proof - Reviews */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 pt-3 sm:pt-4">
-              <div className="flex -space-x-3">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <img
-                    key={i}
-                    src={`https://i.pravatar.cc/100?img=${i + 20}`}
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full shadow-md"
-                    style={{ borderWidth: '3px', borderColor: 'white' }}
-                    alt={`BabyBets winner ${i}`}
-                    loading="lazy"
-                  />
-                ))}
-              </div>
-              <div>
-                <div className="flex gap-0.5 mb-1" style={{ color: '#fa8c61' }}>
-                  <Star size={16} className="sm:hidden" fill="currentColor" />
-                  <Star size={16} className="sm:hidden" fill="currentColor" />
-                  <Star size={16} className="sm:hidden" fill="currentColor" />
-                  <Star size={16} className="sm:hidden" fill="currentColor" />
-                  <Star size={16} className="sm:hidden" fill="currentColor" />
-                  <Star size={18} className="hidden sm:block" fill="currentColor" />
-                  <Star size={18} className="hidden sm:block" fill="currentColor" />
-                  <Star size={18} className="hidden sm:block" fill="currentColor" />
-                  <Star size={18} className="hidden sm:block" fill="currentColor" />
-                  <Star size={18} className="hidden sm:block" fill="currentColor" />
-                </div>
-                <span className="text-xs sm:text-sm font-bold" style={{ color: '#78716c' }}>
-                  4.9/5 from 200+ reviews
-                </span>
-              </div>
-            </div>
           </div>
 
           {/* Right Column - Hero Image */}
-          <div className="w-full lg:w-[45%] relative">
+          <div
+            className="w-full lg:w-[45%] relative touch-pan-y select-none"
+            style={{
+              cursor: isDragging ? 'grabbing' : 'grab',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              MozUserSelect: 'none',
+              msUserSelect: 'none'
+            }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+          >
             <div
               className="relative rounded-2xl sm:rounded-[2.5rem] overflow-hidden shadow-2xl"
               style={{
@@ -217,10 +314,10 @@ export default function HeroSection() {
             >
               {heroLoading ? (
                 <div className="w-full h-auto aspect-4/5 animate-pulse" style={{ backgroundColor: '#FBEFDF' }} />
-              ) : !heroCompetition ? (
+              ) : !currentCompetition ? (
                 /* Coming Soon State */
                 <div
-                  className="w-full h-auto aspect-4/5 flex flex-col items-center justify-center p-8 text-center"
+                  className="w-full h-auto aspect-4/5 flex flex-col items-center justify-center p-8 text-center pointer-events-none"
                   style={{ backgroundColor: '#FBEFDF' }}
                 >
                   <div className="space-y-6">
@@ -251,26 +348,34 @@ export default function HeroSection() {
               ) : (
                 <>
                   <img
-                    src={heroImages[currentImageIndex] as string}
-                    alt={heroCompetition.title}
+                    src={currentCompetitionImage as string}
+                    alt={currentCompetition.title}
                     loading="eager"
-                    className="w-full h-auto object-cover aspect-4/5 transition-opacity duration-500"
-                    style={{ backgroundColor: '#FBEFDF' }}
+                    draggable="false"
+                    className="w-full h-auto object-cover aspect-4/5 transition-all duration-500 ease-in-out pointer-events-none"
+                    style={{
+                      backgroundColor: '#FBEFDF',
+                      opacity: isTransitioning ? 0.7 : 1,
+                      userSelect: 'none'
+                    } as React.CSSProperties}
                   />
 
-                  {/* Carousel Indicators */}
-                  {heroImages.length > 1 && (
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                      {heroImages.map((_img, index) => (
+                  {/* Competition Carousel Navigation Dots */}
+                  {heroCompetitions && heroCompetitions.length > 1 && (
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2 z-10 pointer-events-auto">
+                      {heroCompetitions.map((_comp, index) => (
                         <button
                           key={index}
-                          onClick={() => setCurrentImageIndex(index)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setCurrentCompetitionIndex(index)
+                          }}
                           className="w-2 h-2 rounded-full transition-all cursor-pointer"
                           style={{
-                            backgroundColor: index === currentImageIndex ? 'white' : 'rgba(255, 255, 255, 0.5)',
-                            width: index === currentImageIndex ? '24px' : '8px'
+                            backgroundColor: index === currentCompetitionIndex ? 'white' : 'rgba(255, 255, 255, 0.5)',
+                            width: index === currentCompetitionIndex ? '24px' : '8px'
                           }}
-                          aria-label={`View image ${index + 1}`}
+                          aria-label={`View competition ${index + 1}`}
                         />
                       ))}
                     </div>
@@ -278,9 +383,10 @@ export default function HeroSection() {
 
                   {/* Bottom CTA Overlay */}
                   <div
-                    className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 pt-24 sm:pt-32 text-white"
+                    className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 pt-24 sm:pt-32 text-white transition-opacity duration-500 pointer-events-none"
                     style={{
-                      background: 'linear-gradient(to top, rgba(34, 48, 51, 0.95), rgba(34, 48, 51, 0.8), transparent)'
+                      background: 'linear-gradient(to top, rgba(34, 48, 51, 0.95), rgba(34, 48, 51, 0.8), transparent)',
+                      opacity: isTransitioning ? 0.7 : 1
                     }}
                   >
                     <div className="flex justify-between items-end gap-3 sm:gap-4">
@@ -289,13 +395,13 @@ export default function HeroSection() {
                           className="text-[10px] sm:text-xs font-bold uppercase mb-1 sm:mb-2 tracking-wider"
                           style={{ color: '#FED0B9' }}
                         >
-                          Live Now
+                          Featured Competition
                         </div>
                         <div className="text-base sm:text-xl md:text-2xl font-bold leading-tight">
-                          {`${heroCompetition.title} - £${heroCompetition.total_value_gbp.toLocaleString()}`}
+                          {`${currentCompetition.title} - £${currentCompetition.total_value_gbp.toLocaleString()}`}
                         </div>
                       </div>
-                      <Link to={`/competitions/${heroCompetition.slug}`} className="shrink-0">
+                      <Link to={`/competitions/${currentCompetition.slug}`} className="shrink-0 pointer-events-auto">
                         <div
                           className="rounded-full p-2.5 sm:p-3 md:p-4 shadow-lg cursor-pointer transition-all duration-300"
                           style={{ backgroundColor: 'white', color: '#151e20' }}
@@ -321,7 +427,7 @@ export default function HeroSection() {
             {/* Floating Winner Badge */}
             {!instantWinLoading && instantWinCount > 0 && (
               <div
-                className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 rounded-full cursor-pointer z-10 flex items-center gap-1.5 sm:gap-2 shadow-lg"
+                className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 rounded-full z-10 flex items-center gap-1.5 sm:gap-2 shadow-lg pointer-events-none"
                 style={{
                   backgroundColor: 'white'
                 }}
