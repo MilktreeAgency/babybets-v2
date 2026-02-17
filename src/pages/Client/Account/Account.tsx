@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LogOut, MapPin, User, Bell, LayoutDashboard, X, Save, Wallet, Clock, TrendingUp, Gift, Ticket, Trophy, ChevronDown, ChevronUp, UserCheck, ArrowDownToLine, CheckCircle, XCircle, AlertCircle as AlertCircleIcon, Menu } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import Header from '@/components/common/Header'
 import { useAuthStore } from '@/store/authStore'
 import { useTickets } from '@/hooks/useTickets'
@@ -23,6 +24,7 @@ type WithdrawalRequest = Database['public']['Tables']['withdrawal_requests']['Ro
 function Account() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const queryClient = useQueryClient()
   const { isAuthenticated, user, isLoading, isInitialized } = useAuthStore()
   const { tickets, revealTicket, isRevealing, unrevealedCount } = useTickets()
   const { profile, updateAddress, isUpdatingAddress, updateProfile, isUpdating } = useProfile()
@@ -38,7 +40,6 @@ function Account() {
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [showClaimModal, setShowClaimModal] = useState(false)
   const [selectedFulfillment, setSelectedFulfillment] = useState<typeof fulfillments[0] | null>(null)
-  const [isBulkRevealing, setIsBulkRevealing] = useState(false)
   const [isEditingAddress, setIsEditingAddress] = useState(false)
   const [isEditingAccount, setIsEditingAccount] = useState(false)
   const [addressForm, setAddressForm] = useState({
@@ -59,14 +60,12 @@ function Account() {
     marketing_sms: false,
   })
   const [expandedCompetitions, setExpandedCompetitions] = useState<Set<string>>(new Set())
-  const [revealingTicketId, setRevealingTicketId] = useState<string | null>(null)
-  const [revealProgress, setRevealProgress] = useState({ current: 0, total: 0 })
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false)
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([])
   const [loadingWithdrawals, setLoadingWithdrawals] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [showWinModal, setShowWinModal] = useState(false)
-  const [wonPrize, setWonPrize] = useState<PrizeTemplate | null>(null)
+  const [wonPrize] = useState<PrizeTemplate | null>(null)
   const purchaseToastShown = useRef(false)
 
   useEffect(() => {
@@ -221,65 +220,34 @@ function Account() {
 
   const hasAddress = profile && profile.address_line1 && profile.city && profile.postcode
 
-  // Wrapper function to handle ticket reveal and celebration
-  const handleTicketReveal = async (ticketId: string, showCelebration = true) => {
-    try {
-      const result = await revealTicket(ticketId)
-
-      console.log('Ticket reveal result:', result)
-      console.log('Has prize:', result.hasPrize)
-      console.log('Prize data:', result.prize)
-      console.log('Show celebration:', showCelebration)
-
-      // Show celebration modal if ticket has a prize and showCelebration is true
-      if (result.hasPrize && result.prize && showCelebration) {
-        console.log('Setting prize and showing modal')
-        setWonPrize(result.prize)
-        setShowWinModal(true)
-      }
-
-      return result
-    } catch (error) {
-      console.error('Error revealing ticket:', error)
-      throw error
-    }
-  }
-
-  // Bulk reveal all tickets (instant win only) with engaging animations
-  const handleRevealAll = async () => {
-    if (isBulkRevealing || isRevealing) return
-
+  // Navigate to scratch reveal page
+  const handleRevealAll = () => {
     const unrevealedTickets = tickets.filter(t => !t.is_revealed && t.competition?.competition_type === 'instant_win')
     if (unrevealedTickets.length === 0) return
 
-    setIsBulkRevealing(true)
-    setRevealProgress({ current: 0, total: unrevealedTickets.length })
+    navigate('/scratch-reveal')
+  }
+
+  // Reveal all tickets without animation
+  const handleScratchAllWithoutAnimation = async () => {
+    const unrevealedTickets = tickets.filter(t => !t.is_revealed && t.competition?.competition_type === 'instant_win')
+    if (unrevealedTickets.length === 0) return
 
     try {
-      // Reveal all tickets sequentially with suspense timing
-      for (let i = 0; i < unrevealedTickets.length; i++) {
-        const ticket = unrevealedTickets[i]
+      // Reveal all unrevealed tickets in parallel
+      await Promise.all(
+        unrevealedTickets.map(ticket => revealTicket(ticket.id))
+      )
 
-        // Highlight current ticket being revealed
-        setRevealingTicketId(ticket.id)
-        setRevealProgress({ current: i + 1, total: unrevealedTickets.length })
+      // Manually invalidate queries to ensure UI updates
+      await queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      await queryClient.invalidateQueries({ queryKey: ['wallet-credits'] })
+      await queryClient.invalidateQueries({ queryKey: ['prize-fulfillments'] })
 
-        // Add suspense delay before reveal
-        await new Promise(resolve => setTimeout(resolve, 300))
-
-        // Reveal the ticket (don't show celebration during bulk reveal)
-        await handleTicketReveal(ticket.id, false)
-
-        // Brief pause to show result before moving to next
-        await new Promise(resolve => setTimeout(resolve, 800))
-      }
+      showSuccessToast(`Successfully revealed ${unrevealedTickets.length} ticket${unrevealedTickets.length > 1 ? 's' : ''}!`)
     } catch (error) {
-      console.error('Error revealing tickets:', error)
+      console.error('Failed to reveal tickets:', error)
       showErrorToast('Failed to reveal some tickets. Please try again.')
-    } finally {
-      setIsBulkRevealing(false)
-      setRevealingTicketId(null)
-      setRevealProgress({ current: 0, total: 0 })
     }
   }
 
@@ -533,37 +501,28 @@ function Account() {
                             Unrevealed Tickets
                           </h3>
                           <p className="text-xs" style={{ color: '#78716c' }}>
-                            You have {unrevealedCount} ticket{unrevealedCount > 1 ? 's' : ''} ready to reveal
+                            You have {unrevealedCount} ticket{unrevealedCount > 1 ? 's' : ''} ready to scratch
                           </p>
                         </div>
-                        <button
-                          onClick={handleRevealAll}
-                          disabled={isBulkRevealing || isRevealing}
-                          className="w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm text-white transition-all duration-300 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg"
-                          style={{ backgroundColor: '#f97316' }}
-                        >
-                          {isBulkRevealing ? `Revealing ${revealProgress.current}/${revealProgress.total}...` : `Reveal All (${unrevealedCount})`}
-                        </button>
-                      </div>
-                      {isBulkRevealing && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-xs sm:text-sm">
-                            <span style={{ color: '#78716c' }}>Progress</span>
-                            <span className="font-bold" style={{ color: '#f97316' }}>
-                              {revealProgress.current} / {revealProgress.total}
-                            </span>
-                          </div>
-                          <div className="w-full h-2 sm:h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: '#fed7aa' }}>
-                            <div
-                              className="h-full transition-all duration-500 rounded-full"
-                              style={{
-                                width: `${(revealProgress.current / revealProgress.total) * 100}%`,
-                                backgroundColor: '#f97316'
-                              }}
-                            />
-                          </div>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                          <button
+                            onClick={handleScratchAllWithoutAnimation}
+                            disabled={isRevealing}
+                            className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm text-white transition-all duration-300 hover:opacity-90 cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{ backgroundColor: '#496B71' }}
+                          >
+                            {isRevealing ? 'Revealing...' : 'Reveal All'}
+                          </button>
+                          <button
+                            onClick={handleRevealAll}
+                            disabled={isRevealing}
+                            className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm text-white transition-all duration-300 hover:opacity-90 cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{ backgroundColor: '#f97316' }}
+                          >
+                            Scratch All
+                          </button>
                         </div>
-                      )}
+                      </div>
                     </div>
                   )}
 
@@ -626,20 +585,14 @@ function Account() {
                               <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5 sm:gap-2">
                                 {group.tickets.map((ticket) => {
                                   const isUnrevealed = !ticket.is_revealed && ticket.competition?.competition_type === 'instant_win'
-                                  const isRevealing = revealingTicketId === ticket.id
 
                                   if (isUnrevealed) {
                                     // Unrevealed instant win ticket
                                     return (
                                       <button
                                         key={ticket.id}
-                                        onClick={() => handleTicketReveal(ticket.id)}
-                                        disabled={isBulkRevealing || isRevealing}
-                                        className={`relative p-1.5 sm:p-2 rounded-md font-bold text-[9px] sm:text-[10px] transition-all duration-300 cursor-pointer ${
-                                          isRevealing
-                                            ? 'ring-1 ring-orange-500 scale-105'
-                                            : ''
-                                        }`}
+                                        onClick={() => navigate('/scratch-reveal')}
+                                        className="relative p-1.5 sm:p-2 rounded-md font-bold text-[9px] sm:text-[10px] transition-all duration-300 cursor-pointer hover:scale-105"
                                         style={{
                                           backgroundColor: '#fff7ed',
                                           borderWidth: '1px',
@@ -648,17 +601,8 @@ function Account() {
                                         }}
                                       >
                                         <div className="flex flex-col items-center justify-center gap-0.5">
-                                          {isRevealing ? (
-                                            <>
-                                              <div className="animate-spin rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 border border-orange-900 border-t-transparent"></div>
-                                              <span className="text-[8px] sm:text-[9px]">Revealing...</span>
-                                            </>
-                                          ) : (
-                                            <>
-                                              <Ticket className="size-2.5 sm:size-3" />
-                                              <span className="leading-tight">Reveal</span>
-                                            </>
-                                          )}
+                                          <Ticket className="size-2.5 sm:size-3" />
+                                          <span className="leading-tight">Scratch</span>
                                         </div>
                                       </button>
                                     )
