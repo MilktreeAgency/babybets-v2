@@ -89,6 +89,7 @@ export default function Header() {
   const navLinks: NavLink[] = [
     { name: 'Competitions', path: '/competitions' },
     { name: 'How it works', path: '/how-it-works' },
+    { name: 'Meet Nick & Shelley', path: '/founders' },
     ...(featuredPartner ? [{ name: featuredPartner.display_name, path: `/partner/${featuredPartner.slug}`, isNew: true }] : []),
     { name: 'Partners', path: '/partners' },
   ]

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Instagram, Facebook, MonitorPlay, Mail, ShieldCheck } from 'lucide-react'
+import { Instagram, Facebook, Mail, ShieldCheck } from 'lucide-react'
 
 export default function Footer() {
   return (
@@ -17,13 +17,12 @@ export default function Footer() {
                       src="/babybets-logo.png"
                       alt="babybets"
                       className="h-[42px]"
-                      style={{ width: '165px', filter: 'brightness(0) invert(1)' }}
+                      style={{ width: '165px' }}
                       loading="lazy"
                     />
                   </div>
                   <p className="text-[13px] leading-relaxed" style={{ color: '#e1eaec' }}>
-                    Shop Now and Let Us Make Your <br className="hidden md:block" />
-                    Parenting Journey a Breeze
+                    BabyBets is a prize platform built for parents. Enter for the chance to win premium baby and toddler prizes, plus cash prizes, with clear odds and real winners.
                   </p>
 
                   {/* Social Links */}
@@ -69,36 +68,29 @@ export default function Footer() {
                 <h3 className="text-base font-medium mb-6" style={{ color: '#ffffff' }}>Competitions</h3>
                 <ul className="space-y-3">
                   <li>
-                    <Link to="/competitions?cat=nursery" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
-                      Nursery & Gear
+                    <Link to="/competitions?cat=toys" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                      Toys & Tech
                     </Link>
                   </li>
                   <li>
-                    <Link to="/competitions?cat=toys" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
-                      Tech & Toys
+                    <Link to="/competitions?cat=nursery" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                      Baby & Nursery
                     </Link>
                   </li>
                   <li>
                     <Link to="/competitions?cat=cash" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
-                      Tax Free Cash
+                      Cash
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/competitions?cat=travel" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                      Travel & Getaways
                     </Link>
                   </li>
                   <li>
                     <Link to="/competitions?filter=instant" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
                       Instant Wins
                     </Link>
-                  </li>
-                  <li>
-                    <a
-                      href="https://www.facebook.com/babybetsofficial"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[14px] font-normal transition-opacity hover:opacity-80 inline-flex items-center gap-2"
-                      style={{ color: '#e1eaec' }}
-                    >
-                      <MonitorPlay size={16} aria-hidden="true" />
-                      Watch Live Draws
-                    </a>
                   </li>
                 </ul>
               </div>
@@ -123,8 +115,13 @@ export default function Footer() {
                     </Link>
                   </li>
                   <li>
-                    <Link to="/legal/privacy" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
-                      Privacy Policy
+                    <Link to="/legal/free-postal-entry" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                      Free Postal Entry
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/legal/website-terms" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                      Website Terms of Use
                     </Link>
                   </li>
                   <li>
@@ -133,8 +130,13 @@ export default function Footer() {
                     </Link>
                   </li>
                   <li>
-                    <Link to="/legal/terms" className="text-[14px] font-normal transition-opacity hover:opacity-80 underline" style={{ color: '#e1eaec' }}>
-                      Free Postal Entry
+                    <Link to="/legal/privacy" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                      Privacy Policy
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/legal/acceptable-use" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                      Acceptable Use Policy
                     </Link>
                   </li>
                 </ul>
@@ -207,7 +209,7 @@ export default function Footer() {
                 Copyright © {new Date().getFullYear()} <strong style={{ color: '#ffffff' }}>BabyBets</strong> All Rights Reserved.
               </p>
               <div className="flex items-center gap-4 text-xs">
-                <span>Registered in UK: 12345678</span>
+                <span>Registered in UK: 16963672</span>
               </div>
             </div>
 
