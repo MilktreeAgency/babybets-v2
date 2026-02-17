@@ -12,12 +12,17 @@ import AuthCallback from './pages/Client/AuthCallback/AuthCallback'
 import ResetPassword from './pages/Client/ResetPassword'
 import VerifyEmail from './pages/Client/VerifyEmail'
 import Account from './pages/Client/Account/Account'
+import ScratchReveal from './pages/Client/ScratchReveal'
 import HowItWorks from './pages/Client/HowItWorks/HowItWorks'
 import FAQ from './pages/Client/FAQ/FAQ'
 import PrivacyPolicy from './pages/Client/Legal/PrivacyPolicy'
 import Terms from './pages/Client/Legal/Terms'
+import AcceptableUsePolicy from './pages/Client/Legal/AcceptableUsePolicy'
+import WebsiteTerms from './pages/Client/Legal/WebsiteTerms'
+import FreePostalEntry from './pages/Client/Legal/FreePostalEntry'
 import Partners from './pages/Client/Partners/Partners'
 import PartnerProfile from './pages/Client/PartnerProfile/PartnerProfile'
+import Founders from './pages/Client/Founders/Founders'
 import WinnersGallery from './pages/Client/Winners/Winners'
 import MaintenanceMode from './pages/MaintenanceMode/MaintenanceMode'
 import Dashboard from './pages/Admin/Dashboard/Dashboard'
@@ -37,6 +42,7 @@ import Withdrawals from './pages/Admin/Withdrawals'
 import InfluencerSales from './pages/Admin/InfluencerSales'
 import Activity from './pages/Admin/Activity'
 import EmailLogs from './pages/Admin/EmailLogs'
+import WheelClaims from './pages/Admin/WheelClaims'
 import Assets from './pages/Admin/Assets/Assets'
 import Testimonials from './pages/Admin/Testimonials'
 import { DashboardLayout } from './pages/Admin/components'
@@ -85,13 +91,18 @@ function App() {
         <Route path="/auth/reset-password" element={<ResetPassword />} />
         <Route path="/auth/verify-email" element={<VerifyEmail />} />
         <Route path="/account" element={<Account />} />
+        <Route path="/scratch-reveal" element={<ScratchReveal />} />
         <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/partners" element={<Partners />} />
         <Route path="/partner/:slug" element={<PartnerProfile />} />
+        <Route path="/founders" element={<Founders />} />
         <Route path="/winners" element={<WinnersGallery />} />
         <Route path="/legal/privacy" element={<PrivacyPolicy />} />
         <Route path="/legal/terms" element={<Terms />} />
+        <Route path="/legal/website-terms" element={<WebsiteTerms />} />
+        <Route path="/legal/acceptable-use" element={<AcceptableUsePolicy />} />
+        <Route path="/legal/free-postal-entry" element={<FreePostalEntry />} />
         <Route path="/influencer/dashboard" element={<InfluencerDashboard />} />
         <Route path="/influencer/profile/edit" element={<ProfileEdit />} />
         <Route
@@ -122,6 +133,7 @@ function App() {
           <Route path="testimonials" element={<Testimonials />} />
           <Route path="activity" element={<Activity />} />
           <Route path="email-logs" element={<EmailLogs />} />
+          <Route path="wheel-claims" element={<WheelClaims />} />
           <Route path="system-settings" element={<SystemSettings />} />
           <Route path="settings" element={<Settings />} />
         </Route>
