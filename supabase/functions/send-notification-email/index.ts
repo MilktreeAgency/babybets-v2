@@ -12,6 +12,7 @@ import { getInfluencerApprovedHTML, getInfluencerApprovedText } from './template
 import { getInfluencerRejectedHTML, getInfluencerRejectedText } from './templates/influencer-rejected.ts'
 import { getPrizeFulfillmentUpdateHTML, getPrizeFulfillmentUpdateText } from './templates/prize-fulfillment-update.ts'
 import { getWalletCreditHTML, getWalletCreditText } from './templates/wallet-credit.ts'
+import { getWheelPrizeHTML, getWheelPrizeText } from './templates/wheel-prize.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,7 +20,7 @@ const corsHeaders = {
 }
 
 interface EmailNotification {
-  type: 'prize_win' | 'order_confirmation' | 'withdrawal_request' | 'withdrawal_approved' | 'withdrawal_rejected' | 'competition_ending' | 'welcome' | 'influencer_application_submitted' | 'influencer_approved' | 'influencer_rejected' | 'prize_fulfillment_update' | 'wallet_credit' | 'custom'
+  type: 'prize_win' | 'order_confirmation' | 'withdrawal_request' | 'withdrawal_approved' | 'withdrawal_rejected' | 'competition_ending' | 'welcome' | 'influencer_application_submitted' | 'influencer_approved' | 'influencer_rejected' | 'prize_fulfillment_update' | 'wallet_credit' | 'wheel_prize' | 'custom'
   recipientEmail: string
   recipientName?: string
   data: Record<string, unknown>
@@ -133,6 +134,13 @@ async function getEmailTemplate(notification: EmailNotification, supabaseClient:
         subject: `£${data.amount || '0.00'} Added to Your BabyBets Wallet!`,
         html: getWalletCreditHTML(firstName, data, emailLogoUrl),
         text: getWalletCreditText(firstName, data),
+      }
+
+    case 'wheel_prize':
+      return {
+        subject: `🎉 You Won ${data.prizeLabel || 'a Prize'}!`,
+        html: getWheelPrizeHTML(firstName, data, emailLogoUrl),
+        text: getWheelPrizeText(firstName, data),
       }
 
     case 'custom':
