@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Ticket, CreditCard, Zap, Gift, CheckCircle, HelpCircle, ArrowRight } from 'lucide-react'
+import { Gift, ShoppingBasket, Play, Trophy, CheckCircle, HelpCircle, ArrowRight } from 'lucide-react'
 import Header from '@/components/common/Header'
 import Footer from '@/components/common/Footer'
 
@@ -7,30 +7,30 @@ export default function HowItWorks() {
   const steps = [
     {
       number: 1,
-      icon: Ticket,
+      icon: Gift,
       title: "Choose a Competition",
-      description: "Browse our instant wins or scheduled draws. Pick your competition and decide how many tickets to enter with.",
+      description: "Browse our live competitions across the site and pick the prize you want, then choose how many tickets you'd like.",
       color: '#496B71'
     },
     {
       number: 2,
-      icon: CreditCard,
+      icon: ShoppingBasket,
       title: "Buy Tickets or Enter by Post",
-      description: "Pay securely online or use our free postal entry route. No subscription required - enter as many or as few as you like.",
+      description: "Checkout securely online, or use our free postal entry route. No subscription required. Enter as often or as little as you like.",
       color: '#FED0B9'
     },
     {
       number: 3,
-      icon: Zap,
-      title: "Instant Result",
-      description: "For instant wins, tap to reveal your result immediately. For scheduled draws, wait for the draw date to find out if you've won.",
+      icon: Play,
+      title: "Instant Result or Live Draw",
+      description: "Instant wins tell you straight away if you've won. For scheduled competitions, winners are picked either automatically at the close time or during a live draw. You'll always see the draw type and date on the competition page, and we'll notify winners by email and in their account.",
       color: '#facc15'
     },
     {
       number: 4,
-      icon: Gift,
+      icon: Trophy,
       title: "Claim Your Prize",
-      description: "Won a prize? Choose the physical item, cash alternative, or withdraw your winnings to your bank account.",
+      description: "If you win, follow the claim steps in your account. Choose delivery for physical prizes, or a cash alternative where available. You can also request a withdrawal to your bank account.",
       color: '#9DB4B8'
     }
   ]
@@ -54,7 +54,7 @@ export default function HowItWorks() {
                   borderColor: 'rgba(254, 208, 185, 0.3)'
                 }}
               >
-                ⚡ Instant Win
+                Enter & Win
               </span>
             </div>
             <h1
@@ -67,7 +67,7 @@ export default function HowItWorks() {
               className="text-base sm:text-lg md:text-xl lg:text-2xl max-w-3xl mx-auto leading-relaxed px-4"
               style={{ color: '#e1eaec' }}
             >
-              Enter our instant win competition and discover if you've won straight away. Over 1,900 prizes available to win instantly!
+              Enter any BabyBets competition in just a few taps. Choose a prize, grab your tickets, and you're in the draw. Some competitions include Instant Wins so you could win straight away by revealing a lucky ticket. If not, you're entered into the live draw with winners announced and shared on our social media.
             </p>
           </div>
 
@@ -181,16 +181,18 @@ export default function HowItWorks() {
               Fairness Guaranteed
             </h2>
             <p className="text-base sm:text-lg mb-6 sm:mb-7 md:mb-8 leading-relaxed" style={{ color: '#78716c' }}>
-              Our instant win system is completely fair and transparent. Winning ticket codes are pre-assigned before the competition goes live, so every ticket has a genuine chance to win.
+              Every BabyBets competition is run in a clear, transparent way, so you always know how winners are chosen. Whether it's an instant win, an automated draw, or a live draw, the entry method and draw type are shown on the competition page. Winners are selected at random or live draws are using a random number generator.
             </p>
 
             <ul className="space-y-3 sm:space-y-4 inline-block text-left">
               {[
-                'Winning codes pre-assigned before competition starts',
-                'Instant reveal - find out immediately if you\'ve won',
-                'Choose between prize or cash alternative',
-                'End prize draw for all ticket holders',
-                'Free postal entry route available'
+                'Clear draw type shown on every competition',
+                'Instant wins reveal results immediately (where available)',
+                'Automated draws select a winner randomly at the stated close time',
+                'Live draws have a published draw date and can be watched live',
+                'Winners notified by email and in their account',
+                'Choose between the physical prize or cash alternative',
+                'Free postal entry route available for all competition'
               ].map((item, i) => (
                 <li key={i} className="flex items-center gap-2 sm:gap-3 font-medium text-sm sm:text-base" style={{ color: '#151e20' }}>
                   <CheckCircle className="shrink-0 sm:w-5 sm:h-5" size={18} style={{ color: '#496B71' }} aria-hidden="true" />

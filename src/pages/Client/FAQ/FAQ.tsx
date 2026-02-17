@@ -5,7 +5,7 @@ import Footer from '@/components/common/Footer'
 
 interface FAQItemProps {
   question: string
-  answer: string
+  answer: React.ReactNode
 }
 
 function FAQItem({ question, answer }: FAQItemProps) {
@@ -36,9 +36,9 @@ function FAQItem({ question, answer }: FAQItemProps) {
       </button>
       {isOpen && (
         <div className="overflow-hidden pb-4 sm:pb-5 md:pb-6 pr-6 sm:pr-8">
-          <p className="text-sm sm:text-base leading-relaxed" style={{ color: '#78716c' }}>
+          <div className="text-sm sm:text-base leading-relaxed" style={{ color: '#78716c' }}>
             {answer}
-          </p>
+          </div>
         </div>
       )}
     </div>
@@ -49,43 +49,99 @@ export default function FAQ() {
   const faqs = [
     {
       q: 'Are BabyBets competitions legitimate?',
-      a: "Yes, BabyBets is fully regulated and transparent. All draws are live-streamed on Facebook and winners are announced publicly. We've awarded over £10 million in prizes to 25,000+ families since 2021. We are a registered UK company and comply with all applicable regulations."
+      a: (
+        <>
+          <p className="mb-3">Yes. BabyBets is a registered UK company and we run our competitions in line with UK requirements, including providing a free postal entry route where applicable. We focus on transparency, with clear entry details, closing times, and winner selection methods shown on every competition page.</p>
+          <p>We also follow the Advertising Standards Authority (ASA) rules for marketing and promotions.</p>
+        </>
+      )
     },
     {
       q: 'How do I enter a competition?',
-      a: 'Simply browse our active competitions, select the prize you want to win, and choose your ticket quantity. You can pick your own numbers or use the lucky dip. Proceed to checkout to complete your entry. You can also enter for free via our postal entry route.'
+      a: (
+        <>
+          <p className="mb-3">Browse the live competitions, pick the prize you want to win, and choose how many tickets you would like. You will be automatically allocated a ticket number. Then complete checkout to confirm your entry.</p>
+          <p>You can also enter for free via our postal entry route. See our Terms and Conditions for details.</p>
+        </>
+      )
     },
     {
       q: 'How are winners chosen?',
-      a: 'We use a 100% random number generator (Google Random Number Generator) during our live draws on Facebook. This ensures every draw is completely fair and transparent. All draws are recorded and available to watch afterwards.'
+      a: (
+        <>
+          <p className="mb-3">The winner selection method is shown on each competition page. Depending on the competition type, it will be one of the following:</p>
+          <ul className="list-disc pl-5 space-y-2">
+            <li><strong>Instant Win:</strong> you see the result straight away by revealing each ticket.</li>
+            <li><strong>Live Draw:</strong> the winner is selected live using a random number generator.</li>
+            <li><strong>Automated Draw:</strong> the winner is selected automatically at the end of the competition using a random selection process.</li>
+          </ul>
+        </>
+      )
     },
     {
       q: 'When does the draw take place?',
-      a: 'Each competition has a set draw date and time shown on the competition page. If a competition sells out early, we may bring the draw date forward, but we never extend it. Winners are contacted immediately after the draw.'
+      a: 'Each competition shows a closing date and the draw date or result timing on the competition page. If a competition sells out early, we may bring the draw forward. We do not extend competitions beyond the advertised closing date.'
     },
     {
       q: "What if the competition doesn't sell out?",
-      a: 'The draw goes ahead regardless of ticket sales! We guarantee to draw the prize on the specified date, even if we only sell 10% of the tickets. This is our guarantee to all entrants.'
+      a: 'Regardless of ticket sales the draw will still go ahead as scheduled as per the Terms and Conditions.'
     },
     {
       q: 'Is there a free entry method?',
-      a: 'Yes, we offer a free postal entry route for all our competitions in compliance with UK law. Please see our Terms & Conditions for full details on how to enter by post. You can send a postcard with your details to enter any active competition.'
+      a: 'Yes. We offer a free postal entry route for our competitions. Full instructions are in our Terms and Conditions and Free Postal Entry page.'
     },
     {
-      q: 'What are instant win competitions?',
-      a: "Instant win competitions have special lucky ticket numbers hidden in the draw. If you purchase a lucky number, you win instantly without waiting for the draw date! Look for the yellow 'Instant Win' badge on qualifying competitions."
+      q: 'What are Instant Win competitions?',
+      a: 'Instant Win competitions show your result immediately after entry. Look for the Instant Win badge on qualifying competitions.'
     },
     {
       q: "How do I know if I've won?",
-      a: 'We will contact you immediately by phone and email if you win. We also publish all results on our Winners page and social media channels within 24 hours of the draw. Make sure your contact details are up to date in your account.'
+      a: 'Winners are notified using the contact details on their account, usually by email. We also publish winners on our Winners page and may share results on our social channels.'
     },
     {
       q: 'How do I receive my prize?',
-      a: 'Winners are contacted immediately by phone and email. Prizes are delivered free of charge to your door within 14 days. Cash prizes are transferred via bank transfer within 48 hours. We handle all delivery and logistics.'
+      a: "We'll contact you with next steps. Physical prizes are delivered to your nominated UK address. Cash alternatives, where offered, are paid by bank transfer usually within 48 hours once your details are confirmed. Delivery and payout timelines can vary by prize and will be explained when we contact you."
     },
     {
       q: 'Can I buy multiple tickets?',
-      a: "Yes! You can purchase multiple tickets to increase your chances of winning. We offer bundle discounts - the more tickets you buy, the cheaper the per-ticket price. There's no maximum limit on how many tickets you can buy."
+      a: 'Yes. You can buy more than one ticket to increase your chances. Some competitions may have a maximum entry limit per person which will be shown on the competition page.'
+    },
+    {
+      q: "Can I sell the prize if I don't want it?",
+      a: 'Yes. If you win, the prize is yours. You can keep it, gift it, or sell it.'
+    },
+    {
+      q: 'How do you use my personal data?',
+      a: (
+        <>
+          <p className="mb-3">We use your data to run the competition, contact winners, and deliver prizes. We do not sell your personal data. We only share it with third parties where needed to administer the competition, for example delivery partners, payment providers, or compliance checks.</p>
+          <p>More detail is available in our Privacy Policy.</p>
+        </>
+      )
+    },
+    {
+      q: 'If I win, do I have to take part in promotion?',
+      a: "No. Winner photos are optional and only used with your permission. We do ask winners to leave us a review if you'd be kind enough to. We may still need to retain basic winner records for compliance purposes."
+    },
+    {
+      q: 'Can I get a refund of my entry fee?',
+      a: 'Entry fees are non-refundable except where required by law or where our Terms and Conditions state otherwise. Please check the Terms and Conditions for full details.'
+    },
+    {
+      q: 'Can I collect my prize if I win?',
+      a: 'Collection may be available for some prizes by prior arrangement. Please contact us to discuss options.'
+    },
+    {
+      q: 'Can I exchange my prize?',
+      a: 'Prizes are fixed for each competition. Some competitions may offer a cash alternative, where stated on the competition page.'
+    },
+    {
+      q: 'When will the competition close?',
+      a: 'Each competition has a countdown timer and a stated closing time on the competition page. Competitions close when the timer ends or when tickets sell out, depending on the competition setup.'
+    },
+    {
+      q: 'Do I need to be over 18 to enter?',
+      a: 'Yes. You must be 18 or over to enter. We may request age verification. If an entry is found to be ineligible, the competition may be redrawn in line with our Terms and Conditions.'
     }
   ]
 

@@ -1,13 +1,18 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Check, TrendingUp, Users, Gift, PoundSterling, Target, Rocket, ShieldCheck, Ticket, Star } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Check, Users, Gift, PoundSterling, Target, Rocket, Ticket, ClipboardList, Search, UserCheck, Share2, Video, Trophy, Sparkles } from 'lucide-react'
 import Header from '@/components/common/Header'
 import Footer from '@/components/common/Footer'
 import PartnerApplicationForm from '@/pages/Client/PartnerApplication/PartnerApplicationForm'
+import { supabase } from '@/lib/supabase'
 
 export default function Partners() {
   const [salesVolume, setSalesVolume] = useState(2500)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [stats, setStats] = useState({
+    creatorsRegistered: 0,
+    avgCommissionPaid: 0,
+    liveCompetitions: 0
+  })
 
   // Calculate commission based on tiered rates
   const getCommissionRate = (amount: number): number => {
@@ -19,6 +24,44 @@ export default function Partners() {
 
   const rate = getCommissionRate(salesVolume)
   const earnings = salesVolume * rate
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Fetch creators registered
+        const { count: creatorsCount } = await supabase
+          .from('influencers')
+          .select('*', { count: 'exact', head: true })
+
+        // Fetch live competitions
+        const { count: competitionsCount } = await supabase
+          .from('competitions')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'active')
+
+        // Fetch average commission paid from influencer_sales
+        const { data: salesData } = await supabase
+          .from('influencer_sales')
+          .select('commission_pence')
+
+        let avgCommission = 0
+        if (salesData && salesData.length > 0) {
+          const totalCommission = salesData.reduce((sum, sale) => sum + (sale.commission_pence || 0), 0)
+          avgCommission = Math.round(totalCommission / salesData.length)
+        }
+
+        setStats({
+          creatorsRegistered: creatorsCount || 0,
+          avgCommissionPaid: avgCommission,
+          liveCompetitions: competitionsCount || 0
+        })
+      } catch (error) {
+        console.error('Error fetching stats:', error)
+      }
+    }
+
+    fetchStats()
+  }, [])
 
   return (
     <div className="antialiased relative min-h-screen" style={{ color: '#2D251E', backgroundColor: '#fffbf7' }}>
@@ -63,43 +106,6 @@ export default function Partners() {
         </div>
       </section>
 
-      {/* Spots Tracker */}
-      <section className="py-6 sm:py-8 border-y" style={{ backgroundColor: 'white', borderColor: '#e7e5e4' }}>
-        <div className="max-w-2xl mx-auto px-4 sm:px-6">
-          <div className="flex justify-between items-end mb-2">
-            <span className="text-xs sm:text-sm font-bold uppercase tracking-wide" style={{ color: '#151e20' }}>Brand Ambassador Spots</span>
-            <span className="text-xs sm:text-sm font-bold" style={{ color: '#dc2626' }}>30 / 50 Taken</span>
-          </div>
-          <div className="w-full h-3 sm:h-4 rounded-full overflow-hidden border" style={{ backgroundColor: '#f5f5f4', borderColor: '#e7e5e4' }}>
-            <motion.div
-              initial={{ width: 0 }}
-              whileInView={{ width: '60%' }}
-              viewport={{ once: true }}
-              transition={{ duration: 1.5, ease: 'easeOut' }}
-              className="h-full rounded-full relative"
-              style={{ background: 'linear-gradient(to right, #FED0B9, #FCA47E)' }}
-            >
-              <div className="absolute inset-0 bg-white/20"></div>
-            </motion.div>
-          </div>
-          <div className="mt-2 text-right">
-            <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1" style={{ color: '#496B71', backgroundColor: 'rgba(73, 107, 113, 0.1)' }}>
-              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: '#496B71' }}></span> Filling fast
-            </span>
-          </div>
-
-          <div className="mt-6 sm:mt-8 text-center">
-            <button
-              className="w-full sm:w-auto px-8 sm:px-10 md:px-12 py-3 sm:py-4 text-base sm:text-lg font-bold rounded-xl shadow-xl transform hover:-translate-y-1 transition-all cursor-pointer"
-              style={{ backgroundColor: '#FED0B9', color: '#151e20' }}
-              onClick={() => setIsModalOpen(true)}
-            >
-              Apply Now
-            </button>
-          </div>
-        </div>
-      </section>
-
       {/* Intro Text */}
       <section className="py-12 sm:py-16 md:py-20 max-w-4xl mx-auto px-4 sm:px-6 text-center">
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-5 md:mb-6 tracking-tight" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
@@ -131,6 +137,87 @@ export default function Partners() {
         </div>
       </section>
 
+      {/* How It Works Section */}
+      <section className="py-12 sm:py-16 md:py-20" style={{ backgroundColor: 'rgba(73, 107, 113, 0.05)' }}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10 sm:mb-12 md:mb-14">
+            <div className="inline-block mb-3 sm:mb-4 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold" style={{ backgroundColor: '#496B71', color: 'white' }}>
+              How It Works
+            </div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
+              Earn commission from every ticket sale
+            </h2>
+            <p className="text-sm sm:text-base max-w-3xl mx-auto" style={{ color: '#78716c' }}>
+              Join the BabyBets Creator Programme and earn commission when your audience enters through your link.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 md:gap-8">
+            {/* Step 1 */}
+            <div className="rounded-2xl p-6 sm:p-7 md:p-8 text-center" style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4' }}>
+              <div className="mb-4 flex justify-center" style={{ color: '#496B71' }}>
+                <ClipboardList size={40} strokeWidth={1.5} className="sm:w-12 sm:h-12" />
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold mb-2" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
+                Step 1: Apply
+              </h3>
+              <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>
+                Fill out the quick form to apply to become a BabyBets Creator.
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="rounded-2xl p-6 sm:p-7 md:p-8 text-center" style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4' }}>
+              <div className="mb-4 flex justify-center" style={{ color: '#496B71' }}>
+                <Search size={40} strokeWidth={1.5} className="sm:w-12 sm:h-12" />
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold mb-2" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
+                Step 2: Review
+              </h3>
+              <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>
+                We'll review your social media accounts and content to make sure you're a good fit for the brand.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="rounded-2xl p-6 sm:p-7 md:p-8 text-center" style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4' }}>
+              <div className="mb-4 flex justify-center" style={{ color: '#496B71' }}>
+                <UserCheck size={40} strokeWidth={1.5} className="sm:w-12 sm:h-12" />
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold mb-2" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
+                Step 3: Get Approved
+              </h3>
+              <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>
+                If selected, you'll create your profile on our site and receive your unique tracking link.
+              </p>
+            </div>
+
+            {/* Step 4 */}
+            <div className="rounded-2xl p-6 sm:p-7 md:p-8 text-center" style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4' }}>
+              <div className="mb-4 flex justify-center" style={{ color: '#496B71' }}>
+                <Share2 size={40} strokeWidth={1.5} className="sm:w-12 sm:h-12" />
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold mb-2" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
+                Step 4: Start Earning
+              </h3>
+              <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>
+                Share our competitions on your social channels by creating content and earn commission on every ticket sale made through your link.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 sm:mt-10 text-center">
+            <button
+              className="px-8 sm:px-10 md:px-12 py-3 sm:py-4 text-base sm:text-lg font-bold rounded-xl shadow-xl transform hover:-translate-y-1 transition-all cursor-pointer"
+              style={{ backgroundColor: '#FED0B9', color: '#151e20' }}
+              onClick={() => setIsModalOpen(true)}
+            >
+              Apply Now
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* Stats Grid */}
       <section className="py-12 sm:py-16 md:py-20 text-white relative overflow-hidden" style={{ backgroundColor: '#496B71' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 text-center">
@@ -143,9 +230,9 @@ export default function Partners() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 md:gap-8">
             {[
-              { label: 'Creators Registered', val: '774', icon: Users },
-              { label: 'Average Commission Paid', val: '£652', icon: PoundSterling },
-              { label: 'Live Competitions', val: '19', icon: Gift }
+              { label: 'Creators Registered', val: stats.creatorsRegistered.toLocaleString(), icon: Users },
+              { label: 'Average Commission Paid', val: `£${stats.avgCommissionPaid.toLocaleString()}`, icon: PoundSterling },
+              { label: 'Live Competitions', val: stats.liveCompetitions.toString(), icon: Gift }
             ].map((stat, i) => (
               <div key={i} className="backdrop-blur-md rounded-[2.5rem] p-6 sm:p-7 md:p-8 border hover:bg-white/10 transition duration-300" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                 <div className="mb-3 sm:mb-4 flex justify-center" style={{ color: '#FED0B9' }}>
@@ -271,28 +358,32 @@ export default function Partners() {
                 Brand Ambassador
               </h3>
               <p className="mb-6 sm:mb-7 md:mb-8 text-xs sm:text-sm" style={{ color: '#78716c' }}>
-                For established creators with larger, highly engaged audiences.
+                For established creators with 50k+ followers. Best suited to high-view creators and mum/parent content creators with strong reach and an engaged UK audience.
               </p>
 
               <div className="rounded-2xl p-5 sm:p-6 mb-6 sm:mb-7 md:mb-8 shadow-sm" style={{ backgroundColor: 'white' }}>
-                <div className="text-3xl sm:text-4xl font-bold mb-0.5 sm:mb-1" style={{ color: '#151e20' }}>20–25%</div>
-                <p className="text-[10px] sm:text-xs font-medium" style={{ color: '#78716c' }}>
-                  + £1 CPM on approved videos over 5,000 views (capped per video)
+                <div className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#151e20' }}>10–25% Commission on Ticket Sales</div>
+                <p className="text-xs sm:text-sm" style={{ color: '#78716c' }}>
+                  Earn a percentage of ticket sales generated through your unique link. Add it to your bio, share in Stories, and tag BabyBets in your content.
                 </p>
               </div>
 
               <ul className="space-y-3 sm:space-y-4 mb-6 sm:mb-7 md:mb-8">
                 {[
-                  { icon: Star, text: 'Highest earning potential with tiered commission up to 25%.' },
-                  { icon: Gift, text: 'Priority access to our biggest prize drops for your audience.' },
-                  { icon: Users, text: 'Closer support from our team on launches, collabs & campaigns.' },
-                  { icon: TrendingUp, text: 'Extra £1 per 1,000 views on approved videos (5k+ views).' }
+                  { icon: PoundSterling, text: 'Highest Earning Potential', desc: 'Tiered commission up to 25% based on ticket sales generated through your link.' },
+                  { icon: Video, text: 'Get Paid Per 1,000 Views (5k+ views)', desc: 'Earn an additional £1 per 1,000 views on approved videos (capped at £1,000 per video). Upload videos in your portal for approval and payout.' },
+                  { icon: Gift, text: 'Branded Collabs & Custom Prize Drops', desc: 'Access bespoke collaborations, including prizes tailored to your audience and a dedicated giveaway page.' },
+                  { icon: Sparkles, text: 'Host Live Draws', desc: 'Opportunity to host BabyBets live draws in person for an additional fee.' },
+                  { icon: Trophy, text: 'Exclusive Monthly Rewards', desc: 'Monthly rewards for top-performing creators based on views and ticket sales.' }
                 ].map((item, i) => (
-                  <li key={i} className="flex gap-2 sm:gap-3 text-xs sm:text-sm" style={{ color: '#78716c' }}>
-                    <div className="shrink-0" style={{ color: '#FCA47E' }}>
-                      <item.icon size={16} fill="currentColor" className="opacity-20 sm:w-[18px] sm:h-[18px]" />
+                  <li key={i} className="text-xs sm:text-sm" style={{ color: '#78716c' }}>
+                    <div className="flex gap-2 items-start mb-1">
+                      <div className="shrink-0 mt-0.5" style={{ color: '#FCA47E' }}>
+                        <item.icon size={16} className="sm:w-[18px] sm:h-[18px]" />
+                      </div>
+                      <span className="font-bold" style={{ color: '#151e20' }}>{item.text}</span>
                     </div>
-                    <span>{item.text}</span>
+                    <p className="ml-6 sm:ml-7">{item.desc}</p>
                   </li>
                 ))}
               </ul>
@@ -300,8 +391,8 @@ export default function Partners() {
               <div className="rounded-xl p-3 sm:p-4 text-[10px] sm:text-xs mb-6 sm:mb-7 md:mb-8" style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)', color: '#78716c' }}>
                 <p className="font-bold mb-2 uppercase tracking-wide opacity-50">Requirements</p>
                 <ul className="list-disc pl-4 space-y-1">
-                  <li>Typically 10k+ followers across main platforms</li>
-                  <li>Consistent engagement & quality content</li>
+                  <li>Typically 50,000+ followers across all platforms</li>
+                  <li>Consistent engagement and high-quality content</li>
                   <li>UK-based audience</li>
                 </ul>
               </div>
@@ -311,38 +402,43 @@ export default function Partners() {
                 style={{ backgroundColor: '#496B71', color: 'white' }}
                 onClick={() => setIsModalOpen(true)}
               >
-                Apply for Ambassador
+                Apply as a Brand Ambassador
               </button>
             </div>
 
             {/* Affiliate */}
             <div className="rounded-[2.5rem] p-6 sm:p-8 md:p-10 lg:p-12 border order-2 md:order-1" style={{ backgroundColor: 'white', borderColor: '#e7e5e4' }}>
               <h3 className="text-xl sm:text-2xl font-bold mb-1.5 sm:mb-2" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
-                Affiliate Programme
+                Affiliate Partner
               </h3>
               <p className="mb-6 sm:mb-7 md:mb-8 text-xs sm:text-sm" style={{ color: '#78716c' }}>
-                For growing creators who want to start earning by sharing our competitions.
+                For growing creators who want to start earning by sharing BabyBets competitions. Perfect for mums, dads, and smaller creators building an engaged UK audience.
               </p>
 
               <div className="rounded-2xl p-5 sm:p-6 mb-6 sm:mb-7 md:mb-8 border" style={{ backgroundColor: '#f5f5f4', borderColor: '#e7e5e4' }}>
-                <div className="text-3xl sm:text-4xl font-bold mb-0.5 sm:mb-1" style={{ color: '#151e20' }}>10–15%</div>
-                <p className="text-[10px] sm:text-xs font-medium" style={{ color: '#78716c' }}>
-                  Tiered by monthly ticket value – the more you sell, the higher your rate.
+                <div className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#151e20' }}>10–20% Commission on Ticket Sales</div>
+                <p className="text-xs sm:text-sm" style={{ color: '#78716c' }}>
+                  Earn a percentage of ticket sales generated through your unique link. Share competitions in your content, add your link to your bio, and post in Stories.
                 </p>
               </div>
 
               <ul className="space-y-3 sm:space-y-4 mb-6 sm:mb-7 md:mb-8">
                 {[
-                  { icon: Rocket, text: 'Strong commission on every ticket sold through your custom link.' },
-                  { icon: Target, text: 'Ready-to-use content ideas, captions, scripts & assets.' },
-                  { icon: TrendingUp, text: 'Tracking dashboard so you can see clicks, sales & payouts.' },
-                  { icon: ShieldCheck, text: 'Clear pathway to Brand Ambassador status as you grow.' }
+                  { icon: PoundSterling, text: 'Earn Commission on Every Sale', desc: 'Get paid for every ticket purchased through your unique tracking link.' },
+                  { icon: Video, text: 'Get Paid Per 1,000 Views (2k+ views)', desc: 'Earn 50p per 1,000 views on approved videos (capped at £200 per video). Upload videos in your portal for approval and payout.' },
+                  { icon: Sparkles, text: 'Go Live for Extra Rewards', desc: 'Go Live on Instagram or TikTok promoting BabyBets competitions and earn an additional fee.' },
+                  { icon: Target, text: 'Track Clicks, Sales & Payouts', desc: 'Simple dashboard so you can see performance and earnings in real time.' },
+                  { icon: Trophy, text: 'Exclusive Monthly Rewards', desc: 'Top affiliates can win additional monthly prizes and bonuses.' },
+                  { icon: Rocket, text: 'Clear Path to Brand Ambassador', desc: 'As your audience grows, you can apply to move up to Brand Ambassador.' }
                 ].map((item, i) => (
-                  <li key={i} className="flex gap-2 sm:gap-3 text-xs sm:text-sm" style={{ color: '#78716c' }}>
-                    <div className="shrink-0" style={{ color: '#496B71' }}>
-                      <item.icon size={16} className="sm:w-[18px] sm:h-[18px]" />
+                  <li key={i} className="text-xs sm:text-sm" style={{ color: '#78716c' }}>
+                    <div className="flex gap-2 items-start mb-1">
+                      <div className="shrink-0 mt-0.5" style={{ color: '#496B71' }}>
+                        <item.icon size={16} className="sm:w-[18px] sm:h-[18px]" />
+                      </div>
+                      <span className="font-bold" style={{ color: '#151e20' }}>{item.text}</span>
                     </div>
-                    <span>{item.text}</span>
+                    <p className="ml-6 sm:ml-7">{item.desc}</p>
                   </li>
                 ))}
               </ul>
@@ -351,8 +447,8 @@ export default function Partners() {
                 <p className="font-bold mb-2 uppercase tracking-wide opacity-50">Requirements</p>
                 <ul className="list-disc pl-4 space-y-1">
                   <li>1,000+ followers on any platform</li>
-                  <li>Active & engaged UK audience</li>
-                  <li>Genuine passion for helping mums</li>
+                  <li>Active, engaged UK audience</li>
+                  <li>Genuine interest in parenting/family content</li>
                 </ul>
               </div>
 
@@ -361,7 +457,7 @@ export default function Partners() {
                 style={{ borderColor: '#e7e5e4', color: '#151e20' }}
                 onClick={() => setIsModalOpen(true)}
               >
-                Join Affiliate Program
+                Join the Affiliate Programme
               </button>
             </div>
           </div>
@@ -383,9 +479,9 @@ export default function Partners() {
       </section>
 
       <section className="py-8 sm:py-10 md:py-12 text-center px-4 sm:px-6" style={{ backgroundColor: 'rgba(73, 107, 113, 0.05)' }}>
-        <a href="mailto:hello@babybets.co.uk" className="text-sm sm:text-base font-bold hover:underline cursor-pointer" style={{ color: '#496B71' }}>
-          Have questions? Contact our partnership team.
-        </a>
+        <p className="text-sm sm:text-base" style={{ color: '#151e20' }}>
+          Have questions? <a href="mailto:sarah@babybets.co.uk" className="font-bold hover:underline cursor-pointer" style={{ color: '#496B71' }}>Contact our partnership team.</a>
+        </p>
       </section>
 
       <Footer />
