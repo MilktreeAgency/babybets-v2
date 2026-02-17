@@ -14,7 +14,8 @@ import {
   Mail,
   User,
   FolderOpen,
-  Video
+  Video,
+  Target
 } from 'lucide-react'
 import { type ReactNode } from 'react'
 
@@ -118,6 +119,11 @@ export const sidebarConfig: NavGroup[] = [
         label: 'Email Logs',
         href: '/admin/dashboard/email-logs',
         icon: <Mail className="size-4" />,
+      },
+      {
+        label: 'Wheel Claims',
+        href: '/admin/dashboard/wheel-claims',
+        icon: <Target className="size-4" />,
       },
     ],
   },
