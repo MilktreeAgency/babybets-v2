@@ -23,10 +23,7 @@ interface TestimonialsSectionSettings {
 export default function WinAmazingPrizesSection() {
   const [videoTestimonials, setVideoTestimonials] = useState<Testimonial[]>([])
   const [loading, setLoading] = useState(true)
-  const [sectionSettings, setSectionSettings] = useState<SectionSettings>({
-    headline: 'Win amazing prizes at unbeatable odds',
-    description: 'Real families winning real prizes every week. Affordable entry prices with genuine chances to win premium baby gear.'
-  })
+  const [sectionSettings, setSectionSettings] = useState<SectionSettings | null>(null)
 
   useEffect(() => {
     const loadData = async () => {
@@ -52,22 +49,12 @@ export default function WinAmazingPrizesSection() {
         if (!settingsError && settingsData?.setting_value) {
           const settingValue = settingsData.setting_value as unknown as TestimonialsSectionSettings
           setSectionSettings({
-            headline: settingValue.headline || sectionSettings.headline,
-            description: settingValue.description || sectionSettings.description
+            headline: settingValue.headline,
+            description: settingValue.description
           })
         }
       } catch (error) {
         console.error('Error loading testimonials data:', error)
-        // Fallback to default testimonials if database fetch fails
-        setVideoTestimonials([
-          {
-            id: '1',
-            video_url: "https://res.cloudinary.com/dkew5dwgo/video/upload/v1768531254/Untitled_design_jiwqlw.mp4",
-            quote: "The instant win feature is amazing - I couldn't believe it when I won!",
-            author_name: "Happy Winner",
-            display_order: 1
-          }
-        ])
       } finally {
         setLoading(false)
       }
@@ -77,18 +64,11 @@ export default function WinAmazingPrizesSection() {
   }, [])
 
   if (loading) {
-    return (
-      <section className="py-12 sm:py-16 md:py-20 lg:py-24">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="text-center">
-            <p className="text-muted-foreground">Loading testimonials...</p>
-          </div>
-        </div>
-      </section>
-    )
+    return null
   }
 
-  if (videoTestimonials.length === 0) {
+  // Only show section if we have both testimonials and section settings from backend
+  if (videoTestimonials.length === 0 || !sectionSettings) {
     return null
   }
 
