@@ -195,7 +195,6 @@ export default function CompetitionCard({ competition }: CompetitionCardProps) {
               style={{ borderTopWidth: '1px', borderColor: '#3a565a', color: '#e1eaec' }}
             >
               <span>Worth £{competition.total_value_gbp.toLocaleString()}</span>
-              <span className="font-bold" style={{ color: '#facc15' }}>Tax Free</span>
             </div>
 
             {/* Enter Now Button */}
