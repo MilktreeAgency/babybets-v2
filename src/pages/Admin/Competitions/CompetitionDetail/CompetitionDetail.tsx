@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
 import { DrawExecutionPanel } from '@/components/admin/DrawExecutionPanel'
 import { TicketPoolPanel } from '@/components/admin/TicketPoolPanel'
+import { RichTextDisplay } from '@/components/ui/RichTextDisplay'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -451,7 +452,9 @@ export default function CompetitionDetail() {
                         </div>
                       )}
                       <div>
-                        <p className="text-foreground whitespace-pre-wrap">{competition.description}</p>
+                        {competition.description && (
+                          <RichTextDisplay content={competition.description} />
+                        )}
                       </div>
                     </div>
                   )

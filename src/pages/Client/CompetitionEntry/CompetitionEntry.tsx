@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
 import { Trophy, Plus, Minus, Share2, ArrowLeft, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
+import { RichTextDisplay } from '@/components/ui/RichTextDisplay'
 
 type Competition = Database['public']['Tables']['competitions']['Row']
 
@@ -1885,9 +1886,13 @@ function CompetitionEntry() {
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-xl font-bold mb-2" style={{ color: '#151e20' }}>About This Competition</h3>
-                    <p style={{ color: '#78716c' }}>
-                      {competition.description || 'Enter for a chance to win this amazing prize!'}
-                    </p>
+                    {competition.description ? (
+                      <RichTextDisplay content={competition.description} />
+                    ) : (
+                      <p style={{ color: '#78716c' }}>
+                        Enter for a chance to win this amazing prize!
+                      </p>
+                    )}
                   </div>
                   <div>
                     <h3 className="text-xl font-bold mb-2" style={{ color: '#151e20' }}>Prize Value</h3>

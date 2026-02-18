@@ -398,3 +398,27 @@
   }
 }
 
+/* Slate Editor Styles */
+[data-slate-editor] {
+  @apply text-foreground;
+}
+
+[data-slate-editor]:focus {
+  outline: none;
+}
+
+[data-slate-placeholder] {
+  @apply text-muted-foreground;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.5;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+[data-slate-editor] p {
+  margin: 0;
+  line-height: 1.5;
+}
+
