@@ -1,0 +1,145 @@
+import {
+  Home,
+  Settings,
+  Trophy,
+  Gift,
+  Users,
+  Tag,
+  Award,
+  DollarSign,
+  BarChart3,
+  Package,
+  UserCheck,
+  Activity,
+  Mail,
+  User,
+  FolderOpen,
+  Video,
+  Target
+} from 'lucide-react'
+import { type ReactNode } from 'react'
+
+export interface NavItem {
+  label: string
+  href: string
+  icon: ReactNode
+  badge?: string
+}
+
+export interface NavGroup {
+  label: string
+  items: NavItem[]
+}
+
+export const sidebarConfig: NavGroup[] = [
+  {
+    label: 'Overview',
+    items: [
+      {
+        label: 'Dashboard',
+        href: '/admin/dashboard',
+        icon: <Home className="size-4" />,
+      },
+      {
+        label: 'Analytics',
+        href: '/admin/dashboard/analytics',
+        icon: <BarChart3 className="size-4" />,
+      },
+    ],
+  },
+  {
+    label: 'Management',
+    items: [
+      {
+        label: 'Competitions',
+        href: '/admin/dashboard/competitions',
+        icon: <Trophy className="size-4" />,
+      },
+      {
+        label: 'Prizes',
+        href: '/admin/dashboard/prizes',
+        icon: <Package className="size-4" />,
+      },
+      {
+        label: 'Fulfillments',
+        href: '/admin/dashboard/fulfillments',
+        icon: <Gift className="size-4" />,
+      },
+      {
+        label: 'Users',
+        href: '/admin/dashboard/users',
+        icon: <Users className="size-4" />,
+      },
+      {
+        label: 'Influencers',
+        href: '/admin/dashboard/influencers',
+        icon: <UserCheck className="size-4" />,
+      },
+      {
+        label: 'Influencer Sales',
+        href: '/admin/dashboard/influencer-sales',
+        icon: <DollarSign className="size-4" />,
+      },
+      {
+        label: 'Promo Codes',
+        href: '/admin/dashboard/promo-codes',
+        icon: <Tag className="size-4" />,
+      },
+      {
+        label: 'Winners',
+        href: '/admin/dashboard/winners',
+        icon: <Award className="size-4" />,
+      },
+      {
+        label: 'Withdrawals',
+        href: '/admin/dashboard/withdrawals',
+        icon: <DollarSign className="size-4" />,
+      },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      {
+        label: 'Assets',
+        href: '/admin/dashboard/assets',
+        icon: <FolderOpen className="size-4" />,
+      },
+      {
+        label: 'Testimonials',
+        href: '/admin/dashboard/testimonials',
+        icon: <Video className="size-4" />,
+      },
+      {
+        label: 'Activity',
+        href: '/admin/dashboard/activity',
+        icon: <Activity className="size-4" />,
+      },
+      {
+        label: 'Email Logs',
+        href: '/admin/dashboard/email-logs',
+        icon: <Mail className="size-4" />,
+      },
+      {
+        label: 'Wheel Claims',
+        href: '/admin/dashboard/wheel-claims',
+        icon: <Target className="size-4" />,
+      },
+    ],
+  },
+  {
+    label: 'Settings',
+    items: [
+      {
+        label: 'System',
+        href: '/admin/dashboard/system-settings',
+        icon: <Settings className="size-4" />,
+      },
+      {
+        label: 'My Account',
+        href: '/admin/dashboard/settings',
+        icon: <User className="size-4" />,
+      },
+    ],
+  },
+]

@@ -1,0 +1,6 @@
+export { default as HeroSection } from './HeroSection'
+export { default as HowItWorksSection } from './HowItWorksSection'
+export { default as MeetPartnerSection } from './MeetPartnerSection'
+export { default as ScrollingTextSection } from './ScrollingTextSection'
+export { default as FeaturedCompetitionsSection } from './FeaturedCompetitionsSection'
+export { default as WinAmazingPrizesSection } from './WinAmazingPrizesSection'
