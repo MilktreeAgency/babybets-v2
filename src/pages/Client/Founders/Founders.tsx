@@ -42,25 +42,40 @@ export default function Founders() {
       <Header />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      {/* Pink-tinted warm background to make the hero feel distinct */}
       <section
-        className="pt-14 sm:pt-16 md:pt-20 pb-0 relative overflow-hidden"
+        className="pt-28 sm:pt-32 md:pt-36 pb-14 sm:pb-16 md:pb-20 relative overflow-hidden"
         style={{ backgroundColor: '#fffbf7' }}
       >
-        {/* Soft background blobs */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-3xl pointer-events-none -z-0"
           style={{ backgroundColor: 'rgba(254, 208, 185, 0.25)' }} />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full blur-3xl pointer-events-none -z-0"
           style={{ backgroundColor: 'rgba(73, 107, 113, 0.07)' }} />
 
         <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-14 lg:gap-20 items-end">
+          {/* Centered headline */}
+          <div className="text-center mb-10 sm:mb-14">
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5"
+              style={{ backgroundColor: 'rgba(254, 208, 185, 0.5)', color: '#151e20' }}
+            >
+              <Users size={13} />
+              <span className="text-xs font-bold uppercase tracking-widest">Meet the Founders</span>
+            </div>
+            <h1
+              className="text-5xl sm:text-6xl md:text-7xl font-bold"
+              style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
+            >
+              Nick x Shelley
+            </h1>
+          </div>
 
-            {/* Left — photo */}
-            <div className="relative order-2 lg:order-1 self-end">
+          {/* Photo + quote side by side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center">
+            {/* Photo */}
+            <div className="relative">
               <div
-                className="relative rounded-t-3xl overflow-hidden w-full"
-                style={{ aspectRatio: '4/5', boxShadow: '0 32px 64px -12px rgba(73,107,113,0.25)', border: '4px solid white', borderBottom: 'none' }}
+                className="relative rounded-3xl overflow-hidden w-full"
+                style={{ aspectRatio: '4/5', boxShadow: '0 32px 64px -12px rgba(73,107,113,0.25)', border: '4px solid white' }}
               >
                 <img
                   src="/ShelleyxNick-hero-image.jpg"
@@ -68,7 +83,6 @@ export default function Founders() {
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
-                {/* Photo caption badge */}
                 <div
                   className="absolute bottom-4 left-4 right-4 flex items-center justify-between px-4 py-3 rounded-xl backdrop-blur-sm"
                   style={{ backgroundColor: 'rgba(255,255,255,0.92)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.8)' }}
@@ -91,95 +105,66 @@ export default function Founders() {
               </div>
             </div>
 
-            {/* Right — content */}
-            <div className="order-1 lg:order-2 space-y-6 pb-12 sm:pb-14 md:pb-16 lg:pb-20">
-              <div>
-                <div
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4"
-                  style={{ backgroundColor: 'rgba(254, 208, 185, 0.5)', color: '#151e20' }}
-                >
-                  <Users size={13} />
-                  <span className="text-xs font-bold uppercase tracking-widest">Meet the Founders</span>
-                </div>
-                <h1
-                  className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight"
-                  style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
-                >
-                  Nick x<br />Shelley
-                </h1>
-              </div>
-
+            {/* Quote + story */}
+            <div className="space-y-6 sm:space-y-8">
               {/* Pull-quote */}
               <div
-                className="border-l-4 pl-5 py-1"
+                className="border-l-4 pl-5 sm:pl-6 py-1"
                 style={{ borderColor: '#FED0B9' }}
               >
-                <p className="text-base sm:text-lg italic leading-relaxed" style={{ color: '#4a4a4a' }}>
+                <p className="text-lg sm:text-xl md:text-2xl italic leading-relaxed" style={{ color: '#151e20', fontFamily: "'Fraunces', serif" }}>
                   "I don't need a supercar… why can't I win a pram?"
                 </p>
-                <p className="text-xs mt-1 font-semibold" style={{ color: '#78716c' }}>— The lightbulb moment</p>
+                <p className="text-xs sm:text-sm mt-2 font-semibold" style={{ color: '#78716c' }}>— The lightbulb moment</p>
               </div>
 
-              {/* Story card */}
+              {/* Story */}
+              <div className="text-sm sm:text-[15px] md:text-base leading-relaxed space-y-4" style={{ color: '#4a4a4a' }}>
+                <p>Hi, we're Nick and Shelley. We're expecting our little boy in February.</p>
+                <p>
+                  One evening, Shelley was searching for a pram and stumbled across a competition site where you could win supercars for a few pounds. She looked at Nick and said, 'I don't need a supercar… why can't I win a pram?'
+                </p>
+                <p>That was the lightbulb moment.</p>
+              </div>
+
+              {/* Mobile expandable */}
               <div
-                className="rounded-2xl overflow-hidden"
-                style={{ borderWidth: '1px', borderColor: '#e7e5e4', backgroundColor: 'white', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}
+                ref={expandRef}
+                className="overflow-hidden transition-all duration-500 ease-in-out md:hidden"
+                style={{
+                  maxHeight: showFullStory ? `${expandRef.current?.scrollHeight ?? 600}px` : '0px',
+                  opacity: showFullStory ? 1 : 0,
+                }}
               >
-                <div className="p-5 sm:p-6 md:p-7">
-                  <h2
-                    className="text-base sm:text-lg font-bold mb-3"
-                    style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
-                  >
-                    Our Story
-                  </h2>
-                  <div className="text-sm sm:text-[15px] leading-relaxed space-y-3" style={{ color: '#4a4a4a' }}>
-                    <p>Hi, we're Nick and Shelley. We're expecting our little boy in February.</p>
-                    <p>
-                      One evening, Shelley was searching for a pram and stumbled across a competition site where you could win supercars for a few pounds. She looked at Nick and said, 'I don't need a supercar… why can't I win a pram?'
-                    </p>
-                    <p>That was the lightbulb moment.</p>
-                  </div>
-
-                  {/* Mobile expandable */}
-                  <div
-                    ref={expandRef}
-                    className="overflow-hidden transition-all duration-500 ease-in-out md:hidden"
-                    style={{
-                      maxHeight: showFullStory ? `${expandRef.current?.scrollHeight ?? 600}px` : '0px',
-                      opacity: showFullStory ? 1 : 0,
-                    }}
-                  >
-                    <div className="pt-3 text-sm sm:text-[15px] leading-relaxed space-y-3" style={{ color: '#4a4a4a' }}>
-                      <p>We searched everywhere and couldn't find a prize site built for parents, with prizes families actually want and need. And let's be honest, having a baby is expensive.</p>
-                      <p>So we thought, what if parents could win the pram they actually want, a car seat, nursery essentials, or even a family holiday, for less than the price of a coffee?</p>
-                      <p>That's why we built BabyBets.</p>
-                      <p>We're here to run brilliant competitions, support good causes, work with parent creators, and build a community that feels positive and worth being part of.</p>
-                    </div>
-                  </div>
-
-                  {/* Desktop — always visible */}
-                  <div className="hidden md:block pt-3 text-sm sm:text-[15px] leading-relaxed space-y-3" style={{ color: '#4a4a4a' }}>
-                    <p>We searched everywhere and couldn't find a prize site built for parents, with prizes families actually want and need. And let's be honest, having a baby is expensive.</p>
-                    <p>So we thought, what if parents could win the pram they actually want, a car seat, nursery essentials, or even a family holiday, for less than the price of a coffee?</p>
-                    <p>That's why we built BabyBets.</p>
-                    <p>We're here to run brilliant competitions, support good causes, work with parent creators, and build a community that feels positive and worth being part of.</p>
-                  </div>
+                <div className="text-sm sm:text-[15px] leading-relaxed space-y-4" style={{ color: '#4a4a4a' }}>
+                  <p>We searched everywhere and couldn't find a prize site built for parents, with prizes families actually want and need. And let's be honest, having a baby is expensive.</p>
+                  <p>So we thought, what if parents could win the pram they actually want, a car seat, nursery essentials, or even a family holiday, for less than the price of a coffee?</p>
+                  <p>That's why we built BabyBets.</p>
+                  <p>We're here to run brilliant competitions, support good causes, work with parent creators, and build a community that feels positive and worth being part of.</p>
                 </div>
-
-                {/* Mobile toggle button */}
-                <button
-                  onClick={() => setShowFullStory(!showFullStory)}
-                  className="md:hidden w-full flex items-center justify-center gap-2 py-3.5 text-sm font-bold transition-colors cursor-pointer"
-                  style={{ color: '#496B71', borderTop: '1px solid #e7e5e4', backgroundColor: 'rgba(73,107,113,0.04)' }}
-                >
-                  {showFullStory ? 'Read less' : 'Read the full story'}
-                  <ChevronDown
-                    size={15}
-                    className="transition-transform duration-300"
-                    style={{ transform: showFullStory ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                  />
-                </button>
               </div>
+
+              {/* Desktop — always visible */}
+              <div className="hidden md:block text-sm sm:text-[15px] md:text-base leading-relaxed space-y-4" style={{ color: '#4a4a4a' }}>
+                <p>We searched everywhere and couldn't find a prize site built for parents, with prizes families actually want and need. And let's be honest, having a baby is expensive.</p>
+                <p>So we thought, what if parents could win the pram they actually want, a car seat, nursery essentials, or even a family holiday, for less than the price of a coffee?</p>
+                <p>That's why we built BabyBets.</p>
+                <p>We're here to run brilliant competitions, support good causes, work with parent creators, and build a community that feels positive and worth being part of.</p>
+              </div>
+
+              {/* Mobile read more */}
+              <button
+                onClick={() => setShowFullStory(!showFullStory)}
+                className="md:hidden flex items-center gap-2 text-sm font-bold transition-colors cursor-pointer"
+                style={{ color: '#496B71' }}
+              >
+                {showFullStory ? 'Read less' : 'Read the full story'}
+                <ChevronDown
+                  size={15}
+                  className="transition-transform duration-300"
+                  style={{ transform: showFullStory ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                />
+              </button>
 
               {/* Instagram CTA */}
               <a

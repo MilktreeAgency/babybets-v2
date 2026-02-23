@@ -145,6 +145,7 @@ export type Database = {
           max_tickets: number
           max_tickets_per_user: number | null
           retail_value_gbp: number | null
+          short_description: string | null
           show_on_homepage: boolean | null
           slug: string
           start_datetime: string
@@ -175,6 +176,7 @@ export type Database = {
           max_tickets: number
           max_tickets_per_user?: number | null
           retail_value_gbp?: number | null
+          short_description?: string | null
           show_on_homepage?: boolean | null
           slug: string
           start_datetime: string
@@ -205,6 +207,7 @@ export type Database = {
           max_tickets?: number
           max_tickets_per_user?: number | null
           retail_value_gbp?: number | null
+          short_description?: string | null
           show_on_homepage?: boolean | null
           slug?: string
           start_datetime?: string

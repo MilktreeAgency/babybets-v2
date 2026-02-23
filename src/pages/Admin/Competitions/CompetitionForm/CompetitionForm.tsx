@@ -30,6 +30,7 @@ export default function CompetitionForm() {
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
+    short_description: '',
     description: '',
     image_url: '',
     images: [] as string[],
@@ -84,6 +85,7 @@ export default function CompetitionForm() {
         setFormData({
           title: data.title,
           slug: data.slug,
+          short_description: (data as any).short_description || '',
           description: data.description || '',
           image_url: data.image_url,
           images: (data.images as string[]) || [],
@@ -492,6 +494,22 @@ export default function CompetitionForm() {
                     className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-admin-info-fg font-mono text-sm"
                     placeholder="baby-bundle-prize-competition"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Short Description
+                  </label>
+                  <textarea
+                    name="short_description"
+                    value={formData.short_description}
+                    onChange={handleInputChange}
+                    maxLength={200}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-admin-info-fg resize-none"
+                    placeholder="Brief 1-2 line summary shown under the title on the competition page"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">{formData.short_description.length}/200 characters</p>
                 </div>
 
                 <div>
