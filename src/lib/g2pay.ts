@@ -275,28 +275,34 @@ export const validateAppleMerchant = async (validationURL: string): Promise<Reco
     throw new Error('Not authenticated. Please log in.')
   }
 
-  // Create authenticated client
-  const supabaseWithAuth = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY,
+  console.log('[Apple Pay] Calling validate-apple-merchant with token:', {
+    hasToken: !!currentSession.access_token,
+    tokenPrefix: currentSession.access_token.substring(0, 20)
+  })
+
+  // Use direct fetch for better control over headers
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/validate-apple-merchant`,
     {
-      global: {
-        headers: {
-          Authorization: `Bearer ${currentSession.access_token}`,
-        },
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${currentSession.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
+      body: JSON.stringify({ validationURL }),
     }
   )
 
-  // Call Edge Function
-  const { data, error } = await supabaseWithAuth.functions.invoke('validate-apple-merchant', {
-    body: { validationURL },
-  })
-
-  if (error) {
-    console.error('[Apple Pay] Merchant validation error:', error)
-    throw new Error(error.message || 'Failed to validate Apple Pay merchant')
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+    console.error('[Apple Pay] Merchant validation failed:', {
+      status: response.status,
+      error: errorData
+    })
+    throw new Error(errorData.error || 'Failed to validate Apple Pay merchant')
   }
 
+  const data = await response.json()
   return data.merchantSession
 }
