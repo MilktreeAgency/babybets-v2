@@ -593,7 +593,7 @@ function Checkout() {
       applePaySession.onvalidatemerchant = async (event) => {
         try {
           // Get fresh session to ensure user is authenticated
-          const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+          const { data: { session } } = await supabase.auth.getSession()
 
           if (!session?.user) {
             throw new Error('Please log in again to complete payment')
