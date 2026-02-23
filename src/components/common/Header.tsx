@@ -3,6 +3,7 @@ import { ShoppingBag, User, Menu, X } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '@/lib/supabase'
 
 interface NavLink {
@@ -92,6 +93,7 @@ export default function Header() {
     { name: 'Meet Nick & Shelley', path: '/founders' },
     ...(featuredPartner ? [{ name: featuredPartner.display_name, path: `/partner/${featuredPartner.slug}`, isNew: true }] : []),
     { name: 'Partners', path: '/partners' },
+    { name: 'FAQs', path: '/faq' },
   ]
 
   const isActive = (path: string) => {
@@ -102,7 +104,8 @@ export default function Header() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 " style={{ backgroundColor: 'rgba(255, 251, 247, 0.9)', backdropFilter: 'blur(12px)', borderColor: '#f0e0ca' }}>
+    <>
+    <nav className="sticky top-0 z-50" style={{ backgroundColor: 'rgba(255, 251, 247, 0.9)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #FED0B9', boxShadow: '0 2px 12px 0 rgba(254, 208, 185, 0.35)' }}>
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
@@ -115,7 +118,7 @@ export default function Header() {
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden lg:flex items-center space-x-8">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
@@ -138,7 +141,7 @@ export default function Header() {
           </div>
 
           {/* Actions */}
-          <div className="hidden md:flex items-center space-x-3">
+          <div className="hidden lg:flex items-center space-x-3">
             {isAdmin ? (
               <Link
                 to="/admin/dashboard"
@@ -197,7 +200,7 @@ export default function Header() {
           </div>
 
           {/* Mobile Actions */}
-          <div className="md:hidden flex items-center gap-3">
+          <div className="lg:hidden flex items-center gap-3">
             {!isAdmin && (
               <button
                 onClick={() => setCartOpen(true)}
@@ -223,77 +226,115 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t" style={{ borderColor: '#f0e0ca' }}>
-            <div className="px-4 py-4 space-y-3">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  to={link.path}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between py-3 px-4 rounded-lg text-base font-bold transition-colors cursor-pointer"
-                  style={{
-                    color: isActive(link.path) ? '#496B71' : '#78716c',
-                    backgroundColor: isActive(link.path) ? 'rgba(73, 107, 113, 0.1)' : 'transparent'
-                  }}
+      </div>
+
+    </nav>
+
+      {/* Mobile Menu — rendered via portal directly on body */}
+      {mobileMenuOpen && createPortal(
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            backgroundColor: '#fffbf7',
+            display: 'flex', flexDirection: 'column',
+          }}
+        >
+          {/* Top bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', height: '80px', borderBottom: '1px solid #FED0B9', flexShrink: 0 }}>
+            <Link to="/" onClick={() => setMobileMenuOpen(false)}>
+              <img src="/babybets-logo.png" alt="BabyBets Logo" style={{ height: '40px' }} />
+            </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {!isAdmin && (
+                <button
+                  onClick={() => { setCartOpen(true); setMobileMenuOpen(false) }}
+                  style={{ position: 'relative', padding: '8px', cursor: 'pointer', color: '#223033', background: 'none', border: 'none' }}
                 >
-                  <span className="flex items-center gap-2">
-                    {link.name}
-                    {link.isNew && (
-                      <span className="text-[9px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: '#ff4b5f', color: 'white', boxShadow: '0 2px 8px rgba(255, 75, 95, 0.3)' }}>
-                        Our New Official Partner
-                      </span>
-                    )}
-                  </span>
-                </Link>
-              ))}
-              <div className="border-t pt-3" style={{ borderColor: '#f0e0ca' }}>
-                {isAdmin ? (
-                  <Link
-                    to="/admin/dashboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block text-center py-3 px-4 rounded-xl font-bold cursor-pointer"
-                    style={{ backgroundColor: '#496B71', color: 'white' }}
-                  >
-                    Dashboard
-                  </Link>
-                ) : isAuthenticated ? (
-                  <Link
-                    to="/account"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block text-center py-3 px-4 rounded-xl font-bold cursor-pointer"
-                    style={{ backgroundColor: '#151e20', color: 'white' }}
-                  >
-                    <User size={18} className="inline mr-2" />
-                    My Profile
-                  </Link>
-                ) : (
-                  <div className="space-y-2">
-                    <Link
-                      to="/login"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block text-center py-3 px-4 rounded-xl font-bold cursor-pointer"
-                      style={{ backgroundColor: '#f0e0ca', color: '#151e20' }}
-                    >
-                      <User size={18} className="inline mr-2" />
-                      Log In
-                    </Link>
-                    <Link
-                      to="/signup"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block text-center py-3 px-4 rounded-xl font-bold cursor-pointer"
-                      style={{ backgroundColor: '#496B71', color: 'white' }}
-                    >
-                      Sign Up
-                    </Link>
-                  </div>
-                )}
-              </div>
+                  <ShoppingBag size={24} />
+                  {cartTotal > 0 && (
+                    <span style={{ position: 'absolute', top: '4px', right: '4px', backgroundColor: '#FED0B9', color: '#151e20', fontSize: '10px', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontWeight: 'bold' }}>
+                      {cartTotal}
+                    </span>
+                  )}
+                </button>
+              )}
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                style={{ padding: '8px', cursor: 'pointer', color: '#223033', background: 'none', border: 'none' }}
+                aria-label="Close menu"
+              >
+                <X size={24} />
+              </button>
             </div>
           </div>
-        )}
-      </div>
-    </nav>
+
+          {/* Nav links */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px' }}>
+            {navLinks.map((link) => (
+              <Link
+                key={link.name}
+                to={link.path}
+                onClick={() => setMobileMenuOpen(false)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  padding: '20px 0',
+                  borderBottom: '1px solid #f0e0ca',
+                  textDecoration: 'none',
+                  color: isActive(link.path) ? '#496B71' : '#151e20',
+                }}
+              >
+                <span style={{ fontSize: '22px', fontWeight: 'bold', fontFamily: "'Fraunces', serif" }}>
+                  {link.name}
+                </span>
+                {link.isNew && (
+                  <span style={{ fontSize: '9px', padding: '2px 8px', borderRadius: '999px', fontWeight: 'bold', backgroundColor: '#FED0B9', color: '#151e20' }}>
+                    NEW
+                  </span>
+                )}
+              </Link>
+            ))}
+          </div>
+
+          {/* CTA buttons */}
+          <div style={{ padding: '16px 20px 32px', display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0 }}>
+            {isAdmin ? (
+              <Link
+                to="/admin/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                style={{ display: 'block', textAlign: 'center', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', backgroundColor: '#496B71', color: 'white', textDecoration: 'none' }}
+              >
+                Dashboard
+              </Link>
+            ) : isAuthenticated ? (
+              <Link
+                to="/account"
+                onClick={() => setMobileMenuOpen(false)}
+                style={{ display: 'block', textAlign: 'center', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', backgroundColor: '#151e20', color: 'white', textDecoration: 'none' }}
+              >
+                My Profile
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/signup"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{ display: 'block', textAlign: 'center', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', backgroundColor: '#496B71', color: 'white', textDecoration: 'none' }}
+                >
+                  Create Account
+                </Link>
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{ display: 'block', textAlign: 'center', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', backgroundColor: '#151e20', color: 'white', textDecoration: 'none' }}
+                >
+                  Log In
+                </Link>
+              </>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   )
 }

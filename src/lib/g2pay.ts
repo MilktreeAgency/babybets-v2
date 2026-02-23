@@ -168,3 +168,135 @@ export const validateCardNumber = (cardNumber: string): boolean => {
 
   return sum % 10 === 0
 }
+
+// Wallet payment request parameters
+interface WalletPaymentRequest {
+  orderId: string
+  walletType: 'apple_pay' | 'google_pay'
+  walletToken: string // Encrypted payment token from wallet
+  amount: number // Amount in pence
+}
+
+// Process a wallet payment via Edge Function (Apple Pay / Google Pay)
+export const processWalletPayment = async (
+  walletRequest: WalletPaymentRequest
+): Promise<PaymentResponse> => {
+  // Get current session (this gets the session from localStorage/memory)
+  const {
+    data: { session: currentSession },
+    error: getSessionError
+  } = await supabase.auth.getSession()
+
+  if (getSessionError) {
+    console.error('[G2Pay Wallet] Error getting session:', getSessionError)
+    throw new Error('Failed to get authentication session')
+  }
+
+  if (!currentSession?.access_token) {
+    console.error('[G2Pay Wallet] No valid session or access token')
+    throw new Error('Not authenticated. Please log in.')
+  }
+
+  // Check if token is about to expire (within 5 minutes)
+  const expiresAt = currentSession.expires_at
+  const now = Math.floor(Date.now() / 1000)
+  const timeUntilExpiry = expiresAt ? expiresAt - now : 0
+  const shouldRefresh = expiresAt && timeUntilExpiry < 300
+
+  // Refresh if needed
+  if (shouldRefresh) {
+    const {
+      data: { session: refreshedSession },
+      error: refreshError,
+    } = await supabase.auth.refreshSession()
+
+    if (refreshError) {
+      console.error('[G2Pay Wallet] Session refresh error:', refreshError)
+      throw new Error(`Session refresh failed: ${refreshError.message}. Please log in again.`)
+    }
+
+    if (!refreshedSession?.access_token) {
+      console.error('[G2Pay Wallet] No valid session after refresh')
+      throw new Error('Failed to refresh session. Please log in again.')
+    }
+  }
+
+  // Get the latest session to ensure we have the most current JWT token
+  const {
+    data: { session: latestSession },
+  } = await supabase.auth.getSession()
+
+  if (!latestSession?.access_token) {
+    throw new Error('No access token available. Please log in again.')
+  }
+
+  // Create a new Supabase client instance with the specific JWT token
+  // This prevents race conditions when multiple tabs make concurrent requests
+  const supabaseWithAuth = createClient(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_ANON_KEY,
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${latestSession.access_token}`,
+        },
+      },
+    }
+  )
+
+  // Call Edge Function - uses the isolated client with explicit JWT
+  const { data, error } = await supabaseWithAuth.functions.invoke('process-wallet-payment', {
+    body: walletRequest,
+  })
+
+  if (error) {
+    console.error('[G2Pay Wallet] Edge function error:', error)
+
+    // Handle JWT-specific errors
+    if (error.message?.includes('JWT') || error.message?.includes('401')) {
+      throw new Error('Session expired. Please refresh the page and log in again.')
+    }
+
+    throw new Error(error.message || 'Failed to process wallet payment')
+  }
+
+  return data
+}
+
+// Validate Apple Pay merchant (for merchant validation step)
+export const validateAppleMerchant = async (validationURL: string): Promise<Record<string, unknown>> => {
+  // Get current session
+  const {
+    data: { session: currentSession },
+    error: getSessionError
+  } = await supabase.auth.getSession()
+
+  if (getSessionError || !currentSession?.access_token) {
+    throw new Error('Not authenticated. Please log in.')
+  }
+
+  // Create authenticated client
+  const supabaseWithAuth = createClient(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_ANON_KEY,
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${currentSession.access_token}`,
+        },
+      },
+    }
+  )
+
+  // Call Edge Function
+  const { data, error } = await supabaseWithAuth.functions.invoke('validate-apple-merchant', {
+    body: { validationURL },
+  })
+
+  if (error) {
+    console.error('[Apple Pay] Merchant validation error:', error)
+    throw new Error(error.message || 'Failed to validate Apple Pay merchant')
+  }
+
+  return data.merchantSession
+}

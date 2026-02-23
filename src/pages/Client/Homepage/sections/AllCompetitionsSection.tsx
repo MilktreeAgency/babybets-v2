@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, ChevronDown } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { useCompetitions } from '@/hooks/useCompetitions'
 import CompetitionCard from '@/components/CompetitionCard'
 import CustomDropdown from '@/components/common/CustomDropdown'
@@ -12,7 +12,7 @@ export default function AllCompetitionsSection() {
   const { competitions, isLoading } = useCompetitions()
   const [selectedCategory, setSelectedCategory] = useState<Category>('all')
   const [sortBy, setSortBy] = useState<SortOption>('featured')
-  const [displayCount, setDisplayCount] = useState(6)
+  const [displayCount] = useState(8)
 
   const categories: { value: Category; label: string }[] = [
     { value: 'all', label: 'All' },
@@ -70,9 +70,6 @@ export default function AllCompetitionsSection() {
 
   const displayedCompetitions = filteredAndSortedCompetitions.slice(0, displayCount)
   const hasMore = filteredAndSortedCompetitions.length > displayCount
-
-  const showMoreOptions = [6, 12, 24, 48]
-  const nextShowMore = showMoreOptions.find(count => count > displayCount) || displayCount + 12
 
   if (isLoading || competitions.length === 0) {
     return null
@@ -185,28 +182,32 @@ export default function AllCompetitionsSection() {
           ))}
         </div>
 
-        {/* Show More Button */}
+        {/* View All Competitions Button */}
         {hasMore && (
           <div className="text-center">
-            <button
-              onClick={() => setDisplayCount(nextShowMore)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-bold transition-all duration-300 cursor-pointer shadow-sm"
-              style={{
-                backgroundColor: 'white',
-                color: '#151e20',
-                borderWidth: '1px',
-                borderColor: '#e7e5e4'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f5f5f4'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'white'
-              }}
-            >
-              Show More ({nextShowMore - displayCount} more)
-              <ChevronDown size={16} />
-            </button>
+            <Link to="/competitions">
+              <button
+                className="inline-flex items-center justify-center rounded-xl px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-bold transition-all duration-300 cursor-pointer"
+                style={{
+                  backgroundColor: 'transparent',
+                  color: '#496B71',
+                  borderWidth: '2px',
+                  borderColor: '#496B71'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#496B71'
+                  e.currentTarget.style.color = 'white'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                  e.currentTarget.style.color = '#496B71'
+                }}
+              >
+                View All Competitions
+                <ArrowRight size={16} className="sm:hidden ml-2" />
+                <ArrowRight size={18} className="hidden sm:block ml-2" />
+              </button>
+            </Link>
           </div>
         )}
 

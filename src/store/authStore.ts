@@ -7,6 +7,7 @@ interface User {
   avatar: string | null
   googleId: string
   isAdmin: boolean
+  isInfluencer: boolean
   createdAt: string
   updatedAt: string
 }

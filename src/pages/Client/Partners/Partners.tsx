@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Check, Users, Gift, PoundSterling, Target, Rocket, Ticket, ClipboardList, Search, UserCheck, Share2, Video, Trophy, Sparkles } from 'lucide-react'
+import { Check, Users, Gift, PoundSterling, Target, Rocket, Ticket, ClipboardList, Search, UserCheck, Share2, Video, Trophy, Sparkles, ArrowRight } from 'lucide-react'
 import Header from '@/components/common/Header'
 import Footer from '@/components/common/Footer'
 import PartnerApplicationForm from '@/pages/Client/PartnerApplication/PartnerApplicationForm'
@@ -14,7 +14,6 @@ export default function Partners() {
     liveCompetitions: 0
   })
 
-  // Calculate commission based on tiered rates
   const getCommissionRate = (amount: number): number => {
     if (amount < 1000) return 0.10
     if (amount < 3000) return 0.15
@@ -28,18 +27,15 @@ export default function Partners() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Fetch creators registered
         const { count: creatorsCount } = await supabase
           .from('influencers')
           .select('*', { count: 'exact', head: true })
 
-        // Fetch live competitions
         const { count: competitionsCount } = await supabase
           .from('competitions')
           .select('*', { count: 'exact', head: true })
           .eq('status', 'active')
 
-        // Fetch average commission paid from influencer_sales
         const { data: salesData } = await supabase
           .from('influencer_sales')
           .select('commission_pence')
@@ -67,34 +63,42 @@ export default function Partners() {
     <div className="antialiased relative min-h-screen" style={{ color: '#2D251E', backgroundColor: '#fffbf7' }}>
       <Header />
 
-      {/* Hero Section */}
-      <section className="relative pt-12 sm:pt-16 md:pt-20 pb-12 sm:pb-16 md:pb-20 overflow-hidden">
-        {/* Background blobs */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-[100px] -z-10 translate-x-1/3 -translate-y-1/4 pointer-events-none" style={{ backgroundColor: 'rgba(254, 208, 185, 0.4)' }} />
-        <div className="absolute top-1/2 left-0 w-[400px] h-[400px] rounded-full blur-[80px] -z-10 -translate-x-1/3 pointer-events-none" style={{ backgroundColor: 'rgba(73, 107, 113, 0.3)' }} />
+      {/* ── HERO — teal ───────────────────────────────────────────────────── */}
+      <section className="relative pt-16 sm:pt-20 md:pt-24 pb-20 sm:pb-24 overflow-hidden" style={{ backgroundColor: '#496B71' }}>
+        {/* Decorative circles */}
+        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full pointer-events-none"
+          style={{ backgroundColor: 'rgba(254,208,185,0.1)' }} />
+        <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full pointer-events-none"
+          style={{ backgroundColor: 'rgba(254,208,185,0.07)' }} />
 
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
-          <div className="inline-block mb-4 sm:mb-5 md:mb-6 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-bold tracking-widest shadow-sm" style={{ backgroundColor: '#FED0B9', color: '#151e20' }}>
-            MUM CREATOR PROGRAM
+        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 text-center">
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5"
+            style={{ backgroundColor: 'rgba(254,208,185,0.2)', color: '#FED0B9', borderWidth: '1px', borderColor: 'rgba(254,208,185,0.3)' }}
+          >
+            <span className="text-xs font-bold uppercase tracking-widest">Mum Creator Program</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 md:mb-6 tracking-tight leading-[1.1]" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
-            Earn More & Grow Faster<br /> With <span className="relative inline-block" style={{ color: '#496B71' }}>
-              BabyBets
-              <span className="absolute bottom-2 left-0 w-full h-3 rounded-full -z-10" style={{ backgroundColor: 'rgba(254, 208, 185, 0.3)' }}></span>
-            </span>
+          <h1
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-5 tracking-tight leading-[1.1]"
+            style={{ fontFamily: "'Fraunces', serif", color: 'white' }}
+          >
+            Earn More & Grow Faster<br />With BabyBets
           </h1>
 
-          <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 md:mb-10 max-w-2xl mx-auto leading-relaxed font-medium px-4" style={{ color: '#78716c' }}>
+          <p className="text-base sm:text-lg md:text-xl mb-4 max-w-2xl mx-auto leading-relaxed px-4" style={{ color: 'rgba(255,255,255,0.8)' }}>
             The partnership program paying more than TikTok Shop. Join the UK's fastest growing family prize platform and turn your content into cash.
           </p>
 
-          <p className="font-bold text-xs sm:text-sm uppercase tracking-widest mb-6 sm:mb-7 md:mb-8 animate-pulse" style={{ color: '#dc2626' }}>
+          <p className="font-bold text-xs sm:text-sm uppercase tracking-widest mb-8 animate-pulse" style={{ color: '#FED0B9' }}>
             Limited Spaces Available for Q1 2026
           </p>
 
           {/* Video */}
-          <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border-4 sm:border-6 md:border-8 border-white aspect-video max-w-4xl mx-auto" style={{ backgroundColor: '#151e20' }}>
+          <div
+            className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl max-w-4xl mx-auto"
+            style={{ aspectRatio: '16/9', backgroundColor: '#151e20', borderWidth: '4px', borderColor: 'rgba(255,255,255,0.15)' }}
+          >
             <iframe
               src="https://player.vimeo.com/video/1138594596?badge=0&autopause=0&player_id=0&app_id=58479"
               className="w-full h-full"
@@ -106,159 +110,203 @@ export default function Partners() {
         </div>
       </section>
 
-      {/* Intro Text */}
-      <section className="py-12 sm:py-16 md:py-20 max-w-4xl mx-auto px-4 sm:px-6 text-center">
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-5 md:mb-6 tracking-tight" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
-          BabyBets Influencer & Creator Partnership
-        </h2>
-        <p className="text-base sm:text-lg leading-relaxed mb-6 sm:mb-7 md:mb-8" style={{ color: '#78716c' }}>
-          BabyBets is a brand-new UK competition and raffle platform created specifically for mums and families.
-          We give away the prizes parents actually want — pram bundles, nursery makeovers, car seats, toys, spa breaks, family holidays and more.
-        </p>
-        <p className="font-medium mb-8 sm:mb-9 md:mb-10 text-sm sm:text-base" style={{ color: '#496B71' }}>
-          We are building a partnership network of mum creators, influencers and everyday mums who want to:
-        </p>
+      {/* ── INTRO — cream ─────────────────────────────────────────────────── */}
+      <section className="py-14 sm:py-16 md:py-20" style={{ backgroundColor: '#fffbf7' }}>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5"
+            style={{ backgroundColor: 'rgba(254,208,185,0.4)', color: '#151e20' }}
+          >
+            <span className="text-xs font-bold uppercase tracking-widest">About the Program</span>
+          </div>
+          <h2
+            className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 tracking-tight"
+            style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
+          >
+            BabyBets Influencer & Creator Partnership
+          </h2>
+          <p className="text-base sm:text-lg leading-relaxed mb-5" style={{ color: '#78716c' }}>
+            BabyBets is a brand-new UK competition and raffle platform created specifically for mums and families.
+            We give away the prizes parents actually want — pram bundles, nursery makeovers, car seats, toys, spa breaks, family holidays and more.
+          </p>
+          <p className="font-medium mb-8 text-sm sm:text-base" style={{ color: '#496B71' }}>
+            We are building a partnership network of mum creators, influencers and everyday mums who want to:
+          </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 text-left max-w-2xl mx-auto">
-          {[
-            'Earn from home',
-            'Support other mums',
-            'Be part of something new and exciting',
-            'Grow with us as we scale',
-            'Get rewarded for creating authentic content'
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl shadow-sm border" style={{ backgroundColor: 'white', borderColor: '#e7e5e4' }}>
-              <div className="p-1 rounded-full shrink-0" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)', color: 'rgb(34, 197, 94)' }}>
-                <Check size={12} strokeWidth={3} className="sm:w-3.5 sm:h-3.5" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-2xl mx-auto">
+            {[
+              'Earn from home',
+              'Support other mums',
+              'Be part of something new and exciting',
+              'Grow with us as we scale',
+              'Get rewarded for creating authentic content'
+            ].map((item, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 p-4 rounded-xl"
+                style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+              >
+                <div
+                  className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: '#496B71' }}
+                >
+                  <Check size={12} strokeWidth={3} color="white" />
+                </div>
+                <span className="font-bold text-xs sm:text-sm" style={{ color: '#151e20' }}>{item}</span>
               </div>
-              <span className="font-bold text-xs sm:text-sm" style={{ color: '#151e20' }}>{item}</span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* How It Works Section */}
-      <section className="py-12 sm:py-16 md:py-20" style={{ backgroundColor: 'rgba(73, 107, 113, 0.05)' }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-10 sm:mb-12 md:mb-14">
-            <div className="inline-block mb-3 sm:mb-4 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold" style={{ backgroundColor: '#496B71', color: 'white' }}>
-              How It Works
+      {/* ── HOW IT WORKS STEPS — teal ─────────────────────────────────────── */}
+      <section className="py-14 sm:py-16 md:py-20 relative overflow-hidden" style={{ backgroundColor: '#496B71' }}>
+        <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full pointer-events-none"
+          style={{ backgroundColor: 'rgba(254,208,185,0.08)' }} />
+        <div className="absolute -bottom-12 -left-12 w-44 h-44 rounded-full pointer-events-none"
+          style={{ backgroundColor: 'rgba(254,208,185,0.06)' }} />
+
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10 sm:mb-12">
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5"
+              style={{ backgroundColor: 'rgba(254,208,185,0.2)', color: '#FED0B9', borderWidth: '1px', borderColor: 'rgba(254,208,185,0.3)' }}
+            >
+              <span className="text-xs font-bold uppercase tracking-widest">How It Works</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
+            <h2
+              className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2"
+              style={{ fontFamily: "'Fraunces', serif", color: 'white' }}
+            >
               Earn commission from every ticket sale
             </h2>
-            <p className="text-sm sm:text-base max-w-3xl mx-auto" style={{ color: '#78716c' }}>
+            <p className="text-sm sm:text-base max-w-2xl mx-auto" style={{ color: 'rgba(255,255,255,0.75)' }}>
               Join the BabyBets Creator Programme and earn commission when your audience enters through your link.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 md:gap-8">
-            {/* Step 1 */}
-            <div className="rounded-2xl p-6 sm:p-7 md:p-8 text-center" style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4' }}>
-              <div className="mb-4 flex justify-center" style={{ color: '#496B71' }}>
-                <ClipboardList size={40} strokeWidth={1.5} className="sm:w-12 sm:h-12" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-10">
+            {[
+              { num: 1, icon: ClipboardList, title: 'Step 1: Apply', desc: 'Fill out the quick form to apply to become a BabyBets Creator.' },
+              { num: 2, icon: Search, title: 'Step 2: Review', desc: "We'll review your social media accounts and content to make sure you're a good fit for the brand." },
+              { num: 3, icon: UserCheck, title: 'Step 3: Get Approved', desc: "If selected, you'll create your profile on our site and receive your unique tracking link." },
+              { num: 4, icon: Share2, title: 'Step 4: Start Earning', desc: 'Share our competitions on your social channels by creating content and earn commission on every ticket sale made through your link.' },
+            ].map(({ num, icon: Icon, title, desc }) => (
+              <div key={num} className="relative">
+                <div
+                  className="absolute -top-3 left-5 z-10 px-3 py-1 rounded-full text-xs font-bold"
+                  style={{ backgroundColor: '#FED0B9', color: '#151e20' }}
+                >
+                  Step {num}
+                </div>
+                <div
+                  className="rounded-2xl p-5 sm:p-6 h-full flex flex-col pt-8 transition-all duration-300 hover:-translate-y-1"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.15)' }}
+                >
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
+                    style={{ backgroundColor: 'rgba(254,208,185,0.2)', color: '#FED0B9' }}
+                  >
+                    <Icon size={20} strokeWidth={1.8} />
+                  </div>
+                  <h3
+                    className="text-base sm:text-lg font-bold mb-2"
+                    style={{ fontFamily: "'Fraunces', serif", color: 'white' }}
+                  >
+                    {title}
+                  </h3>
+                  <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.72)' }}>
+                    {desc}
+                  </p>
+                </div>
               </div>
-              <h3 className="text-lg sm:text-xl font-bold mb-2" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
-                Step 1: Apply
-              </h3>
-              <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>
-                Fill out the quick form to apply to become a BabyBets Creator.
-              </p>
-            </div>
-
-            {/* Step 2 */}
-            <div className="rounded-2xl p-6 sm:p-7 md:p-8 text-center" style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4' }}>
-              <div className="mb-4 flex justify-center" style={{ color: '#496B71' }}>
-                <Search size={40} strokeWidth={1.5} className="sm:w-12 sm:h-12" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-bold mb-2" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
-                Step 2: Review
-              </h3>
-              <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>
-                We'll review your social media accounts and content to make sure you're a good fit for the brand.
-              </p>
-            </div>
-
-            {/* Step 3 */}
-            <div className="rounded-2xl p-6 sm:p-7 md:p-8 text-center" style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4' }}>
-              <div className="mb-4 flex justify-center" style={{ color: '#496B71' }}>
-                <UserCheck size={40} strokeWidth={1.5} className="sm:w-12 sm:h-12" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-bold mb-2" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
-                Step 3: Get Approved
-              </h3>
-              <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>
-                If selected, you'll create your profile on our site and receive your unique tracking link.
-              </p>
-            </div>
-
-            {/* Step 4 */}
-            <div className="rounded-2xl p-6 sm:p-7 md:p-8 text-center" style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4' }}>
-              <div className="mb-4 flex justify-center" style={{ color: '#496B71' }}>
-                <Share2 size={40} strokeWidth={1.5} className="sm:w-12 sm:h-12" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-bold mb-2" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
-                Step 4: Start Earning
-              </h3>
-              <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>
-                Share our competitions on your social channels by creating content and earn commission on every ticket sale made through your link.
-              </p>
-            </div>
+            ))}
           </div>
 
-          <div className="mt-8 sm:mt-10 text-center">
+          <div className="text-center">
             <button
-              className="px-8 sm:px-10 md:px-12 py-3 sm:py-4 text-base sm:text-lg font-bold rounded-xl shadow-xl transform hover:-translate-y-1 transition-all cursor-pointer"
-              style={{ backgroundColor: '#FED0B9', color: '#151e20' }}
+              className="inline-flex items-center gap-2 px-8 sm:px-10 py-4 text-base sm:text-lg font-bold rounded-xl transition-all duration-300 cursor-pointer"
+              style={{ backgroundColor: '#FED0B9', color: '#151e20', boxShadow: '0 8px 32px rgba(254,208,185,0.3)' }}
               onClick={() => setIsModalOpen(true)}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#ffc4a6'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#FED0B9'; e.currentTarget.style.transform = 'translateY(0)' }}
             >
               Apply Now
+              <ArrowRight size={18} />
             </button>
           </div>
         </div>
       </section>
 
-      {/* Stats Grid */}
-      <section className="py-12 sm:py-16 md:py-20 text-white relative overflow-hidden" style={{ backgroundColor: '#496B71' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 text-center">
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-bold mb-4 sm:mb-5 md:mb-6" style={{ backgroundColor: '#FED0B9', color: '#151e20' }}>
-            <Ticket size={14} className="sm:w-4 sm:h-4" /> Affiliate Program
+      {/* ── STATS — pink ──────────────────────────────────────────────────── */}
+      <section className="py-14 sm:py-16 md:py-20" style={{ backgroundColor: '#FED0B9' }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5"
+            style={{ backgroundColor: 'rgba(73,107,113,0.15)', color: '#496B71' }}
+          >
+            <Ticket size={13} />
+            <span className="text-xs font-bold uppercase tracking-widest">Affiliate Program</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-10 sm:mb-12 md:mb-16 tracking-tight" style={{ fontFamily: "'Fraunces', serif" }}>
+          <h2
+            className="text-3xl sm:text-4xl md:text-5xl font-bold mb-10 sm:mb-12 tracking-tight"
+            style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
+          >
             Earn £££ from Every Ticket Sale
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 md:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 mb-8">
             {[
               { label: 'Creators Registered', val: stats.creatorsRegistered.toLocaleString(), icon: Users },
               { label: 'Average Commission Paid', val: `£${stats.avgCommissionPaid.toLocaleString()}`, icon: PoundSterling },
               { label: 'Live Competitions', val: stats.liveCompetitions.toString(), icon: Gift }
             ].map((stat, i) => (
-              <div key={i} className="backdrop-blur-md rounded-[2.5rem] p-6 sm:p-7 md:p-8 border hover:bg-white/10 transition duration-300" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-                <div className="mb-3 sm:mb-4 flex justify-center" style={{ color: '#FED0B9' }}>
-                  <stat.icon size={32} strokeWidth={1.5} className="sm:w-10 sm:h-10" />
+              <div
+                key={i}
+                className="rounded-2xl p-6 sm:p-8 transition-all duration-300 hover:-translate-y-1"
+                style={{ backgroundColor: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', borderWidth: '1px', borderColor: 'rgba(255,255,255,0.9)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}
+              >
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
+                  style={{ backgroundColor: '#496B71', color: 'white' }}
+                >
+                  <stat.icon size={22} strokeWidth={1.8} />
                 </div>
-                <div className="text-4xl sm:text-5xl font-bold mb-1.5 sm:mb-2">{stat.val}</div>
-                <div className="font-medium text-base sm:text-lg" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>{stat.label}</div>
+                <div className="text-4xl sm:text-5xl font-bold mb-1.5" style={{ color: '#151e20' }}>{stat.val}</div>
+                <div className="text-sm font-medium" style={{ color: '#4a4a4a' }}>{stat.label}</div>
               </div>
             ))}
           </div>
 
-          <p className="mt-8 sm:mt-10 md:mt-12 text-base sm:text-lg px-4" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+          <p className="text-sm sm:text-base" style={{ color: 'rgba(21,30,32,0.65)' }}>
             Come & Join The BabyBets Brand - Start Earning Today From Your Existing Content
           </p>
         </div>
       </section>
 
-      {/* Calculator */}
-      <section className="py-12 sm:py-16 md:py-20 lg:py-24">
+      {/* ── CALCULATOR — cream (untouched internals) ──────────────────────── */}
+      <section className="py-14 sm:py-16 md:py-20 lg:py-24" style={{ backgroundColor: '#fffbf7' }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
-          <div className="rounded-[3rem] shadow-xl border p-6 sm:p-8 md:p-12 lg:p-16 text-center" style={{ backgroundColor: 'white', borderColor: '#e7e5e4' }}>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-1.5 sm:mb-2" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
+          <div className="text-center mb-10">
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5"
+              style={{ backgroundColor: 'rgba(254,208,185,0.4)', color: '#151e20' }}
+            >
+              <span className="text-xs font-bold uppercase tracking-widest">Earnings Calculator</span>
+            </div>
+            <h2
+              className="text-2xl sm:text-3xl font-bold mb-2"
+              style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
+            >
               Calculate Your Earnings
             </h2>
-            <p className="text-sm sm:text-base mb-8 sm:mb-10 md:mb-12" style={{ color: '#78716c' }}>See what you could earn with BabyBets</p>
+            <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>See what you could earn with BabyBets</p>
+          </div>
 
+          <div
+            className="rounded-3xl shadow-xl border p-6 sm:p-8 md:p-12"
+            style={{ backgroundColor: 'white', borderColor: '#e7e5e4' }}
+          >
             <div className="rounded-3xl p-6 sm:p-7 md:p-8 mb-8 sm:mb-10 border" style={{ backgroundColor: '#f5f5f4', borderColor: '#e7e5e4' }}>
               <div className="mb-6 sm:mb-7 md:mb-8">
                 <p className="text-xs sm:text-sm font-bold uppercase tracking-wider mb-1.5 sm:mb-2" style={{ color: '#78716c' }}>
@@ -307,7 +355,7 @@ export default function Partners() {
                   return (
                     <div
                       key={i}
-                      className={`p-2 sm:p-2.5 md:p-3 rounded-xl transition border-2`}
+                      className="p-2 sm:p-2.5 md:p-3 rounded-xl transition border-2"
                       style={{
                         backgroundColor: isActive ? 'rgba(73, 107, 113, 0.1)' : '#f5f5f4',
                         borderColor: isActive ? '#496B71' : '#e7e5e4'
@@ -331,11 +379,16 @@ export default function Partners() {
                 className="w-full h-full object-cover"
                 alt="Mum and baby"
               />
-              <div className="absolute inset-0 flex items-end justify-center pb-6 sm:pb-8" style={{ background: 'linear-gradient(to top, rgba(73, 107, 113, 0.8), transparent)' }}>
+              <div
+                className="absolute inset-0 flex items-end justify-center pb-6 sm:pb-8"
+                style={{ background: 'linear-gradient(to top, rgba(73, 107, 113, 0.85), transparent)' }}
+              >
                 <button
-                  className="px-6 sm:px-7 md:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-bold rounded-xl shadow-lg cursor-pointer"
+                  className="px-7 py-3 text-sm sm:text-base font-bold rounded-xl cursor-pointer transition-all duration-300"
                   style={{ backgroundColor: '#FED0B9', color: '#151e20' }}
                   onClick={() => setIsModalOpen(true)}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#ffc4a6' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#FED0B9' }}
                 >
                   Start Earning Now
                 </button>
@@ -345,9 +398,24 @@ export default function Partners() {
         </div>
       </section>
 
-      {/* Comparison Tiers */}
-      <section className="py-12 sm:py-16 md:py-20" style={{ backgroundColor: 'rgba(73, 107, 113, 0.05)' }}>
+      {/* ── TIERS — light teal tint (untouched internals) ─────────────────── */}
+      <section className="py-14 sm:py-16 md:py-20" style={{ backgroundColor: 'rgba(73, 107, 113, 0.05)' }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10 sm:mb-12">
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5"
+              style={{ backgroundColor: 'rgba(254,208,185,0.4)', color: '#151e20' }}
+            >
+              <span className="text-xs font-bold uppercase tracking-widest">Partnership Tiers</span>
+            </div>
+            <h2
+              className="text-2xl sm:text-3xl md:text-4xl font-bold"
+              style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
+            >
+              Choose Your Path
+            </h2>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-7 md:gap-8 items-start">
             {/* Brand Ambassador */}
             <div className="rounded-[2.5rem] p-6 sm:p-8 md:p-10 lg:p-12 border-2 relative overflow-hidden order-1 md:order-2" style={{ backgroundColor: 'rgba(254, 208, 185, 0.2)', borderColor: '#FED0B9' }}>
@@ -398,9 +466,11 @@ export default function Partners() {
               </div>
 
               <button
-                className="w-full py-3 sm:py-3.5 md:py-4 text-sm sm:text-base font-bold rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
+                className="w-full py-3 sm:py-3.5 md:py-4 text-sm sm:text-base font-bold rounded-xl cursor-pointer transition-all duration-300"
                 style={{ backgroundColor: '#496B71', color: 'white' }}
                 onClick={() => setIsModalOpen(true)}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#3a565a' }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#496B71' }}
               >
                 Apply as a Brand Ambassador
               </button>
@@ -453,7 +523,7 @@ export default function Partners() {
               </div>
 
               <button
-                className="w-full py-3 sm:py-3.5 md:py-4 text-sm sm:text-base font-bold rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors"
+                className="w-full py-3 sm:py-3.5 md:py-4 text-sm sm:text-base font-bold rounded-xl border-2 cursor-pointer transition-colors hover:bg-gray-50"
                 style={{ borderColor: '#e7e5e4', color: '#151e20' }}
                 onClick={() => setIsModalOpen(true)}
               >
@@ -464,29 +534,38 @@ export default function Partners() {
         </div>
       </section>
 
-      {/* As Seen In */}
-      <section className="py-12 sm:py-16 text-center border-t" style={{ backgroundColor: 'white', borderColor: '#e7e5e4' }}>
-        <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] mb-6 sm:mb-7 md:mb-8" style={{ color: '#78716c' }}>
-          As Seen In
-        </p>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 flex flex-wrap justify-center items-center gap-6 sm:gap-8 md:gap-10 lg:gap-12 opacity-40">
-          <span className="text-xl sm:text-2xl font-bold" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>Mama</span>
-          <span className="text-base sm:text-lg md:text-xl font-bold tracking-tight" style={{ color: '#dc2626' }}>netmums</span>
-          <span className="text-sm sm:text-base md:text-lg italic" style={{ fontFamily: "'Fraunces', serif", color: '#78716c' }}>MadeForMums</span>
-          <span className="text-base sm:text-lg md:text-xl font-black uppercase" style={{ color: '#151e20' }}>DAILY EXPRESS</span>
-          <span className="text-base sm:text-lg md:text-xl font-bold" style={{ color: '#0284c7' }}>FamilyFirst</span>
+      {/* ── AS SEEN IN — teal ─────────────────────────────────────────────── */}
+      <section className="py-12 sm:py-14 md:py-16 relative overflow-hidden" style={{ backgroundColor: '#496B71' }}>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] mb-7" style={{ color: 'rgba(254,208,185,0.7)' }}>
+            As Seen In
+          </p>
+          <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-8 md:gap-12" style={{ opacity: 0.6 }}>
+            <span className="text-xl sm:text-2xl font-bold" style={{ fontFamily: "'Fraunces', serif", color: 'white' }}>Mama</span>
+            <span className="text-base sm:text-lg md:text-xl font-bold tracking-tight" style={{ color: 'white' }}>netmums</span>
+            <span className="text-sm sm:text-base md:text-lg italic" style={{ fontFamily: "'Fraunces', serif", color: 'white' }}>MadeForMums</span>
+            <span className="text-base sm:text-lg md:text-xl font-black uppercase" style={{ color: 'white' }}>DAILY EXPRESS</span>
+            <span className="text-base sm:text-lg md:text-xl font-bold" style={{ color: 'white' }}>FamilyFirst</span>
+          </div>
         </div>
       </section>
 
-      <section className="py-8 sm:py-10 md:py-12 text-center px-4 sm:px-6" style={{ backgroundColor: 'rgba(73, 107, 113, 0.05)' }}>
-        <p className="text-sm sm:text-base" style={{ color: '#151e20' }}>
-          Have questions? <a href="mailto:sarah@babybets.co.uk" className="font-bold hover:underline cursor-pointer" style={{ color: '#496B71' }}>Contact our partnership team.</a>
+      {/* ── CONTACT STRIP — pink ──────────────────────────────────────────── */}
+      <section className="py-10 sm:py-12 text-center px-4 sm:px-6" style={{ backgroundColor: '#FED0B9' }}>
+        <p className="text-sm sm:text-base font-medium" style={{ color: '#151e20' }}>
+          Have questions?{' '}
+          <a
+            href="mailto:sarah@babybets.co.uk"
+            className="font-bold underline cursor-pointer transition-opacity hover:opacity-70"
+            style={{ color: '#496B71' }}
+          >
+            Contact our partnership team.
+          </a>
         </p>
       </section>
 
       <Footer />
 
-      {/* Application Form Modal */}
       <PartnerApplicationForm isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   )

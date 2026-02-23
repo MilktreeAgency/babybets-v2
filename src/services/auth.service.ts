@@ -35,6 +35,7 @@ class AuthService {
           avatar: session.user.user_metadata?.avatar_url || null,
           googleId: session.user.user_metadata?.sub || '',
           isAdmin: userRole === 'admin' || userRole === 'super_admin',
+          isInfluencer: userRole === 'influencer',
           createdAt: session.user.created_at,
           updatedAt: session.user.updated_at || session.user.created_at,
         }
@@ -73,6 +74,7 @@ class AuthService {
           avatar: session.user.user_metadata?.avatar_url || null,
           googleId: session.user.user_metadata?.sub || '',
           isAdmin: userRole === 'admin' || userRole === 'super_admin',
+          isInfluencer: userRole === 'influencer',
           createdAt: session.user.created_at,
           updatedAt: session.user.updated_at || session.user.created_at,
         }

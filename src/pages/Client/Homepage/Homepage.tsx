@@ -15,6 +15,7 @@ import MeetPartnerSection from './sections/MeetPartnerSection'
 import MeetFoundersSection from './sections/MeetFoundersSection'
 import WinAmazingPrizesSection from './sections/WinAmazingPrizesSection'
 import WinnersSection from './sections/WinnersSection'
+import NewsletterSection from './sections/NewsletterSection'
 
 function Homepage() {
   const { isLoading } = useAuth()
@@ -47,6 +48,7 @@ function Homepage() {
       <MeetFoundersSection />
       <WinAmazingPrizesSection />
       <WinnersSection />
+      <NewsletterSection />
       <Footer />
       <SpinWheelModal isOpen={isWheelOpen} onClose={closeWheel} />
     </div>

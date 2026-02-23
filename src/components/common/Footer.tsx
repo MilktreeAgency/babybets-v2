@@ -14,10 +14,9 @@ export default function Footer() {
                 <div className="md:pr-[45px] md:pb-[100px]">
                   <div className="mb-6">
                     <img
-                      src="/babybets-logo.png"
-                      alt="babybets"
-                      className="h-[42px]"
-                      style={{ width: '165px' }}
+                      src="/baby-bets-footer-logo.png"
+                      alt="BabyBets"
+                      className="h-[52px] object-contain"
                       loading="lazy"
                     />
                   </div>
@@ -65,30 +64,30 @@ export default function Footer() {
 
               {/* Competitions - 17% */}
               <div className="w-full sm:w-1/2 md:w-1/3 lg:w-[17%] px-4 mb-[30px]">
-                <h3 className="text-base font-medium mb-6" style={{ color: '#ffffff' }}>Competitions</h3>
+                <h3 className="text-base font-bold mb-6" style={{ color: '#FED0B9', fontFamily: "'Fraunces', serif" }}>Competitions</h3>
                 <ul className="space-y-3">
                   <li>
-                    <Link to="/competitions?cat=toys" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/competitions?cat=toys" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       Toys & Tech
                     </Link>
                   </li>
                   <li>
-                    <Link to="/competitions?cat=nursery" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/competitions?cat=nursery" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       Baby & Nursery
                     </Link>
                   </li>
                   <li>
-                    <Link to="/competitions?cat=cash" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/competitions?cat=cash" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       Cash
                     </Link>
                   </li>
                   <li>
-                    <Link to="/competitions?cat=travel" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/competitions?cat=travel" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       Travel & Getaways
                     </Link>
                   </li>
                   <li>
-                    <Link to="/competitions?filter=instant" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/competitions?filter=instant" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       Instant Wins
                     </Link>
                   </li>
@@ -97,45 +96,45 @@ export default function Footer() {
 
               {/* Support & Trust - 17% */}
               <div className="w-full sm:w-1/2 md:w-1/3 lg:w-[17%] px-4 mb-[30px]">
-                <h3 className="text-base font-medium mb-6" style={{ color: '#ffffff' }}>Support & Trust</h3>
+                <h3 className="text-base font-bold mb-6" style={{ color: '#FED0B9', fontFamily: "'Fraunces', serif" }}>Support & Trust</h3>
                 <ul className="space-y-3">
                   <li>
-                    <Link to="/how-it-works" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/how-it-works" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       How it Works
                     </Link>
                   </li>
                   <li>
-                    <Link to="/partners" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/partners" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       Influencer Program
                     </Link>
                   </li>
                   <li>
-                    <Link to="/faq" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/faq" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       FAQ
                     </Link>
                   </li>
                   <li>
-                    <Link to="/legal/free-postal-entry" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/legal/free-postal-entry" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       Free Postal Entry
                     </Link>
                   </li>
                   <li>
-                    <Link to="/legal/website-terms" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/legal/website-terms" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       Website Terms of Use
                     </Link>
                   </li>
                   <li>
-                    <Link to="/legal/terms" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/legal/terms" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       Terms & Conditions
                     </Link>
                   </li>
                   <li>
-                    <Link to="/legal/privacy" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/legal/privacy" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       Privacy Policy
                     </Link>
                   </li>
                   <li>
-                    <Link to="/legal/acceptable-use" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/legal/acceptable-use" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       Acceptable Use Policy
                     </Link>
                   </li>
@@ -144,30 +143,30 @@ export default function Footer() {
 
               {/* Categories - 17% */}
               <div className="w-full sm:w-1/2 md:w-1/3 lg:w-[17%] px-4 mb-[30px]">
-                <h3 className="text-base font-medium mb-6" style={{ color: '#ffffff' }}>Information</h3>
+                <h3 className="text-base font-bold mb-6" style={{ color: '#FED0B9', fontFamily: "'Fraunces', serif" }}>Information</h3>
                 <ul className="space-y-3">
                   <li>
-                    <Link to="/about" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/about" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       About Us
                     </Link>
                   </li>
                   <li>
-                    <Link to="/contact" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/contact" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       Contact Us
                     </Link>
                   </li>
                   <li>
-                    <Link to="/account" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/account" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       My Account
                     </Link>
                   </li>
                   <li>
-                    <Link to="/account?tab=orders" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/account?tab=orders" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       Order History
                     </Link>
                   </li>
                   <li>
-                    <Link to="/account?tab=wallet" className="cursor-pointer text-[14px] font-normal transition-opacity hover:opacity-80" style={{ color: '#e1eaec' }}>
+                    <Link to="/account?tab=wallet" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       My Wallet
                     </Link>
                   </li>
@@ -176,7 +175,7 @@ export default function Footer() {
 
               {/* Get in Touch - 17% */}
               <div className="w-full sm:w-1/2 md:w-1/3 lg:w-[17%] px-4 mb-[30px]">
-                <h3 className="text-base font-medium mb-6" style={{ color: '#ffffff' }}>Get in Touch</h3>
+                <h3 className="text-base font-bold mb-6" style={{ color: '#FED0B9', fontFamily: "'Fraunces', serif" }}>Get in Touch</h3>
                 <p className="text-[14px] mb-4" style={{ color: '#e1eaec' }}>
                   Need help? Our parent support team is here Mon-Fri.
                 </p>

@@ -10,4 +10,15 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    host: '0.0.0.0', // Allow access from network devices
+    port: 7001,
+    watch: {
+      usePolling: true,
+    },
+    hmr: {
+      overlay: true,
+      host: '192.168.1.2', // Your local IP for HMR
+    },
+  },
 })

@@ -62,6 +62,15 @@ export interface InfluencerApprovedEmailData extends Record<string, unknown> {
   commissionTier?: number
 }
 
+export interface InfluencerApprovedWithPasswordEmailData extends Record<string, unknown> {
+  displayName: string
+  slug: string
+  temporaryPassword: string
+  loginUrl?: string
+  dashboardUrl?: string
+  commissionTier?: number
+}
+
 export interface InfluencerRejectedEmailData extends Record<string, unknown> {
   displayName: string
   rejectionReason?: string
@@ -85,7 +94,7 @@ export interface WalletCreditEmailData extends Record<string, unknown> {
 }
 
 export interface EmailNotification {
-  type: 'prize_win' | 'order_confirmation' | 'withdrawal_request' | 'withdrawal_approved' | 'withdrawal_rejected' | 'competition_ending' | 'welcome' | 'influencer_application_submitted' | 'influencer_approved' | 'influencer_rejected' | 'prize_fulfillment_update' | 'wallet_credit' | 'custom'
+  type: 'prize_win' | 'order_confirmation' | 'withdrawal_request' | 'withdrawal_approved' | 'withdrawal_rejected' | 'competition_ending' | 'welcome' | 'influencer_application_submitted' | 'influencer_approved' | 'influencer_approved_with_password' | 'influencer_rejected' | 'prize_fulfillment_update' | 'wallet_credit' | 'custom'
   recipientEmail: string
   recipientName?: string
   data: Record<string, unknown>
@@ -239,6 +248,24 @@ class EmailService {
   ): Promise<{ success: boolean; notification_id?: string; error?: string }> {
     return this.sendNotification({
       type: 'influencer_approved',
+      recipientEmail,
+      recipientName,
+      data,
+    })
+  }
+
+  /**
+   * Send an influencer approved notification with temporary password
+   * Used when approving applications submitted without a user account
+   * Non-blocking - returns immediately after queuing
+   */
+  async sendInfluencerApprovedWithPasswordEmail(
+    recipientEmail: string,
+    recipientName: string,
+    data: InfluencerApprovedWithPasswordEmailData
+  ): Promise<{ success: boolean; notification_id?: string; error?: string }> {
+    return this.sendNotification({
+      type: 'influencer_approved_with_password',
       recipientEmail,
       recipientName,
       data,

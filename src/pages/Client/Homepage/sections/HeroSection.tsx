@@ -205,23 +205,6 @@ export default function HeroSection() {
         <div className="flex flex-col-reverse lg:flex-row gap-8 md:gap-12 lg:gap-20 items-center">
           {/* Left Column - Text content */}
           <div className="w-full lg:w-[55%] text-left z-10 space-y-4 sm:space-y-6 lg:space-y-8">
-            {/* Social Proof - Trustpilot */}
-            <div className="flex items-center">
-              <a
-                href="https://uk.trustpilot.com/review/www.babybets.co.uk"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="cursor-pointer transition-opacity hover:opacity-80"
-              >
-                <img
-                  src="https://cdn.trustpilot.net/brand-assets/4.1.0/logo-black.svg"
-                  alt="Trustpilot"
-                  className="h-6 sm:h-7"
-                  loading="lazy"
-                />
-              </a>
-            </div>
-
             {/* Headline */}
             <h1
               className="text-4xl sm:text-5xl md:text-6xl lg:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] mb-0"
@@ -284,6 +267,33 @@ export default function HeroSection() {
                 </button>
               </Link>
             </div>
+
+            {/* Trustpilot Badge */}
+            <a
+              href="https://uk.trustpilot.com/review/www.babybets.co.uk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-3 transition-opacity hover:opacity-80 cursor-pointer justify-center sm:justify-start w-full sm:w-auto"
+            >
+              <span className="text-base sm:text-lg font-bold" style={{ color: '#151e20' }}>Excellent</span>
+              {/* 5 green stars */}
+              <div className="flex items-center gap-0.5">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center" style={{ backgroundColor: '#00b67a' }}>
+                    <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4 sm:w-5 sm:h-5">
+                      <path d="M12 2l2.9 8.9H23l-7.5 5.5 2.9 8.9L12 20l-7.5 5.5 2.9-8.9L0 10.9h8.1z" />
+                    </svg>
+                  </div>
+                ))}
+              </div>
+              {/* Trustpilot wordmark */}
+              <div className="flex items-center gap-1.5">
+                <svg viewBox="0 0 24 24" fill="#00b67a" className="w-5 h-5 sm:w-6 sm:h-6">
+                  <path d="M12 2l2.9 8.9H23l-7.5 5.5 2.9 8.9L12 20l-7.5 5.5 2.9-8.9L0 10.9h8.1z" />
+                </svg>
+                <span className="text-base sm:text-lg font-bold" style={{ color: '#151e20' }}>Trustpilot</span>
+              </div>
+            </a>
           </div>
 
           {/* Right Column - Hero Image */}

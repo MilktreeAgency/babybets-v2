@@ -61,6 +61,8 @@ export default function SignUp() {
           setTimeout(() => {
             if (user.isAdmin) {
               window.location.href = '/admin/dashboard'
+            } else if (user.isInfluencer) {
+              window.location.href = '/account'
             } else {
               window.location.href = '/'
             }

@@ -61,6 +61,8 @@ export default function SignIn() {
       const user = useAuthStore.getState().user
       if (user?.isAdmin) {
         window.location.href = '/admin/dashboard'
+      } else if (user?.isInfluencer) {
+        window.location.href = '/account'
       } else {
         window.location.href = '/'
       }

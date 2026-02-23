@@ -77,7 +77,7 @@ export default function WinAmazingPrizesSection() {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12">
         {/* Headline */}
         <div className="text-center mb-10 sm:mb-12 md:mb-14 lg:mb-16">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 md:mb-6 max-w-6xl mx-auto px-4" style={{ fontFamily: "'Baloo Chettan 2', sans-serif", color: '#000000' }}>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 md:mb-6 max-w-6xl mx-auto px-4" style={{ fontFamily: "'Fraunces', serif", color: '#000000' }}>
             {sectionSettings.headline}
           </h2>
           <p className="text-base sm:text-lg max-w-2xl mx-auto px-4" style={{ color: '#666666' }}>

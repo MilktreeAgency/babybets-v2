@@ -94,7 +94,7 @@ export default function Competitions() {
         />
 
         {/* Filters */}
-        <div className="max-w-[1300px] mx-auto mt-6 sm:mt-8 px-4 sm:px-6">
+        <div className="max-w-[1400px] mx-auto mt-6 sm:mt-8 px-4 sm:px-6 lg:px-12">
           {/* Search Bar, Type Dropdown, and Sort Dropdown */}
           <div className="mb-5 sm:mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1 relative">
@@ -149,7 +149,7 @@ export default function Competitions() {
         </div>
 
         {/* Competition Cards */}
-        <div className="max-w-[1300px] mx-auto px-4 sm:px-6">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12">
           {isLoading ? (
             <div className="flex items-center justify-center py-16 sm:py-20">
               <Loader className="w-7 h-7 sm:w-8 sm:h-8 animate-spin" style={{ color: '#151e20' }} />

@@ -1,65 +1,71 @@
 import { Link } from 'react-router-dom'
-import { Zap } from 'lucide-react'
+import { ArrowRight, Zap } from 'lucide-react'
 import { useCompetitions } from '@/hooks/useCompetitions'
 import CompetitionCard from '@/components/CompetitionCard'
 
 export default function FeaturedCompetitionsSection() {
   const { competitions, isLoading } = useCompetitions({ showOnHomepage: true, limit: 8 })
 
-  // Hide section if loading or no competitions
   if (isLoading || competitions.length === 0) {
     return null
   }
 
   return (
-    <section className="py-10 sm:py-12 md:py-14" id="competitions" style={{ backgroundColor: '#fffbf7' }}>
+    <section className="py-14 sm:py-16 md:py-20 lg:py-24" id="competitions" style={{ backgroundColor: '#fffbf7' }}>
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12">
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 sm:mb-8">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 rounded-lg shadow-sm" style={{ backgroundColor: '#facc15', color: '#713f12' }}>
-              <Zap size={18} className="sm:hidden" fill="currentColor" />
-              <Zap size={20} className="hidden sm:block" fill="currentColor" />
+        <div className="flex items-end justify-between mb-8 sm:mb-10 md:mb-12">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div
+                className="p-1.5 rounded-lg"
+                style={{ backgroundColor: 'rgba(254, 208, 185, 0.4)', color: '#151e20' }}
+              >
+                <Zap size={16} fill="currentColor" />
+              </div>
+              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#496B71' }}>
+                Live Now
+              </span>
             </div>
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight" style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}>
+            <h2
+              className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight"
+              style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
+            >
               Featured Competitions
             </h2>
           </div>
+
           <Link
             to="/competitions"
-            className="text-sm font-bold uppercase transition-colors cursor-pointer hidden sm:block"
+            className="hidden sm:inline-flex items-center gap-1.5 text-sm font-bold transition-colors cursor-pointer shrink-0 mb-1"
             style={{ color: '#496B71' }}
             onMouseEnter={(e) => e.currentTarget.style.color = '#2c4044'}
             onMouseLeave={(e) => e.currentTarget.style.color = '#496B71'}
           >
             View All
+            <ArrowRight size={15} />
           </Link>
         </div>
 
-        {/* Horizontal scrollable slider with snap */}
-        <div className="relative -mx-4 px-4">
-          <div
-            className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory pb-4 no-scrollbar"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            {competitions.map((competition) => (
-              <div key={competition.id} className="shrink-0 w-[260px] sm:w-[300px] md:w-[320px] snap-start">
-                <CompetitionCard
-                  competition={{
-                    ...competition,
-                    images: (competition.images as string[]) || []
-                  }}
-                />
-              </div>
-            ))}
-          </div>
+        {/* 2-column grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+          {competitions.map((competition) => (
+            <CompetitionCard
+              key={competition.id}
+              competition={{
+                ...competition,
+                images: (competition.images as string[]) || []
+              }}
+            />
+          ))}
         </div>
 
-        {/* Mobile view all link */}
-        <div className="mt-5 sm:mt-6 text-center sm:hidden">
+        {/* Mobile — view all button */}
+        <div className="mt-8 sm:mt-10 text-center sm:hidden">
           <Link
             to="/competitions"
-            className="inline-flex items-center justify-center px-6 py-3 text-base font-bold rounded-xl transition-all duration-300 cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 px-8 py-4 text-sm font-bold rounded-xl transition-all duration-300 cursor-pointer"
             style={{
               backgroundColor: 'transparent',
               color: '#496B71',
@@ -76,8 +82,10 @@ export default function FeaturedCompetitionsSection() {
             }}
           >
             View All Competitions
+            <ArrowRight size={16} />
           </Link>
         </div>
+
       </div>
     </section>
   )

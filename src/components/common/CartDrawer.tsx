@@ -19,7 +19,7 @@ export default function CartDrawer() {
 
   const handleContinueShopping = () => {
     setCartOpen(false)
-    navigate('/')
+    navigate('/competitions')
   }
 
   const handleCheckout = () => {

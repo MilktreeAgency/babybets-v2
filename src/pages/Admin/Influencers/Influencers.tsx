@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { DashboardHeader } from '../components'
-import { CheckCircle, XCircle, ExternalLink, Mail, Instagram, Youtube, UserCheck } from 'lucide-react'
+import { CheckCircle, XCircle, ExternalLink, Mail, Instagram, Youtube, UserCheck, Loader } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
   Select,
@@ -15,7 +15,8 @@ import { emailService } from '@/services/email.service'
 
 interface Influencer extends Record<string, unknown> {
   id: string
-  user_id: string
+  user_id: string | null
+  email: string | null
   display_name: string
   slug: string
   bio: string | null
@@ -42,6 +43,7 @@ interface Influencer extends Record<string, unknown> {
 
 export default function Influencers() {
   const [filter, setFilter] = useState<string>('all')
+  const [loadingAction, setLoadingAction] = useState<{ id: string; action: 'approve' | 'reject' | 'deactivate' | 'ambassador' } | null>(null)
   const { refreshCounts } = useSidebarCounts()
 
   // Query builder for infinite scroll
@@ -83,6 +85,7 @@ export default function Influencers() {
   })
 
   const updateInfluencerStatus = async (id: string, isActive: boolean) => {
+    setLoadingAction({ id, action: isActive ? 'approve' : 'deactivate' })
     try {
       // First, get the influencer to find their user_id
       const influencer = influencers.find(i => i.id === id)
@@ -90,46 +93,87 @@ export default function Influencers() {
         throw new Error('Influencer not found')
       }
 
-      // Update influencer is_active status
-      const { error: influencerError } = await supabase
-        .from('influencers')
-        .update({ is_active: isActive })
-        .eq('id', id)
-
-      if (influencerError) throw influencerError
-
-      // Update user's role based on active status
       if (isActive) {
-        // If approving, update user's role to 'influencer' in profiles
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ role: 'influencer' })
-          .eq('id', influencer.user_id)
+        // CASE 1: Approving an application without user account (user_id is null)
+        if (!influencer.user_id) {
+          // Verify we have an email for this application
+          if (!influencer.email) {
+            throw new Error('Cannot approve application: email address is missing')
+          }
 
-        if (profileError) throw profileError
-
-        // Send influencer approved email (non-blocking)
-        if (influencer.profiles?.email) {
-          const recipientName = influencer.profiles.first_name
-            ? `${influencer.profiles.first_name} ${influencer.profiles.last_name || ''}`.trim()
-            : influencer.display_name || 'there'
-
-          emailService.sendInfluencerApprovedEmail(
-            influencer.profiles.email,
-            recipientName,
-            {
-              displayName: influencer.display_name,
-              slug: influencer.slug,
-              dashboardUrl: `${window.location.origin}/influencer/dashboard`,
-              commissionTier: influencer.commission_tier || 1
-            }
-          ).catch(err => {
-            console.error('Failed to send influencer approved email:', err)
-            // Don't throw - email failure shouldn't affect the operation
+          // Call the approve-influencer-application edge function
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+          const response = await fetch(`${supabaseUrl}/functions/v1/approve-influencer-application`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            },
+            body: JSON.stringify({ influencerId: id })
           })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || 'Failed to approve application')
+          }
+
+          const result = await response.json()
+          alert(result.message || `Application approved! User account created and login credentials sent to ${influencer.email}`)
+        }
+        // CASE 2: Approving/reactivating existing influencer with user account
+        else {
+          // Update influencer is_active status
+          const { error: influencerError } = await supabase
+            .from('influencers')
+            .update({ is_active: true })
+            .eq('id', id)
+
+          if (influencerError) throw influencerError
+
+          // Update user's role to 'influencer' in profiles
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ role: 'influencer' })
+            .eq('id', influencer.user_id)
+
+          if (profileError) throw profileError
+
+          // Send regular influencer approved email (non-blocking)
+          if (influencer.profiles?.email) {
+            const recipientName = influencer.profiles.first_name
+              ? `${influencer.profiles.first_name} ${influencer.profiles.last_name || ''}`.trim()
+              : influencer.display_name || 'there'
+
+            emailService.sendInfluencerApprovedEmail(
+              influencer.profiles.email,
+              recipientName,
+              {
+                displayName: influencer.display_name,
+                slug: influencer.slug,
+                dashboardUrl: `${window.location.origin}/influencer/dashboard`,
+                commissionTier: influencer.commission_tier || 1
+              }
+            ).catch(err => {
+              console.error('Failed to send influencer approved email:', err)
+              // Don't throw - email failure shouldn't affect the operation
+            })
+          }
         }
       } else {
-        // If deactivating, update user's role back to 'user' in profiles
+        // Deactivating an influencer
+        if (!influencer.user_id) {
+          throw new Error('Cannot deactivate: influencer has no user account')
+        }
+
+        // Update influencer is_active status
+        const { error: influencerError } = await supabase
+          .from('influencers')
+          .update({ is_active: false })
+          .eq('id', id)
+
+        if (influencerError) throw influencerError
+
+        // Update user's role back to 'user' in profiles
         const { error: profileError } = await supabase
           .from('profiles')
           .update({ role: 'user' })
@@ -144,16 +188,19 @@ export default function Influencers() {
       await refreshCounts()
     } catch (error) {
       console.error('Error updating influencer status:', error)
-      alert('Failed to update status')
+      alert(`Failed to update status: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setLoadingAction(null)
     }
   }
 
   const rejectInfluencer = async (id: string) => {
-    try {
-      if (!confirm('Are you sure you want to reject and delete this application? This action cannot be undone.')) {
-        return
-      }
+    if (!confirm('Are you sure you want to reject and delete this application? This action cannot be undone.')) {
+      return
+    }
 
+    setLoadingAction({ id, action: 'reject' })
+    try {
       // Get influencer data before deleting
       const influencer = influencers.find(i => i.id === id)
 
@@ -166,13 +213,15 @@ export default function Influencers() {
       if (error) throw error
 
       // Send influencer rejected email (non-blocking)
-      if (influencer?.profiles?.email) {
-        const recipientName = influencer.profiles.first_name
+      // Use influencer.email for applications without user accounts, otherwise use profiles.email
+      const recipientEmail = influencer?.email || influencer?.profiles?.email
+      if (recipientEmail) {
+        const recipientName = influencer.profiles?.first_name
           ? `${influencer.profiles.first_name} ${influencer.profiles.last_name || ''}`.trim()
           : influencer.display_name || 'there'
 
         emailService.sendInfluencerRejectedEmail(
-          influencer.profiles.email,
+          recipientEmail,
           recipientName,
           {
             displayName: influencer.display_name,
@@ -191,6 +240,8 @@ export default function Influencers() {
     } catch (error) {
       console.error('Error rejecting influencer:', error)
       alert('Failed to reject application')
+    } finally {
+      setLoadingAction(null)
     }
   }
 
@@ -212,6 +263,7 @@ export default function Influencers() {
   }
 
   const toggleAmbassador = async (id: string, isAmbassador: boolean) => {
+    setLoadingAction({ id, action: 'ambassador' })
     try {
       const { error } = await supabase
         .from('influencers')
@@ -224,6 +276,8 @@ export default function Influencers() {
     } catch (error) {
       console.error('Error toggling ambassador status:', error)
       alert('Failed to update ambassador status')
+    } finally {
+      setLoadingAction(null)
     }
   }
 
@@ -350,13 +404,17 @@ export default function Influencers() {
 
                         {/* Contact */}
                         <td className="py-4 px-6">
-                          <a
-                            href={`mailto:${influencer.profiles?.email}`}
-                            className="flex items-center gap-1.5 hover:underline text-admin-info-fg cursor-pointer text-sm font-medium"
-                          >
-                            <Mail className="size-3.5" />
-                            <span className="truncate max-w-[200px]">{influencer.profiles?.email}</span>
-                          </a>
+                          {(influencer.email || influencer.profiles?.email) && (
+                            <a
+                              href={`mailto:${influencer.email || influencer.profiles?.email}`}
+                              className="flex items-center gap-1.5 hover:underline text-admin-info-fg cursor-pointer text-sm font-medium"
+                            >
+                              <Mail className="size-3.5" />
+                              <span className="truncate max-w-[200px]">
+                                {influencer.email || influencer.profiles?.email}
+                              </span>
+                            </a>
+                          )}
                           {influencer.social_profile_url && (
                             <a
                               href={influencer.social_profile_url}
@@ -448,19 +506,39 @@ export default function Influencers() {
                               <>
                                 <button
                                   onClick={() => updateInfluencerStatus(influencer.id, true)}
-                                  className="flex items-center justify-center gap-2 px-3 py-2 bg-admin-success-bg text-admin-success-fg rounded-lg font-bold text-xs hover:bg-admin-success-fg hover:text-white transition-colors cursor-pointer"
+                                  disabled={loadingAction?.id === influencer.id}
+                                  className="flex items-center justify-center gap-2 px-3 py-2 bg-admin-success-bg text-admin-success-fg rounded-lg font-bold text-xs hover:bg-admin-success-fg hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                   title="Approve Application"
                                 >
-                                  <CheckCircle className="size-3.5" />
-                                  Approve
+                                  {loadingAction?.id === influencer.id && loadingAction.action === 'approve' ? (
+                                    <>
+                                      <Loader className="size-3.5 animate-spin" />
+                                      Approving...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle className="size-3.5" />
+                                      Approve
+                                    </>
+                                  )}
                                 </button>
                                 <button
                                   onClick={() => rejectInfluencer(influencer.id)}
-                                  className="flex items-center justify-center gap-2 px-3 py-2 bg-admin-error-bg text-admin-error-text rounded-lg font-bold text-xs hover:bg-admin-error-text hover:text-white transition-colors cursor-pointer"
+                                  disabled={loadingAction?.id === influencer.id}
+                                  className="flex items-center justify-center gap-2 px-3 py-2 bg-admin-error-bg text-admin-error-text rounded-lg font-bold text-xs hover:bg-admin-error-text hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                   title="Reject Application"
                                 >
-                                  <XCircle className="size-3.5" />
-                                  Reject
+                                  {loadingAction?.id === influencer.id && loadingAction.action === 'reject' ? (
+                                    <>
+                                      <Loader className="size-3.5 animate-spin" />
+                                      Rejecting...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <XCircle className="size-3.5" />
+                                      Reject
+                                    </>
+                                  )}
                                 </button>
                               </>
                             )}
@@ -468,22 +546,40 @@ export default function Influencers() {
                               <>
                                 <button
                                   onClick={() => toggleAmbassador(influencer.id, influencer.is_ambassador || false)}
-                                  className={`px-3 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
+                                  disabled={loadingAction?.id === influencer.id}
+                                  className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-bold text-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                                     influencer.is_ambassador
                                       ? 'bg-admin-info-fg text-white'
                                       : 'bg-admin-card-bg border border-border text-foreground hover:bg-muted'
                                   }`}
                                   title={influencer.is_ambassador ? 'Remove Ambassador Status' : 'Make Ambassador'}
                                 >
-                                  {influencer.is_ambassador ? '✓ Ambassador' : 'Ambassador'}
+                                  {loadingAction?.id === influencer.id && loadingAction.action === 'ambassador' ? (
+                                    <>
+                                      <Loader className="size-3.5 animate-spin" />
+                                      Updating...
+                                    </>
+                                  ) : (
+                                    influencer.is_ambassador ? '✓ Ambassador' : 'Ambassador'
+                                  )}
                                 </button>
                                 <button
                                   onClick={() => updateInfluencerStatus(influencer.id, false)}
-                                  className="flex items-center justify-center gap-2 px-3 py-2 bg-admin-warning-bg text-admin-warning-fg rounded-lg font-bold text-xs hover:bg-admin-warning-fg hover:text-white transition-colors cursor-pointer"
+                                  disabled={loadingAction?.id === influencer.id}
+                                  className="flex items-center justify-center gap-2 px-3 py-2 bg-admin-warning-bg text-admin-warning-fg rounded-lg font-bold text-xs hover:bg-admin-warning-fg hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                   title="Deactivate Partner"
                                 >
-                                  <XCircle className="size-3.5" />
-                                  Deactivate
+                                  {loadingAction?.id === influencer.id && loadingAction.action === 'deactivate' ? (
+                                    <>
+                                      <Loader className="size-3.5 animate-spin" />
+                                      Deactivating...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <XCircle className="size-3.5" />
+                                      Deactivate
+                                    </>
+                                  )}
                                 </button>
                               </>
                             )}

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { X, ChevronDown, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '@/store/authStore'
 
 interface PartnerApplicationFormProps {
   isOpen: boolean
@@ -113,7 +113,7 @@ function CustomSelect({ label, value, options, onChange, required }: CustomSelec
 }
 
 export default function PartnerApplicationForm({ isOpen, onClose }: PartnerApplicationFormProps) {
-  const navigate = useNavigate()
+  const { user } = useAuthStore()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -125,59 +125,21 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [error, setError] = useState('')
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [isInfluencer, setIsInfluencer] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [hasExistingApplication, setHasExistingApplication] = useState(false)
+  const [isAutoFilled, setIsAutoFilled] = useState(false)
 
+  // Auto-fill name and email if user is logged in
   useEffect(() => {
-    checkAuth()
-  }, [isOpen])
-
-  const checkAuth = async () => {
-    if (!isOpen) return
-
-    setIsLoading(true)
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-
-      if (user) {
-        setIsAuthenticated(true)
-
-        // Get user profile to check role and email
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('email, role')
-          .eq('id', user.id)
-          .single()
-
-        if (!profileError && profile) {
-          setFormData(prev => ({ ...prev, email: profile.email }))
-          setIsAdmin(profile.role === 'admin' || profile.role === 'super_admin')
-          setIsInfluencer(profile.role === 'influencer')
-        }
-
-        // Check if user already has an application
-        const { data: existingApplication, error: appError } = await supabase
-          .from('influencers')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle()
-
-        if (!appError && existingApplication) {
-          setHasExistingApplication(true)
-        }
-      } else {
-        setIsAuthenticated(false)
-      }
-    } catch (err) {
-      console.error('Error checking auth:', err)
-      setIsAuthenticated(false)
-    } finally {
-      setIsLoading(false)
+    if (isOpen && user) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.name || '',
+        email: user.email || ''
+      }))
+      setIsAutoFilled(true)
+    } else if (isOpen && !user) {
+      setIsAutoFilled(false)
     }
-  }
+  }, [isOpen, user])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -185,11 +147,15 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
     setError('')
 
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser()
+      // Check if slug already exists (name-based uniqueness)
+      const { data: existingApplication } = await supabase
+        .from('influencers')
+        .select('id')
+        .eq('slug', formData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
+        .maybeSingle()
 
-      if (!user) {
-        setError('You must be logged in to apply')
+      if (existingApplication) {
+        setError('An application with this name already exists. Please use a different name.')
         return
       }
 
@@ -203,7 +169,7 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
       const { error: insertError } = await supabase
         .from('influencers')
         .insert({
-          user_id: user.id,
+          user_id: user?.id || '',
           display_name: formData.name,
           slug: slug,
           primary_platform: formData.primary_platform,
@@ -220,6 +186,7 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
       setTimeout(() => {
         onClose()
         setSubmitSuccess(false)
+        setIsAutoFilled(false)
         setFormData({
           name: '',
           email: '',
@@ -265,72 +232,7 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 sm:py-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-10 sm:py-12">
-              <div className="inline-block size-10 sm:size-12 border-4 border-t-[#496B71] rounded-full animate-spin" style={{ borderColor: '#e7e5e4', borderTopColor: '#496B71' }}></div>
-            </div>
-          ) : !isAuthenticated ? (
-            <div className="text-center py-10 sm:py-12">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto mb-5 sm:mb-6 flex items-center justify-center" style={{ backgroundColor: 'rgba(73, 107, 113, 0.1)' }}>
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#496B71' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <h4 className="text-xl sm:text-2xl font-bold mb-2.5 sm:mb-3" style={{ color: '#151e20' }}>Login Required</h4>
-              <p className="mb-5 sm:mb-6 text-sm sm:text-base" style={{ color: '#78716c' }}>You need to be logged in to apply for our partner program.</p>
-              <button
-                onClick={() => navigate('/login')}
-                className="px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-bold rounded-xl cursor-pointer transition-colors"
-                style={{ backgroundColor: '#496B71', color: 'white' }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#3a565a')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#496B71')}
-              >
-                Login to Continue
-              </button>
-            </div>
-          ) : isAdmin ? (
-            <div className="text-center py-10 sm:py-12">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto mb-5 sm:mb-6 flex items-center justify-center" style={{ backgroundColor: 'rgba(220, 38, 38, 0.1)' }}>
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#dc2626' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <h4 className="text-xl sm:text-2xl font-bold mb-2.5 sm:mb-3" style={{ color: '#151e20' }}>Admin Access Restricted</h4>
-              <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>Admin and super admin accounts cannot apply for the partner program.</p>
-            </div>
-          ) : isInfluencer ? (
-            <div className="text-center py-10 sm:py-12">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto mb-5 sm:mb-6 flex items-center justify-center" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#22c55e' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h4 className="text-xl sm:text-2xl font-bold mb-2.5 sm:mb-3" style={{ color: '#151e20' }}>Congratulations!</h4>
-              <p className="mb-5 sm:mb-6 text-sm sm:text-base" style={{ color: '#78716c' }}>Your application has been approved! You're now a partner and can start earning commissions.</p>
-              <button
-                onClick={() => {
-                  onClose()
-                  navigate('/influencer/dashboard')
-                }}
-                className="px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-bold rounded-xl cursor-pointer transition-colors"
-                style={{ backgroundColor: '#496B71', color: 'white' }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#3a565a')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#496B71')}
-              >
-                Go to Dashboard
-              </button>
-            </div>
-          ) : hasExistingApplication ? (
-            <div className="text-center py-10 sm:py-12">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto mb-5 sm:mb-6 flex items-center justify-center" style={{ backgroundColor: 'rgba(251, 191, 36, 0.1)' }}>
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#f59e0b' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h4 className="text-xl sm:text-2xl font-bold mb-2.5 sm:mb-3" style={{ color: '#151e20' }}>Application Already Submitted</h4>
-              <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>You have already submitted a partner application. We'll review it and get back to you within 2-3 business days.</p>
-            </div>
-          ) : submitSuccess ? (
+          {submitSuccess ? (
             <div className="text-center py-10 sm:py-12">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto mb-5 sm:mb-6 flex items-center justify-center" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
                 <svg className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: '#22c55e' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -338,7 +240,7 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
                 </svg>
               </div>
               <h4 className="text-xl sm:text-2xl font-bold mb-2.5 sm:mb-3" style={{ color: '#151e20' }}>Application Submitted!</h4>
-              <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>We'll review your application and get back to you within 2-3 business days.</p>
+              <p className="text-sm sm:text-base" style={{ color: '#78716c' }}>We'll review your application and send you login credentials via email if approved (typically within 2-3 business days).</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
@@ -359,27 +261,47 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
                   placeholder="Your display name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  disabled={isAutoFilled}
                   className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border-2 transition-colors"
-                  style={{ borderColor: '#e7e5e4', color: '#151e20' }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#496B71'}
+                  style={{
+                    borderColor: '#e7e5e4',
+                    color: '#151e20',
+                    backgroundColor: isAutoFilled ? '#f5f5f5' : 'white',
+                    cursor: isAutoFilled ? 'not-allowed' : 'text'
+                  }}
+                  onFocus={(e) => !isAutoFilled && (e.currentTarget.style.borderColor = '#496B71')}
                   onBlur={(e) => e.currentTarget.style.borderColor = '#e7e5e4'}
                 />
                 <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#78716c' }}>
-                  {formData.name.length}/25 characters
+                  {isAutoFilled ? 'Auto-filled from your account' : `${formData.name.length}/25 characters`}
                 </p>
               </div>
 
               <div>
                 <label className="block text-xs sm:text-sm font-bold mb-1.5 sm:mb-2" style={{ color: '#151e20' }}>
-                  Email Address
+                  Email Address *
                 </label>
                 <input
                   type="email"
-                  disabled
+                  required
+                  maxLength={100}
+                  placeholder="your@email.com"
                   value={formData.email}
-                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border-2"
-                  style={{ borderColor: '#e7e5e4', color: '#78716c', backgroundColor: '#f5f5f4' }}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  disabled={isAutoFilled}
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border-2 transition-colors"
+                  style={{
+                    borderColor: '#e7e5e4',
+                    color: '#151e20',
+                    backgroundColor: isAutoFilled ? '#f5f5f5' : 'white',
+                    cursor: isAutoFilled ? 'not-allowed' : 'text'
+                  }}
+                  onFocus={(e) => !isAutoFilled && (e.currentTarget.style.borderColor = '#496B71')}
+                  onBlur={(e) => e.currentTarget.style.borderColor = '#e7e5e4'}
                 />
+                <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#78716c' }}>
+                  {isAutoFilled ? 'Auto-filled from your account' : `${formData.email.length}/100 characters`}
+                </p>
               </div>
 
               <CustomSelect
@@ -449,7 +371,7 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
         </div>
 
         {/* Fixed Footer */}
-        {!submitSuccess && !isLoading && isAuthenticated && !isAdmin && !isInfluencer && !hasExistingApplication && (
+        {!submitSuccess && (
           <div className="p-5 sm:p-6 pt-3 sm:pt-4 border-t" style={{ borderColor: '#e7e5e4' }}>
             <div className="flex gap-2.5 sm:gap-3 mb-2.5 sm:mb-3">
               <button

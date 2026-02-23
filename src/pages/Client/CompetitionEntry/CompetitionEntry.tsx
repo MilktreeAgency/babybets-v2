@@ -532,7 +532,7 @@ function CompetitionEntry() {
               </div>
 
               {/* Title - Centered */}
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 leading-tight text-center">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 leading-tight text-center" style={{ fontFamily: "'Fraunces', serif" }}>
                 {competition.title}
               </h1>
 
@@ -994,7 +994,7 @@ function CompetitionEntry() {
               </div>
 
               {/* Title */}
-              <h1 className="text-3xl font-bold mb-6 leading-tight text-center">
+              <h1 className="text-3xl font-bold mb-6 leading-tight text-center" style={{ fontFamily: "'Fraunces', serif" }}>
                 {competition.title}
               </h1>
 

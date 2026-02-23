@@ -50,9 +50,11 @@ export default function AuthCallback() {
         // Get the updated user from the store
         const { user } = useAuthStore.getState()
 
-        // Redirect based on admin status
+        // Redirect based on user role
         if (user?.isAdmin) {
           navigate('/admin/dashboard', { replace: true })
+        } else if (user?.isInfluencer) {
+          navigate('/account', { replace: true })
         } else {
           navigate('/', { replace: true })
         }
