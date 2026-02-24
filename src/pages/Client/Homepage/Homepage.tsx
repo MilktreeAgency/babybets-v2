@@ -11,7 +11,6 @@ import FeaturedCompetitionsSection from './sections/FeaturedCompetitionsSection'
 import AllCompetitionsSection from './sections/AllCompetitionsSection'
 import HowItWorksSection from './sections/HowItWorksSection'
 import JustLaunchedSection from './sections/JustLaunchedSection'
-import MeetPartnerSection from './sections/MeetPartnerSection'
 import MeetFoundersSection from './sections/MeetFoundersSection'
 import WinAmazingPrizesSection from './sections/WinAmazingPrizesSection'
 import WinnersSection from './sections/WinnersSection'
@@ -44,7 +43,6 @@ function Homepage() {
       <AllCompetitionsSection />
       <HowItWorksSection />
       <JustLaunchedSection />
-      <MeetPartnerSection />
       <MeetFoundersSection />
       <WinAmazingPrizesSection />
       <WinnersSection />

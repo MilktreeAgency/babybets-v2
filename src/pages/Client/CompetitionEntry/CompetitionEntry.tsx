@@ -4,7 +4,7 @@ import Header from '@/components/common/Header'
 import Footer from '@/components/common/Footer'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
-import { Trophy, Plus, Minus, Share2, ArrowLeft, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Trophy, Plus, Minus, Share2, ArrowLeft, ChevronDown } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay'
 
@@ -48,10 +48,10 @@ function CompetitionEntry() {
   const [quantity, setQuantity] = useState(10)
   const [tieredPricing, setTieredPricing] = useState<TieredPrice[]>([])
   const [instantWinPrizes, setInstantWinPrizes] = useState<InstantWinPrize[]>([])
-  const [currentImageIndex] = useState(0)
-  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
-  const [modalImageIndex, setModalImageIndex] = useState(0)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [activeTab, setActiveTab] = useState<'prize' | 'details'>('details')
+  const [expandedPrizeId, setExpandedPrizeId] = useState<string | null>(null)
+  const [prizeTabs, setPrizeTabs] = useState<Record<string, 'tickets' | 'description'>>({})
   const [entryMode, setEntryMode] = useState<'paid' | 'postal'>('paid')
   const [showStickyBar, setShowStickyBar] = useState(false)
 
@@ -113,27 +113,6 @@ function CompetitionEntry() {
       }
     }
   }, [competition])
-
-  // Keyboard navigation for image modal
-  useEffect(() => {
-    if (!isImageModalOpen || !competition) return
-
-    const images = (competition.images as string[]) || []
-    const allImages = images.length > 0 ? images : [competition.image_url]
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsImageModalOpen(false)
-      } else if (e.key === 'ArrowLeft') {
-        setModalImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1))
-      } else if (e.key === 'ArrowRight') {
-        setModalImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1))
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isImageModalOpen, competition])
 
   const loadInstantWinPrizes = async (competitionId: string) => {
     try {
@@ -452,23 +431,20 @@ function CompetitionEntry() {
           <div className="lg:hidden space-y-4 sm:space-y-6">
             {/* Image Gallery - Mobile */}
             <div className="space-y-3">
-              {/* Main Competition Image */}
+              {/* Featured Image */}
               <div
-                className="relative aspect-square rounded-xl overflow-hidden cursor-pointer"
+                className="relative aspect-square rounded-xl overflow-hidden"
                 style={{
                   backgroundColor: '#FBEFDF',
                   borderWidth: '1px',
                   borderColor: '#f0e0ca'
                 }}
-                onClick={() => {
-                  setModalImageIndex(currentImageIndex)
-                  setIsImageModalOpen(true)
-                }}
               >
                 <img
-                  src={allImages[currentImageIndex]}
+                  key={selectedImageIndex}
+                  src={allImages[selectedImageIndex]}
                   alt={competition.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover animate-fade-in"
                 />
 
                 {competition.status === 'ending_soon' && (
@@ -486,25 +462,24 @@ function CompetitionEntry() {
               {/* Thumbnail Images */}
               {allImages.length > 1 && (
                 <div className="grid grid-cols-4 gap-3">
-                  {allImages.slice(1).map((image, index) => (
+                  {allImages.map((image, index) => (
                     <button
-                      key={index + 1}
-                      onClick={() => {
-                        setModalImageIndex(index + 1)
-                        setIsImageModalOpen(true)
-                      }}
-                      className="relative aspect-square rounded-lg overflow-hidden cursor-pointer transition-all"
+                      key={index}
+                      onClick={() => setSelectedImageIndex(index)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedImageIndex(index) } }}
+                      className="relative aspect-square rounded-lg overflow-hidden cursor-pointer"
                       style={{
                         backgroundColor: '#FBEFDF',
-                        borderWidth: '1px',
-                        borderColor: '#f0e0ca'
+                        borderWidth: selectedImageIndex === index ? '2px' : '1px',
+                        borderColor: selectedImageIndex === index ? '#496B71' : '#f0e0ca',
+                        transition: 'border-color 200ms ease, border-width 200ms ease'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.borderColor = '#e7e5e4'}
-                      onMouseLeave={(e) => e.currentTarget.style.borderColor = '#f0e0ca'}
+                      aria-label={`View image ${index + 1}`}
+                      aria-pressed={selectedImageIndex === index}
                     >
                       <img
                         src={image}
-                        alt={`${competition.title} - Image ${index + 2}`}
+                        alt={`${competition.title} - Image ${index + 1}`}
                         className="w-full h-full object-cover"
                       />
                     </button>
@@ -532,9 +507,16 @@ function CompetitionEntry() {
               </div>
 
               {/* Title - Centered */}
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 leading-tight text-center" style={{ fontFamily: "'Fraunces', serif" }}>
+              <h1 className="text-4xl sm:text-5xl md:text-5xl font-bold mb-2 leading-tight text-center" style={{ fontFamily: "'Fraunces', serif" }}>
                 {competition.title}
               </h1>
+
+              {/* Short Description */}
+              {(competition as any).short_description && (
+                <p className="text-sm sm:text-base text-center mb-4 sm:mb-6 line-clamp-3" style={{ color: '#78716c' }}>
+                  {(competition as any).short_description}
+                </p>
+              )}
 
               {/* Price - Centered */}
               <div className="text-center mb-4 sm:mb-6">
@@ -730,12 +712,13 @@ function CompetitionEntry() {
                     </div>
                     <button
                       onClick={handleAddToCart}
-                      className="w-full font-bold py-3 sm:py-4 text-sm sm:text-base rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      className="w-full font-bold py-3 sm:py-4 text-sm sm:text-base rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                       style={{
                         backgroundColor: '#496B71',
-                        color: 'white'
+                        color: 'white',
+                        transition: 'background-color 200ms ease'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3a565a'}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fa8c61'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#496B71'}
                       disabled={competition.status === 'scheduled'}
                     >
@@ -874,8 +857,14 @@ function CompetitionEntry() {
                       </p>
                       <p>
                         For full details, please refer to our{' '}
-                        <Link to="/terms" className="font-bold underline cursor-pointer" style={{ color: '#496B71' }}>
-                          Website Terms of Use, Terms and Conditions and Privacy Policy
+                        <Link to="/legal/website-terms" className="font-bold underline cursor-pointer" style={{ color: '#496B71' }}>
+                          Website Terms of Use
+                        </Link>,{' '}
+                        <Link to="/legal/terms" className="font-bold underline cursor-pointer" style={{ color: '#496B71' }}>
+                          Terms and Conditions
+                        </Link>{' '}and{' '}
+                        <Link to="/legal/privacy" className="font-bold underline cursor-pointer" style={{ color: '#496B71' }}>
+                          Privacy Policy
                         </Link>.
                       </p>
                     </div>
@@ -915,23 +904,20 @@ function CompetitionEntry() {
           <div className="hidden lg:grid grid-cols-2 gap-8">
             {/* Left Column: Images */}
             <div className="space-y-4">
-              {/* Main Competition Image */}
+              {/* Featured Image */}
               <div
-                className="relative aspect-square rounded-xl overflow-hidden cursor-pointer"
+                className="relative aspect-square rounded-xl overflow-hidden"
                 style={{
                   backgroundColor: '#FBEFDF',
                   borderWidth: '1px',
                   borderColor: '#f0e0ca'
                 }}
-                onClick={() => {
-                  setModalImageIndex(currentImageIndex)
-                  setIsImageModalOpen(true)
-                }}
               >
                 <img
-                  src={allImages[currentImageIndex]}
+                  key={selectedImageIndex}
+                  src={allImages[selectedImageIndex]}
                   alt={competition.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover animate-fade-in"
                 />
 
                 {competition.status === 'ending_soon' && (
@@ -949,25 +935,24 @@ function CompetitionEntry() {
               {/* Thumbnail Images */}
               {allImages.length > 1 && (
                 <div className="grid grid-cols-4 gap-3">
-                  {allImages.slice(1).map((image, index) => (
+                  {allImages.map((image, index) => (
                     <button
-                      key={index + 1}
-                      onClick={() => {
-                        setModalImageIndex(index + 1)
-                        setIsImageModalOpen(true)
-                      }}
-                      className="relative aspect-square rounded-lg overflow-hidden cursor-pointer transition-all"
+                      key={index}
+                      onClick={() => setSelectedImageIndex(index)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedImageIndex(index) } }}
+                      className="relative aspect-square rounded-lg overflow-hidden cursor-pointer"
                       style={{
                         backgroundColor: '#FBEFDF',
-                        borderWidth: '1px',
-                        borderColor: '#f0e0ca'
+                        borderWidth: selectedImageIndex === index ? '2px' : '1px',
+                        borderColor: selectedImageIndex === index ? '#496B71' : '#f0e0ca',
+                        transition: 'border-color 200ms ease, border-width 200ms ease'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.borderColor = '#e7e5e4'}
-                      onMouseLeave={(e) => e.currentTarget.style.borderColor = '#f0e0ca'}
+                      aria-label={`View image ${index + 1}`}
+                      aria-pressed={selectedImageIndex === index}
                     >
                       <img
                         src={image}
-                        alt={`${competition.title} - Image ${index + 2}`}
+                        alt={`${competition.title} - Image ${index + 1}`}
                         className="w-full h-full object-cover"
                       />
                     </button>
@@ -994,9 +979,16 @@ function CompetitionEntry() {
               </div>
 
               {/* Title */}
-              <h1 className="text-3xl font-bold mb-6 leading-tight text-center" style={{ fontFamily: "'Fraunces', serif" }}>
+              <h1 className="text-5xl font-bold mb-2 leading-tight text-center" style={{ fontFamily: "'Fraunces', serif" }}>
                 {competition.title}
               </h1>
+
+              {/* Short Description */}
+              {(competition as any).short_description && (
+                <p className="text-base text-center mb-6 line-clamp-3" style={{ color: '#78716c' }}>
+                  {(competition as any).short_description}
+                </p>
+              )}
 
               {/* Price */}
               <div className="text-center mb-6">
@@ -1191,12 +1183,13 @@ function CompetitionEntry() {
                         </div>
                         <button
                           onClick={handleAddToCart}
-                          className="w-full font-bold py-4 text-base rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                          className="w-full font-bold py-4 text-base rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                           style={{
                             backgroundColor: '#496B71',
-                            color: 'white'
+                            color: 'white',
+                            transition: 'background-color 200ms ease'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3a565a'}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fa8c61'}
                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#496B71'}
                           disabled={competition.status === 'scheduled'}
                         >
@@ -1335,8 +1328,14 @@ function CompetitionEntry() {
                           </p>
                           <p>
                             For full details, please refer to our{' '}
-                            <Link to="/terms" className="font-bold underline cursor-pointer" style={{ color: '#496B71' }}>
-                              Website Terms of Use, Terms and Conditions and Privacy Policy
+                            <Link to="/legal/website-terms" className="font-bold underline cursor-pointer" style={{ color: '#496B71' }}>
+                              Website Terms of Use
+                            </Link>,{' '}
+                            <Link to="/legal/terms" className="font-bold underline cursor-pointer" style={{ color: '#496B71' }}>
+                              Terms and Conditions
+                            </Link>{' '}and{' '}
+                            <Link to="/legal/privacy" className="font-bold underline cursor-pointer" style={{ color: '#496B71' }}>
+                              Privacy Policy
                             </Link>.
                           </p>
                         </div>
@@ -1373,15 +1372,231 @@ function CompetitionEntry() {
           </div>
         </div>
 
-        {/* Competition Closes Section */}
-        <div className="mt-8 px-4 sm:px-6">
-          <div className="rounded-lg py-16 px-4 text-center" style={{ backgroundColor: '#f5f6f7' }}>
-            <p className="text-2xl font-semibold mb-1" style={{ color: '#151e20' }}>
-              Competition Closes {formatDateTime(competition.end_datetime)}
-            </p>
-            <p className="text-xl" style={{ color: '#78716c' }}>
-              or when all tickets are sold
-            </p>
+        {/* Tabs Section - Prize & Competition Details */}
+        <div className="mt-8 max-w-5xl mx-auto px-4 sm:px-6">
+          {/* Tab Navigation */}
+          <div className="flex border-b mb-6" style={{ borderColor: '#e7e5e4' }}>
+            {(competition.competition_type === 'instant_win' || competition.competition_type === 'instant_win_with_end_prize') && (
+              <button
+                onClick={() => setActiveTab('prize')}
+                className="px-6 py-3 font-bold transition-all cursor-pointer"
+                style={{
+                  borderBottomWidth: '2px',
+                  borderColor: activeTab === 'prize' ? '#496B71' : 'transparent',
+                  color: activeTab === 'prize' ? '#496B71' : '#78716c'
+                }}
+              >
+                Prize
+              </button>
+            )}
+            <button
+              onClick={() => setActiveTab('details')}
+              className="px-6 py-3 font-bold transition-all cursor-pointer"
+              style={{
+                borderBottomWidth: '2px',
+                borderColor: activeTab === 'details' ? '#496B71' : 'transparent',
+                color: activeTab === 'details' ? '#496B71' : '#78716c'
+              }}
+            >
+              Competition Details
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          <div className="mb-12">
+            {/* Prize Tab Content */}
+            {activeTab === 'prize' && (
+              <div className="space-y-3">
+                {(competition.competition_type === 'instant_win' || competition.competition_type === 'instant_win_with_end_prize') && instantWinPrizes.length > 0 ? (
+                  instantWinPrizes.map((prize) => {
+                    const wonTickets = prize.winning_tickets?.filter(t => t.is_sold) || []
+                    const allWon = prize.remaining_quantity === 0
+                    const isExpanded = expandedPrizeId === prize.id
+                    const currentPrizeTab = prizeTabs[prize.id] || 'tickets'
+
+                    return (
+                      <div
+                        key={prize.id}
+                        className="rounded-2xl overflow-hidden"
+                        style={{
+                          backgroundColor: 'white',
+                          borderWidth: '1px',
+                          borderColor: '#f0e0ca'
+                        }}
+                      >
+                        {/* Collapsed Header - always visible */}
+                        <button
+                          onClick={() => setExpandedPrizeId(isExpanded ? null : prize.id)}
+                          className="w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 cursor-pointer text-left"
+                          style={{ backgroundColor: allWon ? '#f9f9f9' : 'white' }}
+                        >
+                          {prize.prize_template.image_url && (
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden shrink-0" style={{ backgroundColor: '#FBEFDF' }}>
+                              <img
+                                src={prize.prize_template.image_url}
+                                alt={prize.prize_template.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div className="grow min-w-0">
+                            <p className="font-bold text-sm sm:text-base mb-1 truncate" style={{ color: '#151e20', fontFamily: "'Fraunces', serif" }}>
+                              {prize.prize_template.name}
+                            </p>
+                            <span
+                              className="inline-block px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold uppercase"
+                              style={{
+                                backgroundColor: allWon ? '#e7e5e4' : '#496B71',
+                                color: allWon ? '#78716c' : 'white'
+                              }}
+                            >
+                              {allWon ? 'Already Won' : wonTickets.length > 0 ? `${prize.remaining_quantity} of ${prize.total_quantity} Left` : 'To Be Won'}
+                            </span>
+                          </div>
+                          <div
+                            className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0"
+                            style={{
+                              backgroundColor: allWon ? '#e7e5e4' : '#496B71',
+                              transition: 'background-color 200ms ease'
+                            }}
+                          >
+                            <ChevronDown
+                              size={20}
+                              className="transition-transform duration-200"
+                              style={{
+                                color: allWon ? '#78716c' : 'white',
+                                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                              }}
+                            />
+                          </div>
+                        </button>
+
+                        {/* Expanded Content */}
+                        {isExpanded && (
+                          <div>
+                            {/* Tabs */}
+                            <div className="flex" style={{ borderTopWidth: '1px', borderBottomWidth: '1px', borderColor: '#f0e0ca' }}>
+                              <button
+                                onClick={() => setPrizeTabs(prev => ({ ...prev, [prize.id]: 'tickets' }))}
+                                className="flex-1 py-2.5 text-xs sm:text-sm font-bold uppercase tracking-wider cursor-pointer transition-colors"
+                                style={{
+                                  backgroundColor: currentPrizeTab === 'tickets' ? 'white' : '#FBEFDF',
+                                  color: currentPrizeTab === 'tickets' ? '#496B71' : '#78716c',
+                                  borderBottomWidth: currentPrizeTab === 'tickets' ? '2px' : '0',
+                                  borderColor: '#496B71'
+                                }}
+                              >
+                                Tickets
+                              </button>
+                              <button
+                                onClick={() => setPrizeTabs(prev => ({ ...prev, [prize.id]: 'description' }))}
+                                className="flex-1 py-2.5 text-xs sm:text-sm font-bold uppercase tracking-wider cursor-pointer transition-colors"
+                                style={{
+                                  backgroundColor: currentPrizeTab === 'description' ? 'white' : '#FBEFDF',
+                                  color: currentPrizeTab === 'description' ? '#496B71' : '#78716c',
+                                  borderBottomWidth: currentPrizeTab === 'description' ? '2px' : '0',
+                                  borderColor: '#496B71'
+                                }}
+                              >
+                                Description
+                              </button>
+                            </div>
+
+                            {/* Tab Content */}
+                            <div className="p-4 sm:p-5">
+                              {currentPrizeTab === 'tickets' && (
+                                <div>
+                                  {prize.winning_tickets && prize.winning_tickets.length > 0 ? (
+                                    <div className="flex flex-wrap gap-3">
+                                      {prize.winning_tickets.map((ticket) => (
+                                        <div key={ticket.ticket_id} className="flex flex-col items-center gap-1">
+                                          <span className="text-lg sm:text-xl font-bold" style={{ color: '#151e20' }}>
+                                            {ticket.ticket_number}
+                                          </span>
+                                          <span
+                                            className="inline-block px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase whitespace-nowrap"
+                                            style={{
+                                              backgroundColor: ticket.is_sold ? '#22c55e' : '#496B71',
+                                              color: 'white'
+                                            }}
+                                          >
+                                            {ticket.is_sold ? 'Won' : 'Win Now'}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm" style={{ color: '#78716c' }}>
+                                      Ticket codes will appear here once the pool is generated.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                              {currentPrizeTab === 'description' && (
+                                <div>
+                                  {prize.prize_template.description ? (
+                                    <p className="text-sm leading-relaxed" style={{ color: '#78716c' }}>
+                                      {prize.prize_template.description}
+                                    </p>
+                                  ) : (
+                                    <p className="text-sm" style={{ color: '#78716c' }}>
+                                      No description available for this prize.
+                                    </p>
+                                  )}
+                                  <div className="mt-3 text-sm" style={{ color: '#78716c' }}>
+                                    <p>{prize.remaining_quantity} of {prize.total_quantity} remaining</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className="text-center py-8" style={{ color: '#78716c' }}>
+                    <p>Prize information will be displayed here.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Competition Details Tab Content */}
+            {activeTab === 'details' && (
+              <div className="prose max-w-none">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-xl font-bold mb-2" style={{ color: '#151e20' }}>About This Competition</h3>
+                    {competition.description ? (
+                      <RichTextDisplay content={competition.description} />
+                    ) : (
+                      <p style={{ color: '#78716c' }}>
+                        Enter for a chance to win this amazing prize!
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2" style={{ color: '#151e20' }}>Prize Value</h3>
+                    <p style={{ color: '#78716c' }}>
+                      Worth £{competition.total_value_gbp.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2" style={{ color: '#151e20' }}>Total Tickets</h3>
+                    <p style={{ color: '#78716c' }}>
+                      {competition.max_tickets.toLocaleString()} tickets available
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2" style={{ color: '#151e20' }}>Competition Closes</h3>
+                    <p style={{ color: '#78716c' }}>
+                      {formatDate(competition.end_datetime)} or when all tickets are sold
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1750,233 +1965,42 @@ function CompetitionEntry() {
           )}
         </div>
 
-        {/* Tabs Section */}
-        <div className="mt-8 max-w-5xl mx-auto px-4 sm:px-6">
-          {/* Tab Navigation */}
-          <div className="flex border-b mb-6" style={{ borderColor: '#e7e5e4' }}>
-            {(competition.competition_type === 'instant_win' || competition.competition_type === 'instant_win_with_end_prize') && (
-              <button
-                onClick={() => setActiveTab('prize')}
-                className="px-6 py-3 font-bold transition-all cursor-pointer"
-                style={{
-                  borderBottomWidth: '2px',
-                  borderColor: activeTab === 'prize' ? '#496B71' : 'transparent',
-                  color: activeTab === 'prize' ? '#496B71' : '#78716c'
-                }}
-              >
-                Prize
-              </button>
-            )}
-            <button
-              onClick={() => setActiveTab('details')}
-              className="px-6 py-3 font-bold transition-all cursor-pointer"
+        {/* Competition Closes Section */}
+        <div className="mt-12 px-4 sm:px-6 max-w-5xl mx-auto">
+          <div
+            className="rounded-2xl py-12 sm:py-16 px-6 sm:px-8 text-center relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, #496B71 0%, #3a565a 60%, #2c4044 100%)',
+            }}
+          >
+            <div
+              className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10"
               style={{
-                borderBottomWidth: '2px',
-                borderColor: activeTab === 'details' ? '#496B71' : 'transparent',
-                color: activeTab === 'details' ? '#496B71' : '#78716c'
+                background: 'radial-gradient(circle, #FED0B9 0%, transparent 70%)',
+                transform: 'translate(30%, -30%)'
               }}
-            >
-              Competition Details
-            </button>
-          </div>
-
-          {/* Tab Content */}
-          <div className="mb-12">
-            {/* Prize Tab Content */}
-            {activeTab === 'prize' && (
-              <div className="space-y-4">
-                {/* Instant Win Prizes */}
-                {(competition.competition_type === 'instant_win' || competition.competition_type === 'instant_win_with_end_prize') && instantWinPrizes.length > 0 ? (
-                  <div className="space-y-3">
-                    {instantWinPrizes.map((prize) => {
-                      const wonTickets = prize.winning_tickets?.filter(t => t.is_sold) || []
-                      const hasWonTickets = wonTickets.length > 0
-                      const allWon = prize.remaining_quantity === 0
-
-                      return (
-                        <div
-                          key={prize.id}
-                          className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl transition-all"
-                          style={{
-                            backgroundColor: hasWonTickets ? '#dcfce7' : 'white',
-                            borderWidth: '1px',
-                            borderColor: hasWonTickets ? '#86efac' : '#e7e5e4'
-                          }}
-                        >
-                          <div className="flex items-center gap-4 flex-1">
-                            {prize.prize_template.image_url && (
-                              <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0" style={{ backgroundColor: '#FBEFDF' }}>
-                                <img
-                                  src={prize.prize_template.image_url}
-                                  alt={prize.prize_template.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            )}
-                            <div className="grow">
-                              <p className="font-bold mb-1" style={{ color: '#151e20' }}>
-                                {prize.prize_template.name}
-                              </p>
-                              <p className="text-sm mb-2" style={{ color: '#78716c' }}>
-                                £{prize.prize_template.value_gbp.toFixed(2)} • {prize.remaining_quantity}/{prize.total_quantity} Available
-                              </p>
-
-                              {/* Winning Ticket Numbers */}
-                              {prize.winning_tickets && prize.winning_tickets.length > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-xs font-bold" style={{ color: '#78716c' }}>
-                                    Winning Ticket{prize.winning_tickets.length > 1 ? 's' : ''}:
-                                  </p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {prize.winning_tickets.map((ticket) => (
-                                      <span
-                                        key={ticket.ticket_id}
-                                        className="inline-block px-2 py-0.5 rounded text-xs font-bold cursor-pointer"
-                                        style={{
-                                          backgroundColor: ticket.is_sold ? '#22c55e' : '#fbbf24',
-                                          color: 'white'
-                                        }}
-                                        title={ticket.is_sold ? 'Already Won' : 'Win Now'}
-                                      >
-                                        #{ticket.ticket_number}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Status Badges */}
-                          <div className="flex sm:flex-col items-center sm:items-end gap-2">
-                            {allWon ? (
-                              <span className="inline-block px-3 py-1.5 rounded-full text-xs font-bold uppercase whitespace-nowrap" style={{ backgroundColor: '#ef4444', color: 'white' }}>
-                                All Won
-                              </span>
-                            ) : hasWonTickets ? (
-                              <>
-                                <span className="inline-block px-3 py-1.5 rounded-full text-xs font-bold uppercase whitespace-nowrap" style={{ backgroundColor: '#22c55e', color: 'white' }}>
-                                  {wonTickets.length} Won
-                                </span>
-                                <span className="inline-block px-3 py-1.5 rounded-full text-xs font-bold uppercase whitespace-nowrap" style={{ backgroundColor: '#496B71', color: 'white' }}>
-                                  {prize.remaining_quantity} Left
-                                </span>
-                              </>
-                            ) : (
-                              <span className="inline-block px-3 py-1.5 rounded-full text-xs font-bold uppercase whitespace-nowrap" style={{ backgroundColor: '#496B71', color: 'white' }}>
-                                Win Now
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8" style={{ color: '#78716c' }}>
-                    <p>Prize information will be displayed here.</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Competition Details Tab Content */}
-            {activeTab === 'details' && (
-              <div className="prose max-w-none">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-xl font-bold mb-2" style={{ color: '#151e20' }}>About This Competition</h3>
-                    {competition.description ? (
-                      <RichTextDisplay content={competition.description} />
-                    ) : (
-                      <p style={{ color: '#78716c' }}>
-                        Enter for a chance to win this amazing prize!
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold mb-2" style={{ color: '#151e20' }}>Prize Value</h3>
-                    <p style={{ color: '#78716c' }}>
-                      Worth £{competition.total_value_gbp.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold mb-2" style={{ color: '#151e20' }}>Total Tickets</h3>
-                    <p style={{ color: '#78716c' }}>
-                      {competition.max_tickets.toLocaleString()} tickets available
-                    </p>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold mb-2" style={{ color: '#151e20' }}>Competition Closes</h3>
-                    <p style={{ color: '#78716c' }}>
-                      {formatDate(competition.end_datetime)} or when all tickets are sold
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+            />
+            <div
+              className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-10"
+              style={{
+                background: 'radial-gradient(circle, #fa8c61 0%, transparent 70%)',
+                transform: 'translate(-30%, 30%)'
+              }}
+            />
+            <div className="relative z-10">
+              <p className="text-xs sm:text-sm font-bold uppercase tracking-widest mb-3" style={{ color: '#FED0B9' }}>
+                Don't miss out
+              </p>
+              <p className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2" style={{ color: 'white', fontFamily: "'Fraunces', serif" }}>
+                {formatDateTime(competition.end_datetime)}
+              </p>
+              <p className="text-sm sm:text-base" style={{ color: '#e1eaec' }}>
+                Competition closes on this date or when all tickets are sold
+              </p>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Image Modal */}
-      {isImageModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 cursor-pointer"
-          onClick={() => setIsImageModalOpen(false)}
-        >
-          <button
-            onClick={() => setIsImageModalOpen(false)}
-            className="absolute top-4 right-4 text-white hover:text-gray-300 cursor-pointer z-50"
-            aria-label="Close modal"
-          >
-            <X size={32} />
-          </button>
-
-          {/* Previous Button */}
-          {allImages.length > 1 && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                setModalImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1))
-              }}
-              className="absolute left-4 text-white hover:text-gray-300 cursor-pointer z-50"
-              aria-label="Previous image"
-            >
-              <ChevronLeft size={48} />
-            </button>
-          )}
-
-          {/* Image */}
-          <div
-            className="relative max-w-5xl max-h-[90vh] w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={allImages[modalImageIndex]}
-              alt={`${competition.title} - Image ${modalImageIndex + 1}`}
-              className="w-full h-full object-contain"
-            />
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-full text-sm">
-              {modalImageIndex + 1} / {allImages.length}
-            </div>
-          </div>
-
-          {/* Next Button */}
-          {allImages.length > 1 && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                setModalImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1))
-              }}
-              className="absolute right-4 text-white hover:text-gray-300 cursor-pointer z-50"
-              aria-label="Next image"
-            >
-              <ChevronRight size={48} />
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Mobile Sticky Bottom Bar */}
       {showStickyBar && entryMode === 'paid' && (
@@ -2002,12 +2026,13 @@ function CompetitionEntry() {
             </div>
             <button
               onClick={scrollToTicketSelector}
-              className="flex-1 max-w-xs font-bold py-3 px-6 text-sm rounded-lg transition-colors cursor-pointer"
+              className="flex-1 max-w-xs font-bold py-3 px-6 text-sm rounded-lg cursor-pointer"
               style={{
                 backgroundColor: '#496B71',
-                color: 'white'
+                color: 'white',
+                transition: 'background-color 200ms ease'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3a565a'}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fa8c61'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#496B71'}
             >
               Enter Now
