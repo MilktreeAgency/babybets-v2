@@ -567,13 +567,17 @@ function Checkout() {
               className="text-2xl font-bold mb-3"
               style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
             >
-              Processing Payment
+              {finalPrice === 0 ? 'Processing Order' : 'Redirecting to Payment'}
             </h3>
             <p className="text-sm" style={{ color: '#78716c' }}>
-              Please wait while we securely process your payment...
+              {finalPrice === 0
+                ? 'Please wait while we process your order...'
+                : 'Redirecting you to our secure payment page...'}
             </p>
             <p className="text-xs mt-4" style={{ color: '#78716c' }}>
-              Do not close this window or press the back button
+              {finalPrice === 0
+                ? 'Do not close this window'
+                : 'You will be redirected in a moment'}
             </p>
           </div>
         </div>
