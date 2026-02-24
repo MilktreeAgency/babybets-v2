@@ -43,8 +43,8 @@ interface Testimonial {
   display_order: number
   is_active: boolean
   url?: string | null
-  created_at: string
-  updated_at: string
+  created_at: string | null
+  updated_at: string | null
 }
 
 interface TestimonialsSectionSettings {
