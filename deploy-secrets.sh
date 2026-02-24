@@ -25,6 +25,11 @@ if [ ! -f ".env" ]; then
     echo "  - SMTP_FROM"
     echo "  - G2PAY_MERCHANT_ID"
     echo "  - G2PAY_SIGNATURE_KEY"
+    echo "  - SUPABASE_URL"
+    echo "  - SUPABASE_ANON_KEY"
+    echo "  - SUPABASE_SERVICE_ROLE_KEY"
+    echo "  - APPLE_PAY_DISPLAY_NAME"
+    echo "  - APPLE_PAY_DOMAIN_NAME"
     echo ""
     echo "See .env.example for template"
     exit 1
@@ -43,6 +48,11 @@ REQUIRED_SECRETS=(
     "SMTP_FROM"
     "G2PAY_MERCHANT_ID"
     "G2PAY_SIGNATURE_KEY"
+    "SUPABASE_URL"
+    "SUPABASE_ANON_KEY"
+    "SUPABASE_SERVICE_ROLE_KEY"
+    "APPLE_PAY_DISPLAY_NAME"
+    "APPLE_PAY_DOMAIN_NAME"
 )
 
 MISSING_SECRETS=()
@@ -80,19 +90,55 @@ supabase secrets set G2PAY_SIGNATURE_KEY="$G2PAY_SIGNATURE_KEY"
 echo "✅ Payment secrets deployed"
 echo ""
 
+# Deploy Supabase Configuration Secrets
+echo "🔧 Deploying Supabase Configuration..."
+supabase secrets set SUPABASE_URL="$SUPABASE_URL"
+supabase secrets set SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
+supabase secrets set SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY"
+echo "✅ Supabase config deployed"
+echo ""
+
+# Deploy Apple Pay Secrets
+echo "🍎 Deploying Apple Pay Configuration..."
+supabase secrets set G2PAY_HOSTED_URL="${G2PAY_HOSTED_URL:-https://gateway.cardstream.com/hosted/}"
+supabase secrets set APPLE_PAY_DISPLAY_NAME="${APPLE_PAY_DISPLAY_NAME:-BabyBets}"
+supabase secrets set APPLE_PAY_DOMAIN_NAME="$APPLE_PAY_DOMAIN_NAME"
+echo "✅ Apple Pay config deployed"
+echo ""
+
+# Deploy Optional Secrets (with defaults)
+echo "🌐 Deploying Optional Configuration..."
+if [ -n "$PUBLIC_SITE_URL" ]; then
+  supabase secrets set PUBLIC_SITE_URL="$PUBLIC_SITE_URL"
+  echo "✅ PUBLIC_SITE_URL deployed"
+else
+  echo "⏭️  PUBLIC_SITE_URL not set (will use default: https://babybets.co.uk)"
+fi
+echo ""
+
 echo "🎉 All secrets deployed successfully!"
 echo ""
 echo "📋 Deployed Secrets:"
 echo "   ✓ MAILGUN_API_KEY - Mailgun API authentication"
-echo "   ✓ MAILGUN_DOMAIN - Email sending domain (mail.babybets.co.uk)"
-echo "   ✓ SMTP_FROM - From email address (noreply@mail.babybets.co.uk)"
+echo "   ✓ MAILGUN_DOMAIN - Email sending domain"
+echo "   ✓ SMTP_FROM - From email address"
 echo "   ✓ G2PAY_MERCHANT_ID - G2Pay merchant ID"
 echo "   ✓ G2PAY_SIGNATURE_KEY - G2Pay webhook signature verification"
+echo "   ✓ SUPABASE_URL - Supabase project URL"
+echo "   ✓ SUPABASE_ANON_KEY - Supabase public/anon key"
+echo "   ✓ SUPABASE_SERVICE_ROLE_KEY - Supabase admin key"
+echo "   ✓ G2PAY_HOSTED_URL - G2Pay hosted payment URL"
+echo "   ✓ APPLE_PAY_DISPLAY_NAME - Merchant name for Apple Pay"
+echo "   ✓ APPLE_PAY_DOMAIN_NAME - Your verified Apple Pay domain"
+if [ -n "$PUBLIC_SITE_URL" ]; then
+  echo "   ✓ PUBLIC_SITE_URL - Public website URL"
+fi
 echo ""
 echo "📋 Next Steps:"
 echo "1. Run ./deploy-functions.sh to deploy edge functions"
 echo "2. Test email notifications (signup, orders, withdrawals)"
-echo "3. Test payment processing with G2Pay"
+echo "3. Test payment processing with G2Pay and Apple Pay"
+echo "4. Verify Apple Pay domain at: https://developer.apple.com"
 echo ""
 echo "💡 To view all secrets: supabase secrets list"
 echo "💡 To unset a secret: supabase secrets unset SECRET_NAME"

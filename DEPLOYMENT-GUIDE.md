@@ -104,7 +104,7 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 # Supabase CLI Access (for deploying edge functions)
 SUPABASE_ACCESS_TOKEN=your_supabase_access_token_here
 
-# G2Pay Payment Gateway
+# G2Pay Payment Gateway (Frontend)
 VITE_G2PAY_MERCHANT_ID=283797
 
 # ==========================================
@@ -119,6 +119,19 @@ SMTP_FROM=noreply@mail.babybets.co.uk
 # G2Pay Payment Secrets
 G2PAY_MERCHANT_ID=283797
 G2PAY_SIGNATURE_KEY=your_g2pay_signature_key_here
+
+# Supabase Configuration (auto-injected, but explicitly setting is recommended)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+
+# Apple Pay Configuration
+G2PAY_HOSTED_URL=https://gateway.cardstream.com/hosted/
+APPLE_PAY_DISPLAY_NAME=BabyBets
+APPLE_PAY_DOMAIN_NAME=babybets.co.uk
+
+# Optional: Public Site URL (used in email templates)
+PUBLIC_SITE_URL=https://babybets.co.uk
 ```
 
 ### Step 2: Get Your Supabase Access Token
@@ -174,6 +187,12 @@ You should see:
 ✅ Email secrets deployed
 💳 Deploying G2Pay Payment Secrets...
 ✅ Payment secrets deployed
+🔧 Deploying Supabase Configuration...
+✅ Supabase config deployed
+🍎 Deploying Apple Pay Configuration...
+✅ Apple Pay config deployed
+🌐 Deploying Optional Configuration...
+✅ PUBLIC_SITE_URL deployed (or skipped if not set)
 🎉 All secrets deployed successfully!
 ```
 
@@ -216,6 +235,13 @@ supabase secrets list
 # - SMTP_FROM
 # - G2PAY_MERCHANT_ID
 # - G2PAY_SIGNATURE_KEY
+# - SUPABASE_URL
+# - SUPABASE_ANON_KEY
+# - SUPABASE_SERVICE_ROLE_KEY
+# - G2PAY_HOSTED_URL
+# - APPLE_PAY_DISPLAY_NAME
+# - APPLE_PAY_DOMAIN_NAME
+# - PUBLIC_SITE_URL (optional)
 ```
 
 ---
@@ -420,9 +446,15 @@ Before going live, ensure:
 | MAILGUN_API_KEY | ❌ | ✅ | ✅ | ❌ |
 | MAILGUN_DOMAIN | ❌ | ✅ | ✅ | ❌ |
 | SMTP_FROM | ❌ | ✅ | ✅ | ❌ |
+| G2PAY_MERCHANT_ID | ❌ | ✅ | ✅ | ❌ |
 | G2PAY_SIGNATURE_KEY | ❌ | ✅ | ✅ | ❌ |
-| SUPABASE_URL | ❌ | ❌ | ❌ | ✅ |
-| SUPABASE_SERVICE_ROLE_KEY | ❌ | ❌ | ❌ | ✅ |
+| SUPABASE_URL | ❌ | ✅ | ✅ | ✅ |
+| SUPABASE_ANON_KEY | ❌ | ✅ | ✅ | ❌ |
+| SUPABASE_SERVICE_ROLE_KEY | ❌ | ✅ | ✅ | ✅ |
+| G2PAY_HOSTED_URL | ❌ | ✅ (optional) | ✅ | ❌ |
+| APPLE_PAY_DISPLAY_NAME | ❌ | ✅ | ✅ | ❌ |
+| APPLE_PAY_DOMAIN_NAME | ❌ | ✅ | ✅ | ❌ |
+| PUBLIC_SITE_URL | ❌ | ✅ (optional) | ✅ (optional) | ❌ |
 
 ### Deployment Commands:
 
