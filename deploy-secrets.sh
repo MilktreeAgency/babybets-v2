@@ -30,6 +30,7 @@ if [ ! -f ".env" ]; then
     echo "  - SUPABASE_SERVICE_ROLE_KEY"
     echo "  - APPLE_PAY_DISPLAY_NAME"
     echo "  - APPLE_PAY_DOMAIN_NAME"
+    echo "  - PUBLIC_SITE_URL"
     echo ""
     echo "See .env.example for template"
     exit 1
@@ -53,6 +54,7 @@ REQUIRED_SECRETS=(
     "SUPABASE_SERVICE_ROLE_KEY"
     "APPLE_PAY_DISPLAY_NAME"
     "APPLE_PAY_DOMAIN_NAME"
+    "PUBLIC_SITE_URL"
 )
 
 MISSING_SECRETS=()
@@ -106,14 +108,10 @@ supabase secrets set APPLE_PAY_DOMAIN_NAME="$APPLE_PAY_DOMAIN_NAME"
 echo "✅ Apple Pay config deployed"
 echo ""
 
-# Deploy Optional Secrets (with defaults)
-echo "🌐 Deploying Optional Configuration..."
-if [ -n "$PUBLIC_SITE_URL" ]; then
-  supabase secrets set PUBLIC_SITE_URL="$PUBLIC_SITE_URL"
-  echo "✅ PUBLIC_SITE_URL deployed"
-else
-  echo "⏭️  PUBLIC_SITE_URL not set (will use default: https://babybets.co.uk)"
-fi
+# Deploy Public Site URL
+echo "🌐 Deploying Public Site Configuration..."
+supabase secrets set PUBLIC_SITE_URL="$PUBLIC_SITE_URL"
+echo "✅ Public site URL deployed"
 echo ""
 
 echo "🎉 All secrets deployed successfully!"
@@ -130,9 +128,7 @@ echo "   ✓ SUPABASE_SERVICE_ROLE_KEY - Supabase admin key"
 echo "   ✓ G2PAY_HOSTED_URL - G2Pay hosted payment URL"
 echo "   ✓ APPLE_PAY_DISPLAY_NAME - Merchant name for Apple Pay"
 echo "   ✓ APPLE_PAY_DOMAIN_NAME - Your verified Apple Pay domain"
-if [ -n "$PUBLIC_SITE_URL" ]; then
-  echo "   ✓ PUBLIC_SITE_URL - Public website URL"
-fi
+echo "   ✓ PUBLIC_SITE_URL - Public website URL"
 echo ""
 echo "📋 Next Steps:"
 echo "1. Run ./deploy-functions.sh to deploy edge functions"

@@ -130,7 +130,7 @@ G2PAY_HOSTED_URL=https://gateway.cardstream.com/hosted/
 APPLE_PAY_DISPLAY_NAME=BabyBets
 APPLE_PAY_DOMAIN_NAME=babybets.co.uk
 
-# Optional: Public Site URL (used in email templates)
+# Public Site URL (used in email templates)
 PUBLIC_SITE_URL=https://babybets.co.uk
 ```
 
@@ -191,8 +191,8 @@ You should see:
 ✅ Supabase config deployed
 🍎 Deploying Apple Pay Configuration...
 ✅ Apple Pay config deployed
-🌐 Deploying Optional Configuration...
-✅ PUBLIC_SITE_URL deployed (or skipped if not set)
+🌐 Deploying Public Site Configuration...
+✅ Public site URL deployed
 🎉 All secrets deployed successfully!
 ```
 
@@ -241,7 +241,7 @@ supabase secrets list
 # - G2PAY_HOSTED_URL
 # - APPLE_PAY_DISPLAY_NAME
 # - APPLE_PAY_DOMAIN_NAME
-# - PUBLIC_SITE_URL (optional)
+# - PUBLIC_SITE_URL
 ```
 
 ---
@@ -451,10 +451,10 @@ Before going live, ensure:
 | SUPABASE_URL | ❌ | ✅ | ✅ | ✅ |
 | SUPABASE_ANON_KEY | ❌ | ✅ | ✅ | ❌ |
 | SUPABASE_SERVICE_ROLE_KEY | ❌ | ✅ | ✅ | ✅ |
-| G2PAY_HOSTED_URL | ❌ | ✅ (optional) | ✅ | ❌ |
+| G2PAY_HOSTED_URL | ❌ | ✅ | ✅ | ❌ |
 | APPLE_PAY_DISPLAY_NAME | ❌ | ✅ | ✅ | ❌ |
 | APPLE_PAY_DOMAIN_NAME | ❌ | ✅ | ✅ | ❌ |
-| PUBLIC_SITE_URL | ❌ | ✅ (optional) | ✅ (optional) | ❌ |
+| PUBLIC_SITE_URL | ❌ | ✅ | ✅ | ❌ |
 
 ### Deployment Commands:
 

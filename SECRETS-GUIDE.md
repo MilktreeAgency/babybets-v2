@@ -16,13 +16,14 @@ You currently have these secrets set in Supabase:
 ✅ G2PAY_HOSTED_URL
 ✅ APPLE_PAY_DISPLAY_NAME
 ✅ APPLE_PAY_DOMAIN_NAME
+❓ PUBLIC_SITE_URL (needs to be added if not set)
 ```
 
 ## Analysis: Which Secrets Are Actually Needed
 
 ### ✅ REQUIRED - Must Have
 
-These 5 secrets are **absolutely required** with no defaults:
+These 6 secrets are **absolutely required** with no defaults:
 
 1. **MAILGUN_API_KEY**
    - Used in: `send-notification-email`
@@ -49,23 +50,29 @@ These 5 secrets are **absolutely required** with no defaults:
    - Purpose: Webhook signature verification
    - How to get: Provided by G2Pay
 
+6. **PUBLIC_SITE_URL**
+   - Used in: Email templates for action buttons and links
+   - Purpose: Your public website URL
+   - Example: `https://babybets.co.uk`
+   - How to get: Your production domain URL
+
 ### ✅ AUTO-INJECTED (but recommended to set explicitly)
 
 These 3 secrets are automatically injected by Supabase into edge functions, but explicitly setting them is recommended:
 
-6. **SUPABASE_URL**
+7. **SUPABASE_URL**
    - Used in: Almost all edge functions
    - Purpose: Your Supabase project URL
    - Auto-injected: Yes (but good to set explicitly)
    - Example: `https://xxxxx.supabase.co`
 
-7. **SUPABASE_ANON_KEY**
+8. **SUPABASE_ANON_KEY**
    - Used in: Multiple functions for public database access
    - Purpose: Public/anonymous API key
    - Auto-injected: Yes (but good to set explicitly)
    - Get from: Supabase Dashboard > Settings > API > anon key
 
-8. **SUPABASE_SERVICE_ROLE_KEY**
+9. **SUPABASE_SERVICE_ROLE_KEY**
    - Used in: Most functions for admin database access
    - Purpose: Bypass RLS, full admin access
    - Auto-injected: Yes (but good to set explicitly)
@@ -76,37 +83,29 @@ These 3 secrets are automatically injected by Supabase into edge functions, but 
 
 These 3 secrets are needed if you want Apple Pay to work:
 
-9. **G2PAY_HOSTED_URL**
+10. **G2PAY_HOSTED_URL**
    - Used in: `validate-apple-merchant`
    - Purpose: G2Pay hosted payment gateway URL
    - Default: `https://gateway.cardstream.com/hosted/`
    - You can use the default or override
 
-10. **APPLE_PAY_DISPLAY_NAME**
+11. **APPLE_PAY_DISPLAY_NAME**
     - Used in: `validate-apple-merchant`
     - Purpose: Merchant name shown in Apple Pay sheet
     - Default: `BabyBets`
     - You can use the default or customize
 
-11. **APPLE_PAY_DOMAIN_NAME**
+12. **APPLE_PAY_DOMAIN_NAME**
     - Used in: `validate-apple-merchant`
     - Purpose: Your Apple Pay verified domain
     - Example: `babybets.co.uk`
     - Must match domain verified with Apple
 
-### 📝 OPTIONAL (have defaults)
-
-12. **PUBLIC_SITE_URL**
-    - Used in: Email templates for links
-    - Purpose: Your public website URL
-    - Default: `https://babybets.co.uk`
-    - Optional: Set if your domain is different
-
 ### ❌ NOT USED - Can Remove
 
-13. **SUPABASE_DB_URL**
-    - ❌ Not found in any edge function code
-    - You can safely remove this secret
+**SUPABASE_DB_URL**
+- ❌ Not found in any edge function code
+- You can safely remove this secret
 
 ## Where Each Secret Is Used
 
@@ -117,7 +116,7 @@ These 3 secrets are needed if you want Apple Pay to work:
   - SMTP_FROM ✅
   - SUPABASE_URL ✅
   - SUPABASE_SERVICE_ROLE_KEY ✅
-  - PUBLIC_SITE_URL (optional)
+  - PUBLIC_SITE_URL ✅
 
 ### Payment Functions
 - `create-g2pay-session`
