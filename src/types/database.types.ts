@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       activity_logs: {
@@ -522,6 +547,7 @@ export type Database = {
           commission_tier: number | null
           created_at: string | null
           display_name: string
+          email: string | null
           id: string
           is_active: boolean | null
           is_ambassador: boolean | null
@@ -536,13 +562,14 @@ export type Database = {
           total_followers: string | null
           total_sales_pence: number | null
           updated_at: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           bio?: string | null
           commission_tier?: number | null
           created_at?: string | null
           display_name: string
+          email?: string | null
           id?: string
           is_active?: boolean | null
           is_ambassador?: boolean | null
@@ -557,13 +584,14 @@ export type Database = {
           total_followers?: string | null
           total_sales_pence?: number | null
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           bio?: string | null
           commission_tier?: number | null
           created_at?: string | null
           display_name?: string
+          email?: string | null
           id?: string
           is_active?: boolean | null
           is_ambassador?: boolean | null
@@ -578,7 +606,7 @@ export type Database = {
           total_followers?: string | null
           total_sales_pence?: number | null
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1104,34 +1132,34 @@ export type Database = {
       testimonials: {
         Row: {
           author_name: string
-          created_at: string
+          created_at: string | null
           display_order: number
           id: string
           is_active: boolean
           quote: string
-          updated_at: string
+          updated_at: string | null
           url: string | null
           video_url: string
         }
         Insert: {
           author_name: string
-          created_at?: string
-          display_order: number
+          created_at?: string | null
+          display_order?: number
           id?: string
           is_active?: boolean
           quote: string
-          updated_at?: string
+          updated_at?: string | null
           url?: string | null
           video_url: string
         }
         Update: {
           author_name?: string
-          created_at?: string
+          created_at?: string | null
           display_order?: number
           id?: string
           is_active?: boolean
           quote?: string
-          updated_at?: string
+          updated_at?: string | null
           url?: string | null
           video_url?: string
         }
@@ -1414,13 +1442,6 @@ export type Database = {
             referencedRelation: "promo_codes"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "wheel_claims_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       winners: {
@@ -1659,6 +1680,11 @@ export type Database = {
         Args: { p_admin_id: string; p_fulfillment_id: string }
         Returns: Json
       }
+      approve_influencer_application: {
+        Args: { p_influencer_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      auto_execute_competition_draws: { Args: never; Returns: Json }
       calculate_commission_tier: {
         Args: { p_monthly_sales_pence: number }
         Returns: number
@@ -1702,6 +1728,10 @@ export type Database = {
         Args: { p_admin_id: string; p_competition_id: string }
         Returns: Json
       }
+      execute_competition_draw_internal: {
+        Args: { p_admin_id: string; p_competition_id: string }
+        Returns: Json
+      }
       generate_alphanumeric_code: {
         Args: { code_length?: number }
         Returns: string
@@ -1726,6 +1756,11 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_influencer: { Args: never; Returns: boolean }
+      payout_influencer_commission: {
+        Args: { p_admin_id?: string; p_influencer_id: string }
+        Returns: Json
+      }
+      process_monthly_influencer_payouts: { Args: never; Returns: Json }
       process_withdrawal_payment: {
         Args: { p_withdrawal_id: string }
         Returns: undefined
@@ -1908,6 +1943,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       competition_category: [

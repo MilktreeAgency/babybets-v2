@@ -85,7 +85,7 @@ export default function CompetitionForm() {
         setFormData({
           title: data.title,
           slug: data.slug,
-          short_description: (data as any).short_description || '',
+          short_description: data.short_description || '',
           description: data.description || '',
           image_url: data.image_url,
           images: (data.images as string[]) || [],

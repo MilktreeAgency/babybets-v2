@@ -512,9 +512,9 @@ function CompetitionEntry() {
               </h1>
 
               {/* Short Description */}
-              {(competition as any).short_description && (
+              {competition.short_description && (
                 <p className="text-sm sm:text-base text-center mb-4 sm:mb-6 line-clamp-3" style={{ color: '#78716c' }}>
-                  {(competition as any).short_description}
+                  {competition.short_description}
                 </p>
               )}
 
@@ -984,9 +984,9 @@ function CompetitionEntry() {
               </h1>
 
               {/* Short Description */}
-              {(competition as any).short_description && (
+              {competition.short_description && (
                 <p className="text-base text-center mb-6 line-clamp-3" style={{ color: '#78716c' }}>
-                  {(competition as any).short_description}
+                  {competition.short_description}
                 </p>
               )}
 
