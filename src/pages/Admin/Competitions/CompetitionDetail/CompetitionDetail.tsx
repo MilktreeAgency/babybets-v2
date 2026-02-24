@@ -451,11 +451,24 @@ export default function CompetitionDetail() {
                           )}
                         </div>
                       )}
-                      <div>
-                        {competition.description && (
-                          <RichTextDisplay content={competition.description} />
-                        )}
-                      </div>
+
+                      {/* Short Description */}
+                      {competition.short_description && (
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold text-muted-foreground">Short Description</h4>
+                          <p className="text-sm text-foreground">{competition.short_description}</p>
+                        </div>
+                      )}
+
+                      {/* Full Description */}
+                      {competition.description && (
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold text-muted-foreground">Full Description</h4>
+                          <div>
+                            <RichTextDisplay content={competition.description} />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })()}
