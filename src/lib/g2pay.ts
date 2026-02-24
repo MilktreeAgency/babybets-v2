@@ -271,13 +271,52 @@ export const validateAppleMerchant = async (validationURL: string): Promise<Reco
     error: getSessionError
   } = await supabase.auth.getSession()
 
-  if (getSessionError || !currentSession?.access_token) {
+  if (getSessionError) {
+    console.error('[Apple Pay] Error getting session:', getSessionError)
+    throw new Error('Failed to get authentication session')
+  }
+
+  if (!currentSession?.access_token) {
+    console.error('[Apple Pay] No valid session or access token')
     throw new Error('Not authenticated. Please log in.')
   }
 
+  // Check if token is about to expire (within 5 minutes)
+  const expiresAt = currentSession.expires_at
+  const now = Math.floor(Date.now() / 1000)
+  const timeUntilExpiry = expiresAt ? expiresAt - now : 0
+  const shouldRefresh = expiresAt && timeUntilExpiry < 300
+
+  // Refresh if needed
+  if (shouldRefresh) {
+    const {
+      data: { session: refreshedSession },
+      error: refreshError,
+    } = await supabase.auth.refreshSession()
+
+    if (refreshError) {
+      console.error('[Apple Pay] Session refresh error:', refreshError)
+      throw new Error(`Session refresh failed: ${refreshError.message}. Please log in again.`)
+    }
+
+    if (!refreshedSession?.access_token) {
+      console.error('[Apple Pay] No valid session after refresh')
+      throw new Error('Failed to refresh session. Please log in again.')
+    }
+  }
+
+  // Get the latest session to ensure we have the most current JWT token
+  const {
+    data: { session: latestSession },
+  } = await supabase.auth.getSession()
+
+  if (!latestSession?.access_token) {
+    throw new Error('No access token available. Please log in again.')
+  }
+
   console.log('[Apple Pay] Calling validate-apple-merchant with token:', {
-    hasToken: !!currentSession.access_token,
-    tokenPrefix: currentSession.access_token.substring(0, 20)
+    hasToken: !!latestSession.access_token,
+    tokenPrefix: latestSession.access_token.substring(0, 20)
   })
 
   // Use direct fetch for better control over headers
@@ -287,7 +326,7 @@ export const validateAppleMerchant = async (validationURL: string): Promise<Reco
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${currentSession.access_token}`,
+        'Authorization': `Bearer ${latestSession.access_token}`,
         'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({ validationURL }),
