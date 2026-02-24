@@ -1,177 +1,22 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import Header from '@/components/common/Header'
 import Footer from '@/components/common/Footer'
 import { useCartStore } from '@/store/cartStore'
 import { useAuthStore } from '@/store/authStore'
 import { useWallet } from '@/hooks/useWallet'
-import { processG2PayPayment, processWalletPayment, validateAppleMerchant, parseCardExpiry, validateCardNumber } from '@/lib/g2pay'
+import { createHostedPaymentSession } from '@/lib/g2pay'
 import { supabase } from '@/lib/supabase'
-import { ShoppingCart, Trash2, Wallet, ShieldCheck, Tag, X, Check, Users } from 'lucide-react'
 import { getReferral, clearReferral, setReferral } from '@/lib/referralTracking'
 import { showErrorToast, showWarningToast } from '@/lib/toast'
-
-// Type declarations for Apple Pay and Google Pay
-declare global {
-  interface Window {
-    ApplePaySession?: ApplePaySessionConstructor
-    google?: {
-      payments: {
-        api: {
-          PaymentsClient: PaymentsClientConstructor
-        }
-      }
-    }
-  }
-}
-
-// Apple Pay Type Definitions
-interface ApplePaySessionConstructor {
-  new(version: number, paymentRequest: ApplePayPaymentRequest): ApplePaySession
-  canMakePayments(): boolean
-  canMakePaymentsWithActiveCard(merchantIdentifier: string): Promise<boolean>
-  supportsVersion(version: number): boolean
-  STATUS_SUCCESS: number
-  STATUS_FAILURE: number
-}
-
-interface ApplePaySession {
-  onvalidatemerchant: (event: ApplePayValidateMerchantEvent) => void
-  onpaymentauthorized: (event: ApplePayPaymentAuthorizedEvent) => void
-  oncancel: (event: Event) => void
-  begin(): void
-  abort(): void
-  completeMerchantValidation(merchantSession: Record<string, unknown>): void
-  completePayment(status: number): void
-}
-
-interface ApplePayPaymentRequest {
-  countryCode: string
-  currencyCode: string
-  supportedNetworks: string[]
-  merchantCapabilities: string[]
-  total: ApplePayLineItem
-  lineItems?: ApplePayLineItem[]
-}
-
-interface ApplePayLineItem {
-  label: string
-  amount: string
-  type?: 'final' | 'pending'
-}
-
-interface ApplePayValidateMerchantEvent {
-  validationURL: string
-}
-
-interface ApplePayPaymentAuthorizedEvent {
-  payment: ApplePayPayment
-}
-
-interface ApplePayPayment {
-  token: ApplePayPaymentToken
-  billingContact?: ApplePayPaymentContact
-  shippingContact?: ApplePayPaymentContact
-}
-
-interface ApplePayPaymentToken {
-  paymentData: Record<string, unknown>
-  paymentMethod: {
-    displayName: string
-    network: string
-    type: string
-  }
-  transactionIdentifier: string
-}
-
-interface ApplePayPaymentContact {
-  emailAddress?: string
-  familyName?: string
-  givenName?: string
-  phoneNumber?: string
-  addressLines?: string[]
-  locality?: string
-  postalCode?: string
-  country?: string
-  countryCode?: string
-}
-
-// Google Pay Type Definitions
-interface PaymentsClientConstructor {
-  new(options: PaymentsClientOptions): PaymentsClient
-}
-
-interface PaymentsClientOptions {
-  environment: 'TEST' | 'PRODUCTION'
-  merchantInfo?: {
-    merchantId?: string
-    merchantName?: string
-  }
-}
-
-interface PaymentsClient {
-  isReadyToPay(request: IsReadyToPayRequest): Promise<{ result: boolean }>
-  loadPaymentData(request: PaymentDataRequest): Promise<PaymentData>
-  prefetchPaymentData(request: PaymentDataRequest): void
-}
-
-interface IsReadyToPayRequest {
-  apiVersion: number
-  apiVersionMinor: number
-  allowedPaymentMethods: PaymentMethod[]
-}
-
-interface PaymentDataRequest {
-  apiVersion: number
-  apiVersionMinor: number
-  merchantInfo: {
-    merchantId?: string
-    merchantName: string
-  }
-  allowedPaymentMethods: PaymentMethod[]
-  transactionInfo: TransactionInfo
-}
-
-interface PaymentMethod {
-  type: 'CARD'
-  parameters: {
-    allowedAuthMethods: string[]
-    allowedCardNetworks: string[]
-  }
-  tokenizationSpecification?: {
-    type: string
-    parameters: Record<string, string>
-  }
-}
-
-interface TransactionInfo {
-  totalPriceStatus: 'FINAL' | 'ESTIMATED'
-  totalPrice: string
-  currencyCode: string
-  countryCode?: string
-  displayItems?: DisplayItem[]
-}
-
-interface DisplayItem {
-  label: string
-  type: 'LINE_ITEM' | 'SUBTOTAL'
-  price: string
-}
-
-interface PaymentData {
-  paymentMethodData: {
-    type: string
-    description: string
-    info: {
-      cardNetwork: string
-      cardDetails: string
-    }
-    tokenizationData: {
-      type: string
-      token: string
-    }
-  }
-}
+import {
+  OrderSummary,
+  PromoCodeSection,
+  WalletCreditSection,
+  PriceSummary,
+  ContactInformation,
+  TermsCheckboxes,
+} from './components'
 
 function Checkout() {
   const navigate = useNavigate()
@@ -184,13 +29,8 @@ function Checkout() {
   // Referral tracking state (handles both link referrals and manual codes)
   const [activeReferral, setActiveReferral] = useState<{ slug: string; influencerId: string; displayName?: string } | null>(null)
   const [influencerCode, setInfluencerCode] = useState('')
-  const [checkingCode, setCheckingCode] = useState(false)
 
-  // Card details state
-  const [cardNumber, setCardNumber] = useState('')
-  const [cardExpiry, setCardExpiry] = useState('')
-  const [cardCVV, setCardCVV] = useState('')
-  const [cardName, setCardName] = useState('')
+  // Payment state
   const [mobileNumber, setMobileNumber] = useState('')
   const [appliedCredit, setAppliedCredit] = useState(0)
   const [promoCode, setPromoCode] = useState('')
@@ -202,9 +42,6 @@ function Checkout() {
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [isUKResident, setIsUKResident] = useState(false)
   const [isOver18, setIsOver18] = useState(false)
-  const [applePayAvailable, setApplePayAvailable] = useState(true)
-  const [googlePayAvailable, setGooglePayAvailable] = useState(true)
-  const [googlePayClient, setGooglePayClient] = useState<PaymentsClient | null>(null)
 
   // Validate UK mobile number format
   const validateMobileNumber = (mobile: string): boolean => {
@@ -306,71 +143,6 @@ function Checkout() {
     validateCartOnLoad()
   }, [])
 
-  // Detect Apple Pay and Google Pay availability
-  useEffect(() => {
-    // Check for Apple Pay support
-    if (window.ApplePaySession && window.ApplePaySession.canMakePayments()) {
-      setApplePayAvailable(true)
-    }
-
-    // Load and check for Google Pay support
-    const loadGooglePay = async () => {
-      // Check if Google Pay script is loaded
-      if (!window.google?.payments?.api) {
-        // Dynamically load Google Pay script
-        const script = document.createElement('script')
-        script.src = 'https://pay.google.com/gp/p/js/pay.js'
-        script.async = true
-        script.onload = () => initializeGooglePay()
-        document.head.appendChild(script)
-      } else {
-        initializeGooglePay()
-      }
-    }
-
-    const initializeGooglePay = async () => {
-      try {
-        if (!window.google?.payments?.api) return
-
-        // Initialize Google Pay client
-        const paymentsClient = new window.google.payments.api.PaymentsClient({
-          environment: 'PRODUCTION', // Using PRODUCTION with real merchant credentials
-        })
-
-        setGooglePayClient(paymentsClient)
-
-        // Check if Google Pay is available
-        // For TEST environment, we need simpler configuration
-        const isReadyToPayRequest: IsReadyToPayRequest = {
-          apiVersion: 2,
-          apiVersionMinor: 0,
-          allowedPaymentMethods: [
-            {
-              type: 'CARD',
-              parameters: {
-                allowedAuthMethods: ['PAN_ONLY', 'CRYPTOGRAM_3DS'],
-                allowedCardNetworks: ['VISA', 'MASTERCARD'],
-              },
-            },
-          ],
-        }
-
-        const response = await paymentsClient.isReadyToPay(isReadyToPayRequest)
-        console.log('[Google Pay] isReadyToPay response:', response)
-
-        if (response.result) {
-          setGooglePayAvailable(true)
-          console.log('[Google Pay] ✅ Available and ready')
-        } else {
-          console.log('[Google Pay] ❌ Not available:', response)
-        }
-      } catch (error) {
-        console.error('[Google Pay] Error initializing:', error)
-      }
-    }
-
-    loadGooglePay()
-  }, [])
 
   // Handle applying influencer code
   const handleApplyInfluencerCode = async () => {
@@ -382,8 +154,6 @@ function Checkout() {
     }
 
     try {
-      setCheckingCode(true)
-
       // Fetch influencer by slug
       const { data: influencer, error: influencerError } = await supabase
         .from('influencers')
@@ -408,8 +178,6 @@ function Checkout() {
     } catch (err) {
       console.error('Error validating influencer code:', err)
       showErrorToast('Failed to validate code')
-    } finally {
-      setCheckingCode(false)
     }
   }
 
@@ -522,476 +290,6 @@ function Checkout() {
       setAppliedCredit(maxApplicableCredit)
     } else {
       setAppliedCredit(0)
-    }
-  }
-
-  const handleApplePayClick = () => {
-    try {
-      // Validation checks
-      if (items.length === 0) {
-        showErrorToast('Your cart is empty')
-        return
-      }
-
-      if (!window.ApplePaySession) {
-        showErrorToast('Apple Pay is not available on this device')
-        return
-      }
-
-      setLoading(true)
-
-      // Convert GBP to pence
-      const totalPence = Math.round(totalPrice * 100)
-      const creditPence = Math.round(appliedCredit * 100)
-      const finalPence = Math.round(finalPrice * 100)
-      const discountPence = Math.round(discountAmount * 100)
-
-      // Create Apple Pay payment request
-      const paymentRequest: ApplePayPaymentRequest = {
-        countryCode: 'GB',
-        currencyCode: 'GBP',
-        supportedNetworks: ['visa', 'masterCard', 'amex'],
-        merchantCapabilities: ['supports3DS'],
-        total: {
-          label: 'BabyBets',
-          amount: finalPrice.toFixed(2),
-          type: 'final',
-        },
-        lineItems: items.map((item) => ({
-          label: item.competitionTitle,
-          amount: item.totalPrice.toFixed(2),
-          type: 'final' as const,
-        })),
-      }
-
-      // Add discount line item if applicable
-      if (discountAmount > 0) {
-        paymentRequest.lineItems?.push({
-          label: 'Discount',
-          amount: `-${discountAmount.toFixed(2)}`,
-          type: 'final',
-        })
-      }
-
-      // Add wallet credit line item if applicable
-      if (appliedCredit > 0) {
-        paymentRequest.lineItems?.push({
-          label: 'Wallet Credit',
-          amount: `-${appliedCredit.toFixed(2)}`,
-          type: 'final',
-        })
-      }
-
-      // Create Apple Pay session SYNCHRONOUSLY (required by Apple)
-      const applePaySession = new window.ApplePaySession(3, paymentRequest)
-
-      // Store order data for use in handlers
-      let createdOrder: any = null
-      let authenticatedUser: any = null
-
-      // Handle merchant validation
-      applePaySession.onvalidatemerchant = async (event) => {
-        try {
-          // Get fresh session to ensure user is authenticated
-          const { data: { session } } = await supabase.auth.getSession()
-
-          if (!session?.user) {
-            throw new Error('Please log in again to complete payment')
-          }
-
-          authenticatedUser = session.user
-
-          // Get influencer data
-          let influencerUserId: string | null = null
-          if (activeReferral) {
-            const { data: influencerData } = await supabase
-              .from('influencers')
-              .select('user_id')
-              .eq('id', activeReferral.influencerId)
-              .single()
-            if (influencerData) {
-              influencerUserId = influencerData.user_id
-            }
-          }
-
-          // Create order
-          const orderData: {
-            user_id: string
-            subtotal_pence: number
-            discount_pence: number
-            credit_applied_pence: number
-            total_pence: number
-            status: 'pending'
-            influencer_id?: string
-          } = {
-            user_id: authenticatedUser.id,
-            subtotal_pence: totalPence,
-            discount_pence: discountPence,
-            credit_applied_pence: creditPence,
-            total_pence: finalPence,
-            status: 'pending',
-          }
-
-          if (influencerUserId) {
-            orderData.influencer_id = influencerUserId
-          }
-
-          const { data: order, error: orderError } = await supabase
-            .from('orders')
-            .insert(orderData)
-            .select()
-            .single()
-
-          if (orderError) {
-            throw new Error('Failed to create order')
-          }
-
-          createdOrder = order
-
-          // Create order items
-          const orderItems = items.map((item) => ({
-            order_id: order.id,
-            competition_id: item.competitionId,
-            ticket_count: item.quantity,
-            price_per_ticket_pence: Math.round(item.pricePerTicket * 100),
-            total_pence: Math.round(item.totalPrice * 100),
-          }))
-
-          await supabase.from('order_items').insert(orderItems)
-
-          // Update phone number
-          if (mobileNumber) {
-            const cleanedPhone = mobileNumber.replace(/\s/g, '')
-            await supabase
-              .from('profiles')
-              .update({ phone: cleanedPhone })
-              .eq('id', authenticatedUser.id)
-          }
-
-          // Validate merchant using helper function
-          const merchantSession = await validateAppleMerchant(event.validationURL)
-          applePaySession.completeMerchantValidation(merchantSession)
-        } catch (error) {
-          console.error('Merchant validation failed:', error)
-          applePaySession.abort()
-          showErrorToast(error instanceof Error ? error.message : 'Apple Pay validation failed')
-          setLoading(false)
-        }
-      }
-
-      // Handle payment authorization
-      applePaySession.onpaymentauthorized = async (event) => {
-        try {
-          if (!createdOrder || !authenticatedUser) {
-            throw new Error('Order not initialized')
-          }
-
-          // Process payment with G2Pay using the Apple Pay token
-          const paymentResult = await processWalletPayment({
-            orderId: createdOrder.id,
-            walletType: 'apple_pay',
-            walletToken: JSON.stringify(event.payment.token),
-            amount: finalPence,
-          })
-
-          if (!paymentResult.success) {
-            applePaySession.completePayment(window.ApplePaySession!.STATUS_FAILURE)
-            throw new Error(paymentResult.message || 'Payment failed')
-          }
-
-          // Deduct wallet credits if any were applied
-          if (creditPence > 0) {
-            await supabase.rpc('debit_wallet_credits', {
-              p_user_id: authenticatedUser.id,
-              p_amount_pence: creditPence,
-              p_description: `Order #${createdOrder.id.slice(0, 8)}`,
-            })
-          }
-
-          // Complete order and allocate tickets
-          const { error: completeError } = await supabase.functions.invoke('complete-g2pay-order', {
-            body: { orderId: createdOrder.id, userId: authenticatedUser.id },
-          })
-
-          if (completeError) {
-            throw new Error('Failed to complete order')
-          }
-
-          applePaySession.completePayment(window.ApplePaySession!.STATUS_SUCCESS)
-
-          // Success! Clear cart and redirect
-          setPurchaseCompleted(true)
-          clearCart()
-          navigate('/account?tab=tickets&purchase=success')
-        } catch (error) {
-          applePaySession.completePayment(window.ApplePaySession!.STATUS_FAILURE)
-          console.error('Payment processing failed:', error)
-          showErrorToast(error instanceof Error ? error.message : 'Payment failed')
-          setLoading(false)
-        }
-      }
-
-      // Handle cancellation
-      applePaySession.oncancel = () => {
-        console.log('Apple Pay cancelled by user')
-        setLoading(false)
-      }
-
-      // Begin Apple Pay session
-      applePaySession.begin()
-    } catch (error) {
-      console.error('Apple Pay error:', error)
-      showErrorToast(error instanceof Error ? error.message : 'Failed to start Apple Pay')
-      setLoading(false)
-    }
-  }
-
-  const handleGooglePayClick = async () => {
-    console.log('[Google Pay] ========== Payment Flow Started ==========')
-    try {
-      // Validation checks
-      if (items.length === 0) {
-        console.log('[Google Pay] ❌ Validation failed: empty cart')
-        showErrorToast('Your cart is empty')
-        return
-      }
-
-      if (!googlePayClient) {
-        console.log('[Google Pay] ❌ Google Pay client not initialized')
-        showErrorToast('Google Pay is not available')
-        return
-      }
-
-      console.log('[Google Pay] ✅ All validation checks passed')
-      setLoading(true)
-
-      // Prepare order in database first
-      // Get fresh session to ensure user is authenticated
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      console.log('[Wallet Payment] Session check:', { session: !!session, error: sessionError })
-
-      if (!session?.user) {
-        console.error('[Wallet Payment] No active session found')
-        showErrorToast('Please log in again to complete payment')
-        navigate('/login?redirect=/checkout')
-        setLoading(false)
-        return
-      }
-
-      const user = session.user
-
-      // Convert GBP to pence
-      const totalPence = Math.round(totalPrice * 100)
-      const creditPence = Math.round(appliedCredit * 100)
-      const finalPence = Math.round(finalPrice * 100)
-      const discountPence = Math.round(discountAmount * 100)
-
-      // Get influencer data
-      let influencerUserId: string | null = null
-      if (activeReferral) {
-        const { data: influencerData } = await supabase
-          .from('influencers')
-          .select('user_id')
-          .eq('id', activeReferral.influencerId)
-          .single()
-        if (influencerData) {
-          influencerUserId = influencerData.user_id
-        }
-      }
-
-      // Create order
-      const orderData: {
-        user_id: string
-        subtotal_pence: number
-        discount_pence: number
-        credit_applied_pence: number
-        total_pence: number
-        status: 'pending'
-        influencer_id?: string
-      } = {
-        user_id: user.id,
-        subtotal_pence: totalPence,
-        discount_pence: discountPence,
-        credit_applied_pence: creditPence,
-        total_pence: finalPence,
-        status: 'pending',
-      }
-
-      if (influencerUserId) {
-        orderData.influencer_id = influencerUserId
-      }
-
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert(orderData)
-        .select()
-        .single()
-
-      if (orderError) {
-        throw new Error('Failed to create order')
-      }
-
-      // Create order items
-      const orderItems = items.map((item) => ({
-        order_id: order.id,
-        competition_id: item.competitionId,
-        ticket_count: item.quantity,
-        price_per_ticket_pence: Math.round(item.pricePerTicket * 100),
-        total_pence: Math.round(item.totalPrice * 100),
-      }))
-
-      await supabase.from('order_items').insert(orderItems)
-      console.log('[Google Pay] ✅ Order items created')
-
-      // Update phone number
-      if (mobileNumber) {
-        const cleanedPhone = mobileNumber.replace(/\s/g, '')
-        await supabase
-          .from('profiles')
-          .update({ phone: cleanedPhone })
-          .eq('id', user.id)
-        console.log('[Google Pay] ✅ Phone number updated')
-      }
-
-      // Create Google Pay payment request
-      console.log('[Google Pay] Building payment request...')
-      const paymentDataRequest: PaymentDataRequest = {
-        apiVersion: 2,
-        apiVersionMinor: 0,
-        merchantInfo: {
-          merchantName: import.meta.env.VITE_GOOGLE_PAY_MERCHANT_NAME,
-          merchantId: import.meta.env.VITE_GOOGLE_MERCHANT_ID,
-        },
-        allowedPaymentMethods: [
-          {
-            type: 'CARD',
-            parameters: {
-              allowedAuthMethods: ['PAN_ONLY', 'CRYPTOGRAM_3DS'],
-              allowedCardNetworks: ['VISA', 'MASTERCARD'],
-            },
-            tokenizationSpecification: {
-              type: 'PAYMENT_GATEWAY',
-              parameters: {
-                gateway: import.meta.env.VITE_GOOGLE_PAY_GATEWAY,
-                gatewayMerchantId: import.meta.env.VITE_GOOGLE_PAY_GATEWAY_MERCHANT_ID,
-              },
-            },
-          },
-        ],
-        transactionInfo: {
-          totalPriceStatus: 'FINAL',
-          totalPrice: finalPrice.toFixed(2),
-          currencyCode: 'GBP',
-          countryCode: 'GB',
-          displayItems: [
-            ...items.map((item) => ({
-              label: item.competitionTitle,
-              type: 'LINE_ITEM' as const,
-              price: item.totalPrice.toFixed(2),
-            })),
-          ],
-        },
-      }
-
-      // Add discount display item if applicable
-      if (discountAmount > 0) {
-        paymentDataRequest.transactionInfo.displayItems?.push({
-          label: 'Discount',
-          type: 'LINE_ITEM',
-          price: `-${discountAmount.toFixed(2)}`,
-        })
-      }
-
-      // Add wallet credit display item if applicable
-      if (appliedCredit > 0) {
-        paymentDataRequest.transactionInfo.displayItems?.push({
-          label: 'Wallet Credit',
-          type: 'LINE_ITEM',
-          price: `-${appliedCredit.toFixed(2)}`,
-        })
-      }
-
-      // Request payment data from Google Pay
-      console.log('[Google Pay] Payment request:', JSON.stringify(paymentDataRequest, null, 2))
-      console.log('[Google Pay] Opening Google Pay sheet...')
-
-      try {
-        const paymentData = await googlePayClient.loadPaymentData(paymentDataRequest)
-        console.log('[Google Pay] ✅ Payment data received from Google Pay')
-        console.log('[Google Pay] Payment method:', paymentData.paymentMethodData.type)
-
-        // Process payment with G2Pay using the Google Pay token
-        // Uses the same helper function pattern as card payments
-        console.log('[Google Pay] Processing payment with G2Pay...')
-        const paymentResult = await processWalletPayment({
-        orderId: order.id,
-        walletType: 'google_pay',
-        walletToken: paymentData.paymentMethodData.tokenizationData.token,
-        amount: finalPence,
-      })
-
-        if (!paymentResult.success) {
-          console.error('[Google Pay] ❌ G2Pay payment failed:', paymentResult)
-          throw new Error(paymentResult.message || 'Payment failed')
-        }
-
-        console.log('[Google Pay] ✅ Payment processed successfully')
-
-      } catch (loadPaymentError) {
-        // Handle Google Pay specific errors
-        console.error('[Google Pay] ❌ loadPaymentData error:', {
-          error: loadPaymentError,
-          message: loadPaymentError instanceof Error ? loadPaymentError.message : 'Unknown error',
-          name: loadPaymentError instanceof Error ? loadPaymentError.name : 'Unknown',
-          stack: loadPaymentError instanceof Error ? loadPaymentError.stack : undefined
-        })
-        throw loadPaymentError
-      }
-
-      // Deduct wallet credits if any were applied
-      if (creditPence > 0) {
-        console.log('[Google Pay] Deducting wallet credits:', creditPence)
-        await supabase.rpc('debit_wallet_credits', {
-          p_user_id: user.id,
-          p_amount_pence: creditPence,
-          p_description: `Order #${order.id.slice(0, 8)}`,
-        })
-      }
-
-      // Complete order and allocate tickets
-      console.log('[Google Pay] Completing order and allocating tickets...')
-      const { error: completeError } = await supabase.functions.invoke('complete-g2pay-order', {
-        body: { orderId: order.id, userId: user.id },
-      })
-
-      if (completeError) {
-        console.error('[Google Pay] ❌ Order completion failed:', completeError)
-        throw new Error('Failed to complete order')
-      }
-
-      console.log('[Google Pay] ✅ Order completed successfully!')
-
-      // Success! Clear cart and redirect
-      setPurchaseCompleted(true)
-      clearCart()
-      navigate('/account?tab=tickets&purchase=success')
-    } catch (error) {
-      console.error('[Google Pay] ========== Payment Flow Failed ==========')
-      console.error('[Google Pay] Error details:', {
-        error,
-        message: error instanceof Error ? error.message : 'Unknown error',
-        name: error instanceof Error ? error.name : 'Unknown',
-        stack: error instanceof Error ? error.stack : undefined
-      })
-
-      // Handle user cancellation gracefully
-      if (error instanceof Error && (error.message.includes('cancel') || error.message.includes('closed'))) {
-        console.log('[Google Pay] User cancelled or closed payment sheet')
-      } else {
-        showErrorToast(error instanceof Error ? error.message : 'Payment failed')
-      }
-
-      setLoading(false)
     }
   }
 
@@ -1159,7 +457,7 @@ function Checkout() {
           const totalTickets = items.reduce((sum, item) => sum + item.quantity, 0)
           emailServiceModule.emailService.sendOrderConfirmationEmail(
             session.user.email || '',
-            cardName || session.user.email?.split('@')[0] || 'Customer',
+            session.user.email?.split('@')[0] || 'Customer',
             {
               orderNumber: order.id.slice(0, 8).toUpperCase(),
               orderDate: new Date().toLocaleDateString('en-GB', {
@@ -1188,73 +486,29 @@ function Checkout() {
         throw new Error('Please enter a valid UK mobile number (e.g., 07xxx xxxxxx)')
       }
 
-      // Validate card details
-      if (!cardNumber || !cardExpiry || !cardCVV || !cardName) {
-        throw new Error('Please fill in all card details')
-      }
-
-      // Validate card number
-      if (!validateCardNumber(cardNumber)) {
-        throw new Error('Invalid card number')
-      }
-
-      // Parse and validate expiry
-      const { month, year } = parseCardExpiry(cardExpiry)
-
-      // Validate CVV
-      if (!/^\d{3,4}$/.test(cardCVV)) {
-        throw new Error('Invalid CVV')
-      }
-
-      // Process payment via G2Pay Direct Integration
-      const paymentResult = await processG2PayPayment({
-        amount: finalPence,
-        currencyCode: 826, // GBP
-        orderRef: order.id,
-        customerEmail: session.user.email,
-        customerName: cardName,
-        cardNumber: cardNumber.replace(/\s/g, ''),
-        cardExpiryMonth: month,
-        cardExpiryYear: year,
-        cardCVV,
-      })
-
-      if (paymentResult.success) {
-        // Deduct wallet credits if any were applied
-        if (creditPence > 0) {
-          await supabase.rpc('debit_wallet_credits', {
-            p_user_id: authenticatedUserId,
-            p_amount_pence: creditPence,
-            p_description: `Order #${order.id.slice(0, 8)}`,
-          })
-        }
-
-        // Complete order and allocate tickets via Edge Function (server-side)
-        // Refresh session to ensure we have a valid JWT token
-        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
-
-        if (refreshError || !refreshedSession) {
-          console.error('[Checkout] Session refresh error:', refreshError)
-          throw new Error('Failed to refresh session. Please try logging in again.')
-        }
-
-        const { error: completeError } = await supabase.functions.invoke('complete-g2pay-order', {
-          body: { orderId: order.id, userId: authenticatedUserId },
+      // Deduct wallet credits if any were applied (before redirect)
+      if (creditPence > 0) {
+        await supabase.rpc('debit_wallet_credits', {
+          p_user_id: authenticatedUserId,
+          p_amount_pence: creditPence,
+          p_description: `Order #${order.id.slice(0, 8)}`,
         })
-
-        if (completeError) {
-          console.error('[Checkout] Edge function error:', completeError)
-          throw new Error(completeError.message || 'Failed to complete order')
-        }
-
-        // Mark purchase as completed and clear cart
-        setPurchaseCompleted(true)
-        clearCart()
-        navigate('/account?tab=tickets&purchase=success')
-      } else {
-        // Payment declined or failed
-        throw new Error(paymentResult.message || 'Payment was declined')
       }
+
+      // Create hosted payment session and redirect to G2Pay
+      const hostedSessionResult = await createHostedPaymentSession(
+        order.id,
+        session.user.email,
+        mobileNumber
+      )
+
+      if (!hostedSessionResult.success || !hostedSessionResult.hostedURL) {
+        throw new Error(hostedSessionResult.error || 'Failed to create payment session')
+      }
+
+      // Redirect to G2Pay's hosted payment page
+      // User will complete payment there and be redirected back to /payment-return
+      window.location.href = hostedSessionResult.hostedURL
     } catch (err) {
       console.error('Error processing payment:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to process payment'
@@ -1327,449 +581,42 @@ function Checkout() {
                   borderColor: '#e7e5e4',
                 }}
               >
-                <h2
-                  className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 md:mb-8 flex items-center gap-2"
-                  style={{ color: '#151e20', fontFamily: "'Fraunces', serif" }}
-                >
-                  <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
-                  Your Order{' '}
-                  <span className="text-xs sm:text-sm font-normal" style={{ color: '#78716c' }}>
-                    ({items.length} {items.length === 1 ? 'item' : 'items'})
-                  </span>
-                </h2>
-
-                <div className="space-y-4 sm:space-y-6">
-                  {items.map((item) => (
-                    <div key={item.competitionId} className="flex gap-3 sm:gap-4 items-start">
-                      <img
-                        src={item.imageUrl}
-                        alt={item.competitionTitle}
-                        className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg sm:rounded-xl object-cover shrink-0"
-                        style={{ backgroundColor: '#f5f5f4' }}
-                      />
-                      <div className="grow pt-0.5 sm:pt-1 min-w-0">
-                        <h3
-                          className="font-bold leading-tight mb-1.5 sm:mb-2 text-sm sm:text-base md:text-lg line-clamp-2"
-                          style={{ color: '#151e20' }}
-                        >
-                          {item.competitionTitle}
-                        </h3>
-                        <span
-                          className="text-xs sm:text-sm font-bold inline-block px-2 py-0.5 sm:py-1 rounded-md"
-                          style={{ backgroundColor: '#e1eaec', color: '#496B71' }}
-                        >
-                          {item.quantity} Tickets
-                        </span>
-                      </div>
-                      <div className="text-right pt-0.5 sm:pt-1 shrink-0">
-                        <p className="font-bold text-base sm:text-lg" style={{ color: '#151e20' }}>
-                          £{item.totalPrice.toFixed(2)}
-                        </p>
-                        <button
-                          onClick={() => removeItem(item.competitionId)}
-                          className="transition-colors mt-2 sm:mt-3 cursor-pointer"
-                          style={{ color: '#d1d5db' }}
-                          onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
-                          onMouseLeave={(e) => (e.currentTarget.style.color = '#d1d5db')}
-                        >
-                          <Trash2 className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <OrderSummary items={items} onRemoveItem={removeItem} />
 
                 {/* Promotional Code Section */}
-                <div
-                  className="mt-6 sm:mt-8 pt-6 sm:pt-8"
-                  style={{ borderTopWidth: '1px', borderColor: '#e7e5e4' }}
-                >
-                  <label
-                    className="block text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2"
-                    style={{ color: '#78716c' }}
-                  >
-                    Promotional Code
-                  </label>
+                <PromoCodeSection
+                  promoCode={promoCode}
+                  setPromoCode={setPromoCode}
+                  appliedPromoCode={appliedPromoCode}
+                  promoCodeType={promoCodeType}
+                  promoCodeValue={promoCodeValue}
+                  onApplyPromoCode={handleApplyPromoCode}
+                  onRemovePromoCode={handleRemovePromoCode}
+                  partnerCode={influencerCode}
+                  setPartnerCode={setInfluencerCode}
+                  activeReferral={activeReferral}
+                  onApplyPartnerCode={handleApplyInfluencerCode}
+                  onRemovePartnerCode={handleRemoveInfluencerCode}
+                />
 
-                  {appliedPromoCode ? (
-                    <div
-                      className="flex justify-between items-center p-3 sm:p-4 rounded-xl"
-                      style={{
-                        backgroundColor: '#e1eaec',
-                        borderWidth: '1px',
-                        borderColor: '#496B71',
-                      }}
-                    >
-                      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                        <Tag className="w-4 h-4 shrink-0" style={{ color: '#496B71' }} />
-                        <span className="font-bold text-sm sm:text-base truncate" style={{ color: '#151e20' }}>
-                          {appliedPromoCode}
-                        </span>
-                        <span
-                          className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0"
-                          style={{ backgroundColor: '#496B71', color: 'white' }}
-                        >
-                          {promoCodeType === 'percentage'
-                            ? `${promoCodeValue}% OFF`
-                            : `£${(promoCodeValue / 100).toFixed(2)} OFF`
-                          }
-                        </span>
-                      </div>
-                      <button
-                        onClick={handleRemovePromoCode}
-                        className="transition-colors cursor-pointer shrink-0 ml-2"
-                        style={{ color: '#78716c' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
-                        onMouseLeave={(e) => (e.currentTarget.style.color = '#78716c')}
-                      >
-                        <X className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={promoCode}
-                        onChange={(e) => {
-                          setPromoCode(e.target.value)
-                                      }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleApplyPromoCode()
-                          }
-                        }}
-                        placeholder="Enter code"
-                        className="grow p-2.5 sm:p-3 text-sm sm:text-base rounded-xl focus:ring-2 focus:outline-none uppercase font-medium placeholder:normal-case"
-                        style={{
-                          backgroundColor: '#f5f5f4',
-                          borderWidth: '1px',
-                          borderColor: '#e7e5e4',
-                          color: '#151e20',
-                        }}
-                      />
-                      <button
-                        onClick={handleApplyPromoCode}
-                        className="px-4 sm:px-6 text-sm sm:text-base rounded-lg transition-colors cursor-pointer font-bold"
-                        style={{
-                          backgroundColor: 'white',
-                          borderWidth: '1px',
-                          borderColor: '#e7e5e4',
-                          color: '#151e20',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#496B71'
-                          e.currentTarget.style.color = 'white'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'white'
-                          e.currentTarget.style.color = '#151e20'
-                        }}
-                      >
-                        Apply
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <WalletCreditSection
+                  availableCreditGBP={availableCreditGBP}
+                  useWalletCredit={useWalletCredit}
+                  setUseWalletCredit={handleWalletToggle}
+                  appliedCredit={appliedCredit}
+                  setAppliedCredit={setAppliedCredit}
+                  maxApplicableCredit={maxApplicableCredit}
+                />
 
-                {/* Partner Code Section */}
-                <div
-                  className="mt-6 sm:mt-8 pt-6 sm:pt-8"
-                  style={{ borderTopWidth: '1px', borderColor: '#e7e5e4' }}
-                >
-                  <label
-                    className="block text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2"
-                    style={{ color: '#78716c' }}
-                  >
-                    Partner Code
-                  </label>
-
-                  {activeReferral ? (
-                    <div
-                      className="flex justify-between items-start p-3 sm:p-4 rounded-xl"
-                      style={{
-                        backgroundColor: '#e1eaec',
-                        borderWidth: '1px',
-                        borderColor: '#496B71',
-                      }}
-                    >
-                      <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
-                        <div
-                          className="p-1.5 sm:p-2 rounded-lg shrink-0"
-                          style={{ backgroundColor: '#496B71' }}
-                        >
-                          <Users className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <a
-                            href={`/partner/${activeReferral.slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-bold text-sm sm:text-base mb-1 hover:underline cursor-pointer inline-block truncate max-w-full"
-                            style={{ color: '#496B71' }}
-                          >
-                            {activeReferral.displayName || activeReferral.slug}
-                          </a>
-                          <p className="text-[10px] sm:text-xs leading-relaxed mt-1" style={{ color: '#78716c' }}>
-                            Shopping with code <span className="font-bold">{activeReferral.slug}</span>. They'll earn a commission on your purchase at no extra cost to you.
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={handleRemoveInfluencerCode}
-                        className="ml-2 p-1.5 sm:p-2 hover:bg-white/50 rounded-lg transition-colors cursor-pointer shrink-0"
-                        style={{ color: '#78716c' }}
-                        title="Remove code"
-                      >
-                        <X className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={influencerCode}
-                          onChange={(e) => {
-                            setInfluencerCode(e.target.value)
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              handleApplyInfluencerCode()
-                            }
-                          }}
-                          placeholder="Enter partner code"
-                          className="grow p-2.5 sm:p-3 text-sm sm:text-base rounded-xl focus:ring-2 focus:outline-none lowercase font-medium placeholder:normal-case"
-                          style={{
-                            backgroundColor: '#f5f5f4',
-                            borderWidth: '1px',
-                            borderColor: '#e7e5e4',
-                            color: '#151e20',
-                          }}
-                          disabled={checkingCode}
-                        />
-                        <button
-                          onClick={handleApplyInfluencerCode}
-                          disabled={checkingCode}
-                          className="px-4 sm:px-6 text-sm sm:text-base rounded-lg transition-colors cursor-pointer font-bold disabled:opacity-50"
-                          style={{
-                            backgroundColor: 'white',
-                            borderWidth: '1px',
-                            borderColor: '#e7e5e4',
-                            color: '#151e20',
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!checkingCode) {
-                              e.currentTarget.style.backgroundColor = '#496B71'
-                              e.currentTarget.style.color = 'white'
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'white'
-                            e.currentTarget.style.color = '#151e20'
-                          }}
-                        >
-                          {checkingCode ? 'Checking...' : 'Apply'}
-                        </button>
-                      </div>
-                      <p className="text-[10px] sm:text-xs mt-2" style={{ color: '#78716c' }}>
-                        Have a partner code? Enter it here to support your favorite influencer.
-                      </p>
-                    </>
-                  )}
-                </div>
-
-                {/* Wallet Credit Section */}
-                {availableCreditGBP > 0 && (
-                  <div
-                    className="mt-6 pt-6"
-                    style={{ borderTopWidth: '1px', borderColor: '#e7e5e4' }}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={useWalletCredit}
-                            onChange={(e) => handleWalletToggle(e.target.checked)}
-                            className="sr-only peer"
-                          />
-                          <div
-                            className="w-12 h-6 rounded-full transition-colors"
-                            style={{
-                              backgroundColor: useWalletCredit ? '#496B71' : '#d1d5db',
-                            }}
-                          >
-                            <div
-                              className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform"
-                              style={{
-                                transform: useWalletCredit ? 'translateX(24px)' : 'translateX(2px)',
-                              }}
-                            />
-                          </div>
-                        </div>
-                        <span
-                          className="font-bold flex items-center gap-2"
-                          style={{ color: '#151e20' }}
-                        >
-                          <Wallet size={18} style={{ color: '#496B71' }} />
-                          Use Wallet Credit
-                        </span>
-                      </label>
-                      <span className="text-sm" style={{ color: '#78716c' }}>
-                        Balance: <span className="font-bold" style={{ color: '#151e20' }}>£{availableCreditGBP.toFixed(2)}</span>
-                      </span>
-                    </div>
-
-                    {useWalletCredit && (
-                      <>
-                        <div
-                          className="rounded-lg p-4 mb-4"
-                          style={{
-                            backgroundColor: '#e1eaec',
-                            borderWidth: '1px',
-                            borderColor: '#496B71',
-                          }}
-                        >
-                          <div className="flex items-start gap-2">
-                            <div className="text-sm" style={{ color: '#151e20' }}>
-                              <p className="font-medium">
-                                Applying £{appliedCredit.toFixed(2)} credit
-                              </p>
-                              <p className="text-xs mt-1" style={{ color: '#78716c' }}>
-                                Maximum credit can be applied after any promo discounts
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <label className="text-sm font-medium" style={{ color: '#78716c' }}>
-                            Apply Credit Amount
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            max={maxApplicableCredit}
-                            step="0.01"
-                            value={appliedCredit}
-                            onChange={(e) => {
-                              const value = parseFloat(e.target.value) || 0
-                              setAppliedCredit(Math.min(value, maxApplicableCredit))
-                            }}
-                            className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:outline-none"
-                            style={{
-                              backgroundColor: '#f5f5f4',
-                              borderWidth: '1px',
-                              borderColor: '#e7e5e4',
-                              color: '#151e20',
-                            }}
-                            placeholder="0.00"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setAppliedCredit(Math.min(10, maxApplicableCredit))}
-                              className="flex-1 py-2 text-sm rounded-lg transition-colors cursor-pointer"
-                              style={{
-                                borderWidth: '1px',
-                                borderColor: '#e7e5e4',
-                                backgroundColor: 'white',
-                                color: '#151e20',
-                              }}
-                              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f5f4')}
-                              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
-                            >
-                              £10
-                            </button>
-                            <button
-                              onClick={() => setAppliedCredit(Math.min(25, maxApplicableCredit))}
-                              className="flex-1 py-2 text-sm rounded-lg transition-colors cursor-pointer"
-                              style={{
-                                borderWidth: '1px',
-                                borderColor: '#e7e5e4',
-                                backgroundColor: 'white',
-                                color: '#151e20',
-                              }}
-                              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f5f4')}
-                              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
-                            >
-                              £25
-                            </button>
-                            <button
-                              onClick={() => setAppliedCredit(maxApplicableCredit)}
-                              className="flex-1 py-2 text-sm rounded-lg transition-colors cursor-pointer"
-                              style={{
-                                borderWidth: '1px',
-                                borderColor: '#e7e5e4',
-                                backgroundColor: 'white',
-                                color: '#151e20',
-                              }}
-                              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f5f4')}
-                              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
-                            >
-                              Use All
-                            </button>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* Order Totals */}
-                <div
-                  className="mt-8 pt-8 space-y-3"
-                  style={{ borderTopWidth: '1px', borderColor: '#e7e5e4' }}
-                >
-                  <div className="flex justify-between items-center" style={{ color: '#78716c' }}>
-                    <span>Subtotal</span>
-                    <span>£{totalPrice.toFixed(2)}</span>
-                  </div>
-
-                  {promoDiscount > 0 && (
-                    <div className="flex justify-between items-center text-emerald-600 font-medium">
-                      <span>
-                        Promo Discount
-                        {promoCodeType === 'percentage' && ` (${promoCodeValue}%)`}
-                      </span>
-                      <span>-£{discountAmount.toFixed(2)}</span>
-                    </div>
-                  )}
-
-                  {appliedCredit > 0 && (
-                    <div className="flex justify-between items-center text-green-600 font-medium">
-                      <span className="flex items-center gap-1">
-                        <Wallet size={14} />
-                        Wallet Credit
-                      </span>
-                      <span>-£{appliedCredit.toFixed(2)}</span>
-                    </div>
-                  )}
-
-                  <div
-                    className="flex justify-between items-center pt-4"
-                    style={{ borderTopWidth: '1px', borderColor: '#e7e5e4' }}
-                  >
-                    <span className="font-bold text-xl" style={{ color: '#151e20' }}>
-                      Total to Pay
-                    </span>
-                    <span className="text-4xl font-bold" style={{ color: '#496B71' }}>
-                      £{finalPrice.toFixed(2)}
-                    </span>
-                  </div>
-
-                  {promoDiscount > 0 && (
-                    <p className="text-sm text-green-600 text-right font-medium">
-                      You're saving £{discountAmount.toFixed(2)}!
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div
-                className="flex items-center justify-center gap-2 text-sm font-medium"
-                style={{ color: '#78716c' }}
-              >
-                <ShieldCheck size={18} /> Guaranteed Secure Checkout
+                <PriceSummary
+                  totalPrice={totalPrice}
+                  discountAmount={discountAmount}
+                  promoDiscount={promoDiscount}
+                  promoCodeType={promoCodeType}
+                  promoCodeValue={promoCodeValue}
+                  appliedCredit={appliedCredit}
+                  finalPrice={finalPrice}
+                />
               </div>
             </div>
 
@@ -1792,321 +639,31 @@ function Checkout() {
                   </h2>
 
                   {/* Express Checkout */}
-                  {(applePayAvailable || googlePayAvailable) && (
-                    <>
-                      <div className="mb-6">
-                        <p className="text-sm font-medium mb-3" style={{ color: '#78716c' }}>
-                          Express Checkout
-                        </p>
-                        <div className="flex gap-2">
-                          {applePayAvailable && (
-                            <button
-                              onClick={handleApplePayClick}
-                              disabled={loading}
-                              className="flex-1 h-14 rounded-lg transition-all cursor-pointer flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                              style={{
-                                backgroundColor: '#ffffff',
-                                borderWidth: '1px',
-                                borderColor: '#dadce0',
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!loading) {
-                                  e.currentTarget.style.backgroundColor = '#f8f9fa'
-                                }
-                              }}
-                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
-                            >
-                              <img src="/apple-pay.png" alt="Apple Pay" className="h-12" />
-                            </button>
-                          )}
 
-                          {googlePayAvailable && (
-                            <button
-                              onClick={handleGooglePayClick}
-                              disabled={loading}
-                              className="flex-1 h-14 rounded-lg transition-all cursor-pointer flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                              style={{
-                                backgroundColor: '#ffffff',
-                                borderWidth: '1px',
-                                borderColor: '#dadce0',
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!loading) {
-                                  e.currentTarget.style.backgroundColor = '#f8f9fa'
-                                }
-                              }}
-                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
-                            >
-                              <img src="/google-pay.png" alt="Google Pay" className="h-12" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="relative mb-6">
-                        <div
-                          className="absolute inset-0 flex items-center"
-                          style={{ borderTopWidth: '1px', borderColor: '#e7e5e4' }}
-                        >
-                          <span className="sr-only">Or continue with</span>
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                          <span
-                            className="px-2"
-                            style={{ backgroundColor: 'white', color: '#78716c' }}
-                          >
-                            Or pay with card
-                          </span>
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Card Details Form */}
-                  <div className="space-y-4 mb-6">
-                    <div>
-                      <label className="block text-sm font-medium mb-2" style={{ color: '#151e20' }}>
-                        Cardholder Name
-                      </label>
-                      <input
-                        type="text"
-                        value={cardName}
-                        onChange={(e) => setCardName(e.target.value)}
-                        placeholder="John Smith"
-                        autoComplete="cc-name"
-                        className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:outline-none"
-                        style={{
-                          backgroundColor: '#f5f5f4',
-                          borderWidth: '1px',
-                          borderColor: '#e7e5e4',
-                          color: '#151e20',
-                        }}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-2" style={{ color: '#151e20' }}>
-                        Card Number
-                      </label>
-                      <input
-                        type="text"
-                        value={cardNumber}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\s/g, '')
-                          const formatted = value.match(/.{1,4}/g)?.join(' ') || value
-                          setCardNumber(formatted)
-                        }}
-                        placeholder="1234 5678 9012 3456"
-                        maxLength={19}
-                        autoComplete="cc-number"
-                        className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:outline-none"
-                        style={{
-                          backgroundColor: '#f5f5f4',
-                          borderWidth: '1px',
-                          borderColor: '#e7e5e4',
-                          color: '#151e20',
-                        }}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: '#151e20' }}>
-                          Expiry Date
-                        </label>
-                        <input
-                          type="text"
-                          value={cardExpiry}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/\D/g, '')
-                            let formatted = value
-                            if (value.length >= 2) {
-                              formatted = value.slice(0, 2) + '/' + value.slice(2, 4)
-                            }
-                            setCardExpiry(formatted)
-                          }}
-                          placeholder="MM/YY"
-                          maxLength={5}
-                          autoComplete="cc-exp"
-                          className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:outline-none"
-                          style={{
-                            backgroundColor: '#f5f5f4',
-                            borderWidth: '1px',
-                            borderColor: '#e7e5e4',
-                            color: '#151e20',
-                          }}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: '#151e20' }}>
-                          CVV
-                        </label>
-                        <input
-                          type="text"
-                          value={cardCVV}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/\D/g, '')
-                            setCardCVV(value)
-                          }}
-                          placeholder="123"
-                          maxLength={4}
-                          autoComplete="cc-csc"
-                          className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:outline-none"
-                          style={{
-                            backgroundColor: '#f5f5f4',
-                            borderWidth: '1px',
-                            borderColor: '#e7e5e4',
-                            color: '#151e20',
-                          }}
-                        />
-                      </div>
-                    </div>
+                  {/* Payment Info */}
+                  <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#f0f9ff', borderWidth: '1px', borderColor: '#bae6fd' }}>
+                    <p className="text-sm" style={{ color: '#0c4a6e' }}>
+                      <strong>Secure Payment:</strong> You'll be redirected to our secure payment page to complete your purchase with card, Apple Pay, or Google Pay.
+                    </p>
                   </div>
 
-                  {/* Contact Information */}
-                  <div className="mb-6">
-                    <h3
-                      className="text-lg font-bold mb-4"
-                      style={{ color: '#151e20', fontFamily: "'Fraunces', serif" }}
-                    >
-                      Contact & Delivery
-                    </h3>
+                  <ContactInformation
+                    mobileNumber={mobileNumber}
+                    setMobileNumber={setMobileNumber}
+                    isMobileValid={isMobileValid}
+                  />
 
-                    <div>
-                      <label className="block text-sm font-medium mb-2" style={{ color: '#151e20' }}>
-                        Mobile Number <span style={{ color: '#ef4444' }}>*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        value={mobileNumber}
-                        onChange={(e) => {
-                          // Allow only numbers and spaces
-                          const value = e.target.value.replace(/[^\d\s]/g, '')
-                          setMobileNumber(value)
-                        }}
-                        placeholder="07xxx xxxxxx"
-                        autoComplete="tel"
-                        className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:outline-none"
-                        style={{
-                          backgroundColor: '#f5f5f4',
-                          borderWidth: '1px',
-                          borderColor: mobileNumber && !isMobileValid ? '#ef4444' : '#e7e5e4',
-                          color: '#151e20',
-                        }}
-                      />
-                      {mobileNumber && !isMobileValid ? (
-                        <p className="text-xs mt-1.5" style={{ color: '#ef4444' }}>
-                          Please enter a valid UK mobile number (e.g., 07xxx xxxxxx)
-                        </p>
-                      ) : (
-                        <p className="text-xs mt-1.5" style={{ color: '#78716c' }}>
-                          Required for winner contact and delivery coordination
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Entry Requirements */}
-                  <div
-                    className="rounded-xl p-6 mb-6 space-y-4"
-                    style={{ backgroundColor: '#f5f5f4', borderWidth: '1px', borderColor: '#e7e5e4' }}
-                  >
-                    <div className="mb-2">
-                      <span className="font-bold" style={{ color: '#151e20' }}>
-                        Entry Requirements
-                      </span>
-                    </div>
-
-                    {/* Terms and Conditions Checkbox */}
-                    <label className="flex items-start gap-3 cursor-pointer group">
-                      <div className="relative mt-0.5">
-                        <input
-                          type="checkbox"
-                          checked={agreeTerms}
-                          onChange={(e) => setAgreeTerms(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div
-                          className="w-5 h-5 rounded border-2 flex items-center justify-center transition-all"
-                          style={{
-                            backgroundColor: agreeTerms ? '#496B71' : 'white',
-                            borderColor: agreeTerms ? '#496B71' : '#d1d5db',
-                          }}
-                        >
-                          {agreeTerms && <Check size={14} className="text-white" strokeWidth={3} />}
-                        </div>
-                      </div>
-                      <span className="text-sm leading-relaxed" style={{ color: '#151e20' }}>
-                        I agree to the{' '}
-                        <Link to="/terms-of-use" className="font-medium hover:underline cursor-pointer" style={{ color: '#496B71' }} target="_blank">
-                          Terms of Use
-                        </Link>
-                        {' '}and{' '}
-                        <Link to="/Prize-Competition-Terms-and-Conditions" className="font-medium hover:underline cursor-pointer" style={{ color: '#496B71' }} target="_blank">
-                          Prize Competition Terms and Conditions
-                        </Link>
-                      </span>
-                    </label>
-
-                    {/* UK Resident Checkbox */}
-                    <label className="flex items-start gap-3 cursor-pointer group">
-                      <div className="relative mt-0.5">
-                        <input
-                          type="checkbox"
-                          checked={isUKResident}
-                          onChange={(e) => setIsUKResident(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div
-                          className="w-5 h-5 rounded border-2 flex items-center justify-center transition-all"
-                          style={{
-                            backgroundColor: isUKResident ? '#496B71' : 'white',
-                            borderColor: isUKResident ? '#496B71' : '#d1d5db',
-                          }}
-                        >
-                          {isUKResident && <Check size={14} className="text-white" strokeWidth={3} />}
-                        </div>
-                      </div>
-                      <span className="text-sm leading-relaxed" style={{ color: '#151e20' }}>
-                        I confirm I am a <strong>UK resident</strong>
-                      </span>
-                    </label>
-
-                    {/* Over 18 Checkbox */}
-                    <label className="flex items-start gap-3 cursor-pointer group">
-                      <div className="relative mt-0.5">
-                        <input
-                          type="checkbox"
-                          checked={isOver18}
-                          onChange={(e) => setIsOver18(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div
-                          className="w-5 h-5 rounded border-2 flex items-center justify-center transition-all"
-                          style={{
-                            backgroundColor: isOver18 ? '#496B71' : 'white',
-                            borderColor: isOver18 ? '#496B71' : '#d1d5db',
-                          }}
-                        >
-                          {isOver18 && <Check size={14} className="text-white" strokeWidth={3} />}
-                        </div>
-                      </div>
-                      <span className="text-sm leading-relaxed" style={{ color: '#151e20' }}>
-                        I confirm I am <strong>over 18 years of age</strong>
-                      </span>
-                    </label>
-
-                    {!canProceed && (
-                      <p className="text-xs pt-2" style={{ color: '#78716c' }}>
-                        {!isMobileValid && mobileNumber
-                          ? 'Please enter a valid UK mobile number and confirm all requirements above'
-                          : !isMobileValid
-                          ? 'Please enter a mobile number and confirm all requirements above'
-                          : 'Please confirm all boxes above to complete your purchase'}
-                      </p>
-                    )}
-                  </div>
+                  <TermsCheckboxes
+                    agreeTerms={agreeTerms}
+                    setAgreeTerms={setAgreeTerms}
+                    isUKResident={isUKResident}
+                    setIsUKResident={setIsUKResident}
+                    isOver18={isOver18}
+                    setIsOver18={setIsOver18}
+                    canProceed={canProceed}
+                    isMobileValid={isMobileValid}
+                    mobileNumber={mobileNumber}
+                  />
 
                   <button
                     onClick={handlePayment}
@@ -2162,149 +719,23 @@ function Checkout() {
                     </p>
                   </div>
 
-                  {/* Contact Information */}
-                  <div className="mb-6">
-                    <h3
-                      className="text-lg font-bold mb-4"
-                      style={{ color: '#151e20', fontFamily: "'Fraunces', serif" }}
-                    >
-                      Contact & Delivery
-                    </h3>
+                  <ContactInformation
+                    mobileNumber={mobileNumber}
+                    setMobileNumber={setMobileNumber}
+                    isMobileValid={isMobileValid}
+                  />
 
-                    <div>
-                      <label className="block text-sm font-medium mb-2" style={{ color: '#151e20' }}>
-                        Mobile Number <span style={{ color: '#ef4444' }}>*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        value={mobileNumber}
-                        onChange={(e) => {
-                          // Allow only numbers and spaces
-                          const value = e.target.value.replace(/[^\d\s]/g, '')
-                          setMobileNumber(value)
-                        }}
-                        placeholder="07xxx xxxxxx"
-                        autoComplete="tel"
-                        className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:outline-none"
-                        style={{
-                          backgroundColor: '#f5f5f4',
-                          borderWidth: '1px',
-                          borderColor: mobileNumber && !isMobileValid ? '#ef4444' : '#e7e5e4',
-                          color: '#151e20',
-                        }}
-                      />
-                      {mobileNumber && !isMobileValid ? (
-                        <p className="text-xs mt-1.5" style={{ color: '#ef4444' }}>
-                          Please enter a valid UK mobile number (e.g., 07xxx xxxxxx)
-                        </p>
-                      ) : (
-                        <p className="text-xs mt-1.5" style={{ color: '#78716c' }}>
-                          Required for winner contact and delivery coordination
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Entry Requirements */}
-                  <div
-                    className="rounded-xl p-6 mb-6 space-y-4"
-                    style={{ backgroundColor: '#f5f5f4', borderWidth: '1px', borderColor: '#e7e5e4' }}
-                  >
-                    <div className="mb-2">
-                      <span className="font-bold" style={{ color: '#151e20' }}>
-                        Entry Requirements
-                      </span>
-                    </div>
-
-                    {/* Terms and Conditions Checkbox */}
-                    <label className="flex items-start gap-3 cursor-pointer group">
-                      <div className="relative mt-0.5">
-                        <input
-                          type="checkbox"
-                          checked={agreeTerms}
-                          onChange={(e) => setAgreeTerms(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div
-                          className="w-5 h-5 rounded border-2 flex items-center justify-center transition-all"
-                          style={{
-                            backgroundColor: agreeTerms ? '#496B71' : 'white',
-                            borderColor: agreeTerms ? '#496B71' : '#d1d5db',
-                          }}
-                        >
-                          {agreeTerms && <Check size={14} className="text-white" strokeWidth={3} />}
-                        </div>
-                      </div>
-                      <span className="text-sm leading-relaxed" style={{ color: '#151e20' }}>
-                        I agree to the{' '}
-                        <Link to="/terms-of-use" className="font-medium hover:underline cursor-pointer" style={{ color: '#496B71' }} target="_blank">
-                          Terms of Use
-                        </Link>
-                        {' '}and{' '}
-                        <Link to="/Prize-Competition-Terms-and-Conditions" className="font-medium hover:underline cursor-pointer" style={{ color: '#496B71' }} target="_blank">
-                          Prize Competition Terms and Conditions
-                        </Link>
-                      </span>
-                    </label>
-
-                    {/* UK Resident Checkbox */}
-                    <label className="flex items-start gap-3 cursor-pointer group">
-                      <div className="relative mt-0.5">
-                        <input
-                          type="checkbox"
-                          checked={isUKResident}
-                          onChange={(e) => setIsUKResident(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div
-                          className="w-5 h-5 rounded border-2 flex items-center justify-center transition-all"
-                          style={{
-                            backgroundColor: isUKResident ? '#496B71' : 'white',
-                            borderColor: isUKResident ? '#496B71' : '#d1d5db',
-                          }}
-                        >
-                          {isUKResident && <Check size={14} className="text-white" strokeWidth={3} />}
-                        </div>
-                      </div>
-                      <span className="text-sm leading-relaxed" style={{ color: '#151e20' }}>
-                        I confirm I am a <strong>UK resident</strong>
-                      </span>
-                    </label>
-
-                    {/* Over 18 Checkbox */}
-                    <label className="flex items-start gap-3 cursor-pointer group">
-                      <div className="relative mt-0.5">
-                        <input
-                          type="checkbox"
-                          checked={isOver18}
-                          onChange={(e) => setIsOver18(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div
-                          className="w-5 h-5 rounded border-2 flex items-center justify-center transition-all"
-                          style={{
-                            backgroundColor: isOver18 ? '#496B71' : 'white',
-                            borderColor: isOver18 ? '#496B71' : '#d1d5db',
-                          }}
-                        >
-                          {isOver18 && <Check size={14} className="text-white" strokeWidth={3} />}
-                        </div>
-                      </div>
-                      <span className="text-sm leading-relaxed" style={{ color: '#151e20' }}>
-                        I confirm I am <strong>over 18 years of age</strong>
-                      </span>
-                    </label>
-
-                    {!canProceed && (
-                      <p className="text-xs pt-2" style={{ color: '#78716c' }}>
-                        {!isMobileValid && mobileNumber
-                          ? 'Please enter a valid UK mobile number and confirm all requirements above'
-                          : !isMobileValid
-                          ? 'Please enter a mobile number and confirm all requirements above'
-                          : 'Please confirm all boxes above to complete your purchase'}
-                      </p>
-                    )}
-                  </div>
+                  <TermsCheckboxes
+                    agreeTerms={agreeTerms}
+                    setAgreeTerms={setAgreeTerms}
+                    isUKResident={isUKResident}
+                    setIsUKResident={setIsUKResident}
+                    isOver18={isOver18}
+                    setIsOver18={setIsOver18}
+                    canProceed={canProceed}
+                    isMobileValid={isMobileValid}
+                    mobileNumber={mobileNumber}
+                  />
 
                   <button
                     onClick={handlePayment}
