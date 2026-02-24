@@ -17,6 +17,9 @@ interface DrawExecutionResult {
     draw_datetime: string
     winner_display_name: string
     winning_ticket_number: number
+    winner_email: string
+    prize_name: string
+    prize_value: number
   }>
   errors: Array<{
     competition_id: string
@@ -70,12 +73,48 @@ serve(async (req) => {
     console.log('Automatic draw execution completed:', result.message)
     console.log(`Total: ${result.total_competitions}, Successful: ${result.successful_draws}, Failed: ${result.failed_draws}`)
 
-    // Log each successful draw
+    // Log each successful draw and send winner emails (non-blocking)
     if (result.draws_executed.length > 0) {
       console.log('Draws executed:')
-      result.draws_executed.forEach((draw) => {
+
+      for (const draw of result.draws_executed) {
         console.log(`  - ${draw.competition_title}: Winner #${draw.winning_ticket_number} (${draw.winner_display_name})`)
-      })
+
+        // Send prize win email to winner (fire and forget)
+        const emailPayload = {
+          type: 'prize_win',
+          recipientEmail: draw.winner_email,
+          recipientName: draw.winner_display_name,
+          data: {
+            prizeName: draw.prize_name || draw.competition_title,
+            prizeValue: draw.prize_value,
+            prizeDescription: draw.competition_title,
+            ticketNumber: draw.winning_ticket_number.toString(),
+            competitionTitle: draw.competition_title,
+            claimUrl: `${Deno.env.get('SITE_URL') || 'https://babybets.co.uk'}/account?tab=prizes`
+          }
+        }
+
+        fetch(
+          `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-notification-email`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+            },
+            body: JSON.stringify(emailPayload),
+          }
+        ).then((emailResponse) => {
+          if (!emailResponse.ok) {
+            console.error(`  ⚠️  Failed to queue prize win email to ${draw.winner_email}`)
+          } else {
+            console.log(`  ✅ Prize win email queued for ${draw.winner_email}`)
+          }
+        }).catch((emailError) => {
+          console.error(`  ⚠️  Error queueing prize win email:`, emailError)
+        })
+      }
     }
 
     // Log errors if any
