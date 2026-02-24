@@ -12,6 +12,7 @@ export const G2PAY_CONFIG = {
 interface HostedSessionResponse {
   success: boolean
   hostedURL?: string
+  paymentParameters?: Record<string, string | number>
   transactionUnique?: string
   orderRef?: string
   error?: string

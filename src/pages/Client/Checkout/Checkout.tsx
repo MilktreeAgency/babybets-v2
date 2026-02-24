@@ -495,7 +495,7 @@ function Checkout() {
         })
       }
 
-      // Create hosted payment session and redirect to G2Pay
+      // Create hosted payment session
       const hostedSessionResult = await createHostedPaymentSession(
         order.id,
         session.user.email,
@@ -506,9 +506,27 @@ function Checkout() {
         throw new Error(hostedSessionResult.error || 'Failed to create payment session')
       }
 
-      // Redirect to G2Pay's hosted payment page
-      // User will complete payment there and be redirected back to /payment-return
-      window.location.href = hostedSessionResult.hostedURL
+      // For G2Pay Hosted Modal, we need to POST a form (not GET redirect)
+      // Create and auto-submit a form with payment parameters
+      const form = document.createElement('form')
+      form.method = 'POST'
+      form.action = hostedSessionResult.hostedURL
+      form.style.display = 'none'
+
+      // Add all payment parameters as hidden inputs
+      if (hostedSessionResult.paymentParameters) {
+        Object.entries(hostedSessionResult.paymentParameters).forEach(([key, value]) => {
+          const input = document.createElement('input')
+          input.type = 'hidden'
+          input.name = key
+          input.value = String(value)
+          form.appendChild(input)
+        })
+      }
+
+      // Append form to body and submit
+      document.body.appendChild(form)
+      form.submit()
     } catch (err) {
       console.error('Error processing payment:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to process payment'
