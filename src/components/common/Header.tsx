@@ -61,7 +61,7 @@ export default function Header() {
             .select('display_name, slug')
             .eq('id', settings.manual_partner_id)
             .eq('is_active', true)
-            .single()
+            .maybeSingle()
 
           if (error) throw error
           setFeaturedPartner(data)
@@ -73,7 +73,7 @@ export default function Header() {
             .eq('is_active', true)
             .order('created_at', { ascending: false })
             .limit(1)
-            .single()
+            .maybeSingle()
 
           if (error) throw error
           setFeaturedPartner(data)
