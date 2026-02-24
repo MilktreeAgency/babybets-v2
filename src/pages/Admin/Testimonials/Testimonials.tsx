@@ -78,7 +78,7 @@ export default function Testimonials() {
     quote: '',
     author_name: '',
     display_order: 0,
-    is_active: true,
+    is_active: false,
     url: ''
   })
 
@@ -202,7 +202,7 @@ export default function Testimonials() {
       quote: '',
       author_name: '',
       display_order: testimonials.length + 1,
-      is_active: true,
+      is_active: false,
       url: ''
     })
     setSelectedTestimonial(null)
@@ -624,7 +624,7 @@ export default function Testimonials() {
                   onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
                   className="cursor-pointer h-4 w-4 rounded border-gray-300"
                 />
-                <Label htmlFor="is_active" className="cursor-pointer">Active (visible on site)</Label>
+                <Label htmlFor="is_active" className="cursor-pointer">Active (visible on site - inactive by default)</Label>
               </div>
             </div>
           </div>
