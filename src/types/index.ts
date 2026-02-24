@@ -153,10 +153,13 @@ export type DrawExecutionResult = {
   winning_ticket_number: string
   winning_user_id: string
   winner_display_name: string
+  winner_email: string
   winner_index: number
   total_entries: number
   verification_hash: string
   snapshot_hash: string
+  prize_name: string
+  prize_value: number
   message: string
 }
 
