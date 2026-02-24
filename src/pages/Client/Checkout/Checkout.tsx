@@ -421,21 +421,15 @@ function Checkout() {
       // Update user's phone number if provided
       if (mobileNumber) {
         const cleanedPhone = mobileNumber.replace(/\s/g, '')
-        console.log('Saving phone number:', cleanedPhone, 'for user:', authenticatedUserId)
-        const { data: updateData, error: phoneUpdateError } = await supabase
+        const { error: phoneUpdateError } = await supabase
           .from('profiles')
           .update({ phone: cleanedPhone })
           .eq('id', authenticatedUserId)
-          .select()
 
         if (phoneUpdateError) {
           console.error('Warning: Could not update phone number:', phoneUpdateError)
           // Don't fail the entire payment if phone update fails
-        } else {
-          console.log('Phone number saved successfully:', updateData)
         }
-      } else {
-        console.log('No mobile number provided, skipping phone update')
       }
 
       // If fully paid with wallet credit, complete order immediately

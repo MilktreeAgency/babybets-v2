@@ -90,9 +90,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
               competitionTitle: competition.title,
               claimUrl: `${window.location.origin}/account?tab=prizes`
             }
-          ).then(() => {
-            console.log('Prize win email queued for:', result.winner_email)
-          }).catch((emailError: Error) => {
+          ).catch((emailError: Error) => {
             console.error('Failed to queue prize win email:', emailError)
           })
         })

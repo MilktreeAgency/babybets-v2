@@ -39,47 +39,19 @@ export default function ScratchReveal() {
   // Use locked ticket while showing result to prevent animation restart when query refetches
   const currentTicket = showResult && lockedTicket ? lockedTicket : unrevealedTickets[currentTicketIndex]
 
-  // Log when currentTicket changes
-  useEffect(() => {
-    console.log('Current ticket changed:', {
-      ticketId: currentTicket?.id,
-      ticketNumber: currentTicket?.ticket_number,
-      index: currentTicketIndex,
-      totalUnrevealed: unrevealedTickets.length
-    })
-  }, [currentTicket?.id])
-
-  // Log when showResult changes
-  useEffect(() => {
-    console.log('showResult changed:', showResult, 'for ticket:', currentTicket?.ticket_number)
-  }, [showResult])
 
   // Initialize canvas with scratch surface
   useEffect(() => {
-    console.log('Canvas initialization effect triggered', {
-      showResult,
-      hasCanvas: !!canvasRef.current,
-      ticketId: currentTicket?.id,
-      ticketNumber: currentTicket?.ticket_number,
-      lockedTicket: lockedTicket?.ticket_number,
-      canvasReady
-    })
-
     if (!showResult && canvasRef.current && currentTicket && canvasReady) {
-      console.log('Initializing canvas for ticket', currentTicket.ticket_number)
-
       const canvas = canvasRef.current
       const ctx = canvas.getContext('2d')
       if (!ctx) {
-        console.log('No canvas context available')
         return
       }
 
       // Set canvas size
       canvas.width = canvas.offsetWidth
       canvas.height = canvas.offsetHeight
-
-      console.log('Canvas dimensions:', canvas.width, canvas.height)
 
       // Draw scratch-off surface with gradient (teal to darker teal)
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
@@ -124,15 +96,6 @@ export default function ScratchReveal() {
 
       // Reset scratch progress
       setScratchProgress(0)
-
-      console.log('Canvas initialized successfully')
-    } else {
-      console.log('Canvas initialization skipped', {
-        showResult,
-        hasCanvas: !!canvasRef.current,
-        hasTicket: !!currentTicket,
-        canvasReady
-      })
     }
   }, [currentTicket?.id, showResult, canvasReady])
 
@@ -187,27 +150,16 @@ export default function ScratchReveal() {
 
   // Auto-scratch animation
   const autoScratch = () => {
-    console.log('autoScratch called', {
-      autoScratching,
-      showResult,
-      isRevealing,
-      hasCanvas: !!canvasRef.current,
-      ticketId: currentTicket?.id
-    })
-
     if (autoScratching || showResult || isRevealing) {
-      console.log('Auto-scratch blocked', { autoScratching, showResult, isRevealing })
       return
     }
 
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
     if (!canvas || !ctx) {
-      console.log('No canvas or context for scratch')
       return
     }
 
-    console.log('Starting auto-scratch animation')
     setAutoScratching(true)
     setIsScratching(true)
 
@@ -245,10 +197,6 @@ export default function ScratchReveal() {
 
     const animate = () => {
       if (!canvas || !ctx || currentPointIndex >= scratchPoints.length) {
-        console.log('Auto-scratch animation complete', {
-          totalPoints: scratchPoints.length,
-          currentIndex: currentPointIndex
-        })
         setAutoScratching(false)
         setIsScratching(false)
         if (animationFrameRef.current) {
@@ -257,7 +205,6 @@ export default function ScratchReveal() {
         }
         // Complete the reveal after a brief delay to show full scratch
         setTimeout(() => {
-          console.log('Calling handleReveal after scratch complete')
           handleReveal()
         }, 200)
         return
@@ -298,10 +245,8 @@ export default function ScratchReveal() {
 
     try {
       const result = await revealTicket(currentTicket.id)
-      console.log('Setting reveal result and showing result card:', result)
       setRevealResult(result)
       setShowResult(true)
-      console.log('showResult set to true')
 
       if (result.hasPrize && result.prize) {
         // Strong haptic feedback on win
@@ -360,33 +305,23 @@ export default function ScratchReveal() {
     if (isScratchingAll || isRevealing) return
 
     setIsScratchingAll(true)
-    console.log('Scratching all tickets without animation')
 
     // Reveal all unrevealed tickets
     for (const ticket of unrevealedTickets) {
       try {
         await revealTicket(ticket.id)
-        console.log('Revealed ticket:', ticket.ticket_number)
       } catch (error) {
         console.error('Failed to reveal ticket:', ticket.ticket_number, error)
       }
     }
 
     setIsScratchingAll(false)
-    console.log('All tickets scratched, redirecting to account')
 
     // Navigate to account page after revealing all
     navigate('/account?tab=tickets')
   }
 
   const handleNext = () => {
-    console.log('handleNext called', {
-      currentTicketId: currentTicket?.id,
-      unrevealedCount: unrevealedTickets.length,
-      autoScratching,
-      showResult
-    })
-
     // Cancel any ongoing animation
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current)
@@ -394,7 +329,6 @@ export default function ScratchReveal() {
     }
 
     // Reset all scratch states
-    console.log('Resetting states...')
     setShowResult(false)
     setRevealResult(null)
     setShowClaimModal(false)
@@ -404,8 +338,6 @@ export default function ScratchReveal() {
     setIsRevealing(false)
     setLockedTicket(null)
     setCanvasReady(false)
-
-    console.log('Next ticket will be:', unrevealedTickets[0]?.ticket_number)
 
     // The unrevealedTickets list updates automatically from the store
     // The canvas will be reinitialized by the useEffect when currentTicket changes
@@ -475,18 +407,14 @@ export default function ScratchReveal() {
           <p className="text-sm text-stone-400 mt-1">{currentTicket?.competition?.title}</p>
         </div>
 
-        <AnimatePresence mode="wait" onExitComplete={() => {
-          console.log('Exit animation complete - ready to show next card')
-        }}>
+        <AnimatePresence mode="wait">
           {!showResult ? (
             <motion.div
               key={`card-${currentTicket?.id}`}
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              onAnimationStart={() => console.log('Scratch card animation started for ticket:', currentTicket?.ticket_number)}
               onAnimationComplete={() => {
-                console.log('Scratch card animation complete for ticket:', currentTicket?.ticket_number)
                 setCanvasReady(true)
               }}
               className="bg-white rounded-[2rem] p-2 shadow-2xl relative aspect-3/4"
@@ -538,8 +466,6 @@ export default function ScratchReveal() {
               animate={{ rotateY: 0, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'tween', duration: 0.4, ease: 'easeOut' }}
-              onAnimationStart={(definition) => console.log('Result card animation started:', definition)}
-              onAnimationComplete={(definition) => console.log('Result card animation complete:', definition)}
               className="bg-white rounded-[2rem] p-8 shadow-2xl relative flex flex-col items-center justify-center text-center"
               style={{ minHeight: '480px', borderWidth: '1px', borderColor: '#d1d5db' }}
             >

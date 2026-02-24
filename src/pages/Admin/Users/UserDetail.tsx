@@ -80,8 +80,6 @@ export default function UserDetail() {
         .single()
 
       if (error) throw error
-      console.log('User profile data:', data)
-      console.log('Phone number:', data.phone)
       setUser(data)
       setSelectedRole(data.role)
     } catch (error) {
