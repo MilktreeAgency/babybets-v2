@@ -38,8 +38,9 @@ You need to add these environment variables in Vercel:
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 
-# G2Pay Payment Gateway (Frontend only needs merchant ID)
+# Payment Gateway Configuration (Frontend)
 VITE_G2PAY_MERCHANT_ID=283797
+VITE_GOOGLE_MERCHANT_ID=BCR2DN4T7KNNPQQB
 ```
 
 ### Step 2: Deploy to Vercel
@@ -88,6 +89,12 @@ To get the required values:
    - Your G2Pay merchant ID (provided by G2Pay)
    - Default in example: `283797`
 
+4. **VITE_GOOGLE_MERCHANT_ID**:
+   - Your Google Pay Business Console merchant ID
+   - Get from: https://pay.google.com/business/console/
+   - Format: Usually starts with `BCR2DN4T`
+   - Example: `BCR2DN4T7KNNPQQB`
+
 ---
 
 ## Backend Deployment (Supabase)
@@ -104,8 +111,9 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 # Supabase CLI Access (for deploying edge functions)
 SUPABASE_ACCESS_TOKEN=your_supabase_access_token_here
 
-# G2Pay Payment Gateway (Frontend)
+# Payment Gateway Configuration (Frontend)
 VITE_G2PAY_MERCHANT_ID=283797
+VITE_GOOGLE_MERCHANT_ID=BCR2DN4T7KNNPQQB
 
 # ==========================================
 # Edge Function Secrets (deployed to Supabase)
@@ -152,7 +160,18 @@ Contact G2Pay support to get:
 - **Merchant ID**: Your unique merchant identifier
 - **Signature Key**: Secret key for webhook signature verification
 
-### Step 4: Get Your Mailgun Credentials
+### Step 4: Get Your Google Pay Merchant ID
+
+1. Go to [Google Pay Business Console](https://pay.google.com/business/console/)
+2. Sign in with your Google account
+3. Register your business (if not already registered)
+4. Navigate to "Integration" settings
+5. Select "Gateway" as integration type
+6. Choose "Cardstream" as your gateway (G2Pay uses Cardstream)
+7. Copy your **Merchant ID** (format: `BCR2DN4TXXXXXXX`)
+8. Add to your `.env` file as `VITE_GOOGLE_MERCHANT_ID`
+
+### Step 5: Get Your Mailgun Credentials
 
 1. Go to [mailgun.com](https://www.mailgun.com) and log in
 2. Go to "Sending" > "Domain Settings"
@@ -442,6 +461,7 @@ Before going live, ensure:
 | VITE_SUPABASE_URL | ✅ | ✅ | ❌ | ❌ (uses SUPABASE_URL) |
 | VITE_SUPABASE_ANON_KEY | ✅ | ✅ | ❌ | ❌ |
 | VITE_G2PAY_MERCHANT_ID | ✅ | ✅ | ❌ | ❌ |
+| VITE_GOOGLE_MERCHANT_ID | ✅ | ✅ | ❌ | ❌ |
 | SUPABASE_ACCESS_TOKEN | ❌ | ✅ (for deploy) | ❌ | ❌ |
 | MAILGUN_API_KEY | ❌ | ✅ | ✅ | ❌ |
 | MAILGUN_DOMAIN | ❌ | ✅ | ✅ | ❌ |
