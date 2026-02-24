@@ -1,4 +1,0 @@
-# Disable JWT verification at infrastructure level
-# We'll handle authentication manually in the function
-[function.create-g2pay-session]
-verify_jwt = false
