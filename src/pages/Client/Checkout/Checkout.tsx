@@ -1154,6 +1154,28 @@ function Checkout() {
           throw new Error(completeError.message || 'Failed to process wallet payment')
         }
 
+        // Send order confirmation email (non-blocking)
+        import('@/services/email.service').then((emailServiceModule) => {
+          const totalTickets = items.reduce((sum, item) => sum + item.quantity, 0)
+          emailServiceModule.emailService.sendOrderConfirmationEmail(
+            session.user.email || '',
+            cardName || session.user.email?.split('@')[0] || 'Customer',
+            {
+              orderNumber: order.id.slice(0, 8).toUpperCase(),
+              orderDate: new Date().toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              }),
+              totalTickets,
+              orderTotal: (totalPrice / 100).toFixed(2),
+              ticketsUrl: `${window.location.origin}/account?tab=tickets`
+            }
+          ).catch((err) => {
+            console.error('Failed to send order confirmation email:', err)
+          })
+        })
+
         // Mark purchase as completed and clear cart
         setPurchaseCompleted(true)
         clearCart()
