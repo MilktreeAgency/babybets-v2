@@ -1,0 +1,1 @@
+anylze the howtodeploy.md & codebase and help this user setup everything step by step. explain things in easy way, dont overexplain and be to the point.
