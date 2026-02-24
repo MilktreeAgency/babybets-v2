@@ -85,11 +85,11 @@ serve(async (req) => {
     // Get environment variables
     const G2PAY_MERCHANT_ID = Deno.env.get('G2PAY_MERCHANT_ID')
     const G2PAY_SIGNATURE_KEY = Deno.env.get('G2PAY_SIGNATURE_KEY')
-    const G2PAY_GATEWAY_URL = Deno.env.get('G2PAY_GATEWAY_URL') || 'https://payments.g2pay.co.uk/direct/'
+    const G2PAY_GATEWAY_URL = Deno.env.get('G2PAY_GATEWAY_URL')
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 
-    if (!G2PAY_MERCHANT_ID || !G2PAY_SIGNATURE_KEY) {
-      throw new Error('G2Pay credentials not configured')
+    if (!G2PAY_MERCHANT_ID || !G2PAY_SIGNATURE_KEY || !G2PAY_GATEWAY_URL) {
+      throw new Error('G2Pay configuration missing: G2PAY_MERCHANT_ID, G2PAY_SIGNATURE_KEY, and G2PAY_GATEWAY_URL are required')
     }
 
     // Verify JWT token

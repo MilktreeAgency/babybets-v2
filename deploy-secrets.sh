@@ -49,12 +49,15 @@ REQUIRED_SECRETS=(
     "SMTP_FROM"
     "G2PAY_MERCHANT_ID"
     "G2PAY_SIGNATURE_KEY"
+    "G2PAY_GATEWAY_URL"
     "SUPABASE_URL"
     "SUPABASE_ANON_KEY"
     "SUPABASE_SERVICE_ROLE_KEY"
+    "G2PAY_HOSTED_URL"
     "APPLE_PAY_DISPLAY_NAME"
     "APPLE_PAY_DOMAIN_NAME"
     "PUBLIC_SITE_URL"
+    "SITE_URL"
 )
 
 MISSING_SECRETS=()
@@ -89,6 +92,7 @@ echo ""
 echo "💳 Deploying G2Pay Payment Secrets..."
 supabase secrets set G2PAY_MERCHANT_ID="$G2PAY_MERCHANT_ID"
 supabase secrets set G2PAY_SIGNATURE_KEY="$G2PAY_SIGNATURE_KEY"
+supabase secrets set G2PAY_GATEWAY_URL="$G2PAY_GATEWAY_URL"
 echo "✅ Payment secrets deployed"
 echo ""
 
@@ -102,8 +106,8 @@ echo ""
 
 # Deploy Apple Pay Secrets
 echo "🍎 Deploying Apple Pay Configuration..."
-supabase secrets set G2PAY_HOSTED_URL="${G2PAY_HOSTED_URL:-https://gateway.cardstream.com/hosted/}"
-supabase secrets set APPLE_PAY_DISPLAY_NAME="${APPLE_PAY_DISPLAY_NAME:-BabyBets}"
+supabase secrets set G2PAY_HOSTED_URL="$G2PAY_HOSTED_URL"
+supabase secrets set APPLE_PAY_DISPLAY_NAME="$APPLE_PAY_DISPLAY_NAME"
 supabase secrets set APPLE_PAY_DOMAIN_NAME="$APPLE_PAY_DOMAIN_NAME"
 echo "✅ Apple Pay config deployed"
 echo ""
@@ -111,6 +115,7 @@ echo ""
 # Deploy Public Site URL
 echo "🌐 Deploying Public Site Configuration..."
 supabase secrets set PUBLIC_SITE_URL="$PUBLIC_SITE_URL"
+supabase secrets set SITE_URL="$SITE_URL"
 echo "✅ Public site URL deployed"
 echo ""
 

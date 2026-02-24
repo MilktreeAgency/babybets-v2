@@ -183,11 +183,11 @@ serve(async (req) => {
 
     // Get Mailgun settings
     const mailgunApiKey = Deno.env.get('MAILGUN_API_KEY')
-    const mailgunDomain = Deno.env.get('MAILGUN_DOMAIN') || 'mail.babybets.co.uk'
-    const fromEmail = Deno.env.get('SMTP_FROM') || `noreply@${mailgunDomain}`
+    const mailgunDomain = Deno.env.get('MAILGUN_DOMAIN')
+    const fromEmail = Deno.env.get('SMTP_FROM')
 
-    if (!mailgunApiKey) {
-      throw new Error('MAILGUN_API_KEY not configured')
+    if (!mailgunApiKey || !mailgunDomain || !fromEmail) {
+      throw new Error('Mailgun configuration missing: MAILGUN_API_KEY, MAILGUN_DOMAIN, and SMTP_FROM are required')
     }
 
     // Log notification
