@@ -859,8 +859,8 @@ function Checkout() {
         apiVersion: 2,
         apiVersionMinor: 0,
         merchantInfo: {
-          merchantName: 'BabyBets',
-          merchantId: import.meta.env.VITE_GOOGLE_MERCHANT_ID || 'BCR2DN4T7KNNPQQB',
+          merchantName: import.meta.env.VITE_GOOGLE_PAY_MERCHANT_NAME,
+          merchantId: import.meta.env.VITE_GOOGLE_MERCHANT_ID,
         },
         allowedPaymentMethods: [
           {
@@ -872,8 +872,8 @@ function Checkout() {
             tokenizationSpecification: {
               type: 'PAYMENT_GATEWAY',
               parameters: {
-                gateway: 'crst', // Gateway identifier from G2Pay documentation
-                gatewayMerchantId: import.meta.env.VITE_G2PAY_MERCHANT_ID || '285598',
+                gateway: import.meta.env.VITE_GOOGLE_PAY_GATEWAY,
+                gatewayMerchantId: import.meta.env.VITE_GOOGLE_PAY_GATEWAY_MERCHANT_ID,
               },
             },
           },

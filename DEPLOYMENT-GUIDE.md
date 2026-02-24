@@ -40,7 +40,12 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 
 # Payment Gateway Configuration (Frontend)
 VITE_G2PAY_MERCHANT_ID=283797
+
+# Google Pay Configuration (Frontend)
 VITE_GOOGLE_MERCHANT_ID=BCR2DN4T7KNNPQQB
+VITE_GOOGLE_PAY_MERCHANT_NAME=BabyBets
+VITE_GOOGLE_PAY_GATEWAY=crst
+VITE_GOOGLE_PAY_GATEWAY_MERCHANT_ID=283797
 ```
 
 ### Step 2: Deploy to Vercel
@@ -95,6 +100,18 @@ To get the required values:
    - Format: Usually starts with `BCR2DN4T`
    - Example: `BCR2DN4T7KNNPQQB`
 
+5. **VITE_GOOGLE_PAY_MERCHANT_NAME**:
+   - Your merchant name displayed in Google Pay sheet
+   - Example: `BabyBets`
+
+6. **VITE_GOOGLE_PAY_GATEWAY**:
+   - Payment gateway identifier for Google Pay
+   - Value: `crst` (Cardstream - used by G2Pay)
+
+7. **VITE_GOOGLE_PAY_GATEWAY_MERCHANT_ID**:
+   - Your G2Pay merchant ID (same as VITE_G2PAY_MERCHANT_ID)
+   - Example: `283797`
+
 ---
 
 ## Backend Deployment (Supabase)
@@ -113,7 +130,12 @@ SUPABASE_ACCESS_TOKEN=your_supabase_access_token_here
 
 # Payment Gateway Configuration (Frontend)
 VITE_G2PAY_MERCHANT_ID=283797
+
+# Google Pay Configuration (Frontend)
 VITE_GOOGLE_MERCHANT_ID=BCR2DN4T7KNNPQQB
+VITE_GOOGLE_PAY_MERCHANT_NAME=BabyBets
+VITE_GOOGLE_PAY_GATEWAY=crst
+VITE_GOOGLE_PAY_GATEWAY_MERCHANT_ID=283797
 
 # ==========================================
 # Edge Function Secrets (deployed to Supabase)
@@ -462,6 +484,9 @@ Before going live, ensure:
 | VITE_SUPABASE_ANON_KEY | ✅ | ✅ | ❌ | ❌ |
 | VITE_G2PAY_MERCHANT_ID | ✅ | ✅ | ❌ | ❌ |
 | VITE_GOOGLE_MERCHANT_ID | ✅ | ✅ | ❌ | ❌ |
+| VITE_GOOGLE_PAY_MERCHANT_NAME | ✅ | ✅ | ❌ | ❌ |
+| VITE_GOOGLE_PAY_GATEWAY | ✅ | ✅ | ❌ | ❌ |
+| VITE_GOOGLE_PAY_GATEWAY_MERCHANT_ID | ✅ | ✅ | ❌ | ❌ |
 | SUPABASE_ACCESS_TOKEN | ❌ | ✅ (for deploy) | ❌ | ❌ |
 | MAILGUN_API_KEY | ❌ | ✅ | ✅ | ❌ |
 | MAILGUN_DOMAIN | ❌ | ✅ | ✅ | ❌ |

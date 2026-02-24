@@ -11,6 +11,9 @@ Google Pay requires a **Google Merchant ID** from the Google Pay Business Consol
 | Secret | Where to Set | Purpose |
 |--------|--------------|---------|
 | **VITE_GOOGLE_MERCHANT_ID** | Vercel (Frontend) | Google Pay Business Console merchant ID |
+| **VITE_GOOGLE_PAY_MERCHANT_NAME** | Vercel (Frontend) | Merchant name shown in Google Pay |
+| **VITE_GOOGLE_PAY_GATEWAY** | Vercel (Frontend) | Gateway identifier (crst for Cardstream/G2Pay) |
+| **VITE_GOOGLE_PAY_GATEWAY_MERCHANT_ID** | Vercel (Frontend) | G2Pay merchant ID for gateway |
 | **VITE_G2PAY_MERCHANT_ID** | Vercel (Frontend) | Payment gateway merchant ID (already have) |
 | **G2PAY_MERCHANT_ID** | Supabase (Backend) | Same as above, for edge functions (already have) |
 | **G2PAY_SIGNATURE_KEY** | Supabase (Backend) | Payment gateway signature key (already have) |
@@ -72,9 +75,12 @@ Google Pay requires a **Google Merchant ID** from the Google Pay Business Consol
 #### For Vercel (Frontend):
 1. Go to your Vercel project
 2. Settings > Environment Variables
-3. Add:
+3. Add all Google Pay variables:
    ```
    VITE_GOOGLE_MERCHANT_ID=BCR2DN4T7KNNPQQB
+   VITE_GOOGLE_PAY_MERCHANT_NAME=BabyBets
+   VITE_GOOGLE_PAY_GATEWAY=crst
+   VITE_GOOGLE_PAY_GATEWAY_MERCHANT_ID=283797
    ```
 4. Redeploy your application
 
@@ -82,6 +88,9 @@ Google Pay requires a **Google Merchant ID** from the Google Pay Business Consol
 1. Add to your `.env` file:
    ```bash
    VITE_GOOGLE_MERCHANT_ID=BCR2DN4T7KNNPQQB
+   VITE_GOOGLE_PAY_MERCHANT_NAME=BabyBets
+   VITE_GOOGLE_PAY_GATEWAY=crst
+   VITE_GOOGLE_PAY_GATEWAY_MERCHANT_ID=283797
    ```
 
 ### 5. Verify Google Pay Works
@@ -112,8 +121,8 @@ const paymentDataRequest = {
   apiVersion: 2,
   apiVersionMinor: 0,
   merchantInfo: {
-    merchantName: 'BabyBets',
-    merchantId: import.meta.env.VITE_GOOGLE_MERCHANT_ID, // <- Your merchant ID
+    merchantName: import.meta.env.VITE_GOOGLE_PAY_MERCHANT_NAME, // Your business name
+    merchantId: import.meta.env.VITE_GOOGLE_MERCHANT_ID, // Google merchant ID
   },
   allowedPaymentMethods: [
     {
@@ -125,8 +134,8 @@ const paymentDataRequest = {
       tokenizationSpecification: {
         type: 'PAYMENT_GATEWAY',
         parameters: {
-          gateway: 'crst', // Cardstream (G2Pay)
-          gatewayMerchantId: import.meta.env.VITE_G2PAY_MERCHANT_ID, // G2Pay merchant ID
+          gateway: import.meta.env.VITE_GOOGLE_PAY_GATEWAY, // Gateway identifier (crst)
+          gatewayMerchantId: import.meta.env.VITE_GOOGLE_PAY_GATEWAY_MERCHANT_ID, // G2Pay merchant ID
         },
       },
     },
@@ -134,6 +143,17 @@ const paymentDataRequest = {
   // ... transaction info
 }
 ```
+
+### Environment Variables Explained
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `VITE_GOOGLE_MERCHANT_ID` | `BCR2DN4T7KNNPQQB` | Your Google Pay merchant ID from Business Console |
+| `VITE_GOOGLE_PAY_MERCHANT_NAME` | `BabyBets` | Business name shown in Google Pay payment sheet |
+| `VITE_GOOGLE_PAY_GATEWAY` | `crst` | Gateway identifier for Cardstream (G2Pay's gateway) |
+| `VITE_GOOGLE_PAY_GATEWAY_MERCHANT_ID` | `283797` | Your G2Pay merchant ID (same as VITE_G2PAY_MERCHANT_ID) |
+
+**Security Note:** All sensitive credentials must be set as environment variables. There are no fallback values - if a variable is missing, Google Pay will fail to initialize, alerting you to the misconfiguration.
 
 ## Differences Between Apple Pay and Google Pay
 
