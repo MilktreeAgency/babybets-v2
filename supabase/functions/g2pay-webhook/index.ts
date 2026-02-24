@@ -341,6 +341,72 @@ serve(async (req) => {
         response_data: webhookData,
       })
 
+    // Send order confirmation email (non-blocking)
+    supabaseAdmin
+      .from('profiles')
+      .select('email, first_name, last_name')
+      .eq('id', order.user_id)
+      .single()
+      .then(({ data: profile }) => {
+        if (profile && profile.email) {
+          // Calculate total tickets
+          const totalTickets = (orderItems || []).reduce((sum, item) => sum + item.ticket_count, 0)
+
+          // Get order with created_at timestamp
+          supabaseAdmin
+            .from('orders')
+            .select('created_at')
+            .eq('id', orderId)
+            .single()
+            .then(({ data: orderWithDate }) => {
+              const recipientName = profile.first_name || profile.email.split('@')[0]
+
+              // Call send-notification-email edge function (fire and forget)
+              const emailPayload = {
+                type: 'order_confirmation',
+                recipientEmail: profile.email,
+                recipientName,
+                data: {
+                  orderNumber: orderId.slice(0, 8).toUpperCase(),
+                  orderDate: orderWithDate?.created_at
+                    ? new Date(orderWithDate.created_at).toLocaleDateString('en-GB', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })
+                    : new Date().toLocaleDateString('en-GB', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      }),
+                  totalTickets,
+                  orderTotal: (order.total_pence / 100).toFixed(2),
+                  ticketsUrl: `${Deno.env.get('SITE_URL') || 'https://babybets.co.uk'}/account?tab=tickets`
+                }
+              }
+
+              fetch(
+                `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-notification-email`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+                  },
+                  body: JSON.stringify(emailPayload),
+                }
+              ).then(() => {
+                console.log('[Webhook] Order confirmation email queued')
+              }).catch((err) => {
+                console.error('[Webhook] Error queueing order confirmation email:', err)
+              })
+            })
+        }
+      })
+      .catch((err) => {
+        console.error('[Webhook] Error fetching profile for email:', err)
+      })
+
     return new Response(JSON.stringify({
       success: true,
       message: 'Order completed and tickets allocated',
