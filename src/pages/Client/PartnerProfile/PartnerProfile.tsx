@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Instagram, Youtube, ExternalLink, Copy, Check } from 'lucide-react'
+import { Instagram, Youtube, ExternalLink, Copy, Check, Facebook } from 'lucide-react'
 import Header from '@/components/common/Header'
 import Footer from '@/components/common/Footer'
 import CompetitionCard from '@/components/CompetitionCard'
@@ -75,6 +75,8 @@ export default function PartnerProfile() {
             <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" />
           </svg>
         )
+      case 'Facebook':
+        return <Facebook size={18} className="sm:w-5 sm:h-5" />
       default:
         return <ExternalLink size={18} className="sm:w-5 sm:h-5" />
     }
@@ -103,12 +105,12 @@ export default function PartnerProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#fffbf7', color: '#2D251E' }}>
+      <div className="h-screen flex flex-col" style={{ backgroundColor: '#fffbf7' }}>
         <Header />
-        <div className="pt-24 sm:pt-28 md:pt-32 flex items-center justify-center px-4">
+        <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="inline-block size-10 sm:size-12 border-4 rounded-full animate-spin" style={{ borderColor: '#e7e5e4', borderTopColor: '#496B71' }}></div>
-            <p className="mt-3 sm:mt-4 text-sm sm:text-base text-gray-600">Loading partner profile...</p>
+            <div className="inline-block size-12 border-4 rounded-full animate-spin mb-4" style={{ borderColor: '#e7e5e4', borderTopColor: '#496B71' }}></div>
+            <p className="text-base font-medium" style={{ color: '#78716c' }}>Loading partner profile...</p>
           </div>
         </div>
       </div>
@@ -167,20 +169,77 @@ export default function PartnerProfile() {
                 )}
               </div>
 
-              {/* Social Link */}
-              {influencer.social_profile_url && (
-                <a
-                  href={influencer.social_profile_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm transition-colors cursor-pointer w-full justify-center"
-                  style={{ backgroundColor: '#496B71', color: 'white' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3a565a'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#496B71'}
-                >
-                  {getPlatformIcon(influencer.primary_platform || 'Instagram')}
-                  Follow
-                </a>
+              {/* Social Links */}
+              {(influencer.instagram_url || influencer.tiktok_url || influencer.facebook_url) && (
+                <div className="flex flex-col items-center md:items-start w-full">
+                  <span className="text-xs font-semibold mb-2" style={{ color: '#78716c' }}>
+                    Follow Me
+                  </span>
+                  <div className="flex gap-2 justify-center md:justify-start w-full">
+                    {influencer.instagram_url && (
+                      <a
+                        href={influencer.instagram_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center size-11 sm:size-12 rounded-lg transition-all cursor-pointer"
+                        style={{ backgroundColor: '#496B71', color: 'white' }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#3a565a'
+                          e.currentTarget.style.transform = 'scale(1.05)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#496B71'
+                          e.currentTarget.style.transform = 'scale(1)'
+                        }}
+                        title="Follow on Instagram"
+                      >
+                        <Instagram size={20} className="sm:w-6 sm:h-6" />
+                      </a>
+                    )}
+                    {influencer.tiktok_url && (
+                      <a
+                        href={influencer.tiktok_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center size-11 sm:size-12 rounded-lg transition-all cursor-pointer"
+                        style={{ backgroundColor: '#496B71', color: 'white' }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#3a565a'
+                          e.currentTarget.style.transform = 'scale(1.05)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#496B71'
+                          e.currentTarget.style.transform = 'scale(1)'
+                        }}
+                        title="Follow on TikTok"
+                      >
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" />
+                        </svg>
+                      </a>
+                    )}
+                    {influencer.facebook_url && (
+                      <a
+                        href={influencer.facebook_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center size-11 sm:size-12 rounded-lg transition-all cursor-pointer"
+                        style={{ backgroundColor: '#496B71', color: 'white' }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#3a565a'
+                          e.currentTarget.style.transform = 'scale(1.05)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#496B71'
+                          e.currentTarget.style.transform = 'scale(1)'
+                        }}
+                        title="Follow on Facebook"
+                      >
+                        <Facebook size={20} className="sm:w-6 sm:h-6" />
+                      </a>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
 
