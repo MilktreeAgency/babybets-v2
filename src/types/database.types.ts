@@ -548,7 +548,9 @@ export type Database = {
           created_at: string | null
           display_name: string
           email: string | null
+          facebook_url: string | null
           id: string
+          instagram_url: string | null
           is_active: boolean | null
           is_ambassador: boolean | null
           monthly_sales_pence: number | null
@@ -558,6 +560,7 @@ export type Database = {
           profile_image_url: string | null
           slug: string
           social_profile_url: string | null
+          tiktok_url: string | null
           total_commission_pence: number | null
           total_followers: string | null
           total_sales_pence: number | null
@@ -570,7 +573,9 @@ export type Database = {
           created_at?: string | null
           display_name: string
           email?: string | null
+          facebook_url?: string | null
           id?: string
+          instagram_url?: string | null
           is_active?: boolean | null
           is_ambassador?: boolean | null
           monthly_sales_pence?: number | null
@@ -580,6 +585,7 @@ export type Database = {
           profile_image_url?: string | null
           slug: string
           social_profile_url?: string | null
+          tiktok_url?: string | null
           total_commission_pence?: number | null
           total_followers?: string | null
           total_sales_pence?: number | null
@@ -592,7 +598,9 @@ export type Database = {
           created_at?: string | null
           display_name?: string
           email?: string | null
+          facebook_url?: string | null
           id?: string
+          instagram_url?: string | null
           is_active?: boolean | null
           is_ambassador?: boolean | null
           monthly_sales_pence?: number | null
@@ -602,6 +610,7 @@ export type Database = {
           profile_image_url?: string | null
           slug?: string
           social_profile_url?: string | null
+          tiktok_url?: string | null
           total_commission_pence?: number | null
           total_followers?: string | null
           total_sales_pence?: number | null
