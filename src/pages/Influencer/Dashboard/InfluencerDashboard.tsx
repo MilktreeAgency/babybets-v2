@@ -99,12 +99,14 @@ export default function InfluencerDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="h-screen flex flex-col" style={{ backgroundColor: '#FFFBF7' }}>
         <Header />
         <div className="flex-1 flex items-center justify-center">
-          <div className="inline-block size-12 border-4 border-border border-t-[#496B71] rounded-full animate-spin"></div>
+          <div className="text-center">
+            <div className="inline-block size-12 border-4 rounded-full animate-spin mb-4" style={{ borderColor: '#e7e5e4', borderTopColor: '#496B71' }}></div>
+            <p className="text-base font-medium" style={{ color: '#78716c' }}>Loading dashboard...</p>
+          </div>
         </div>
-        <Footer />
       </div>
     )
   }
