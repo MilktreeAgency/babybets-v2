@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { authService } from '@/services/auth.service'
 import { useAuthStore } from '@/store/authStore'
 import { showErrorToast } from '@/lib/toast'
@@ -475,7 +475,7 @@ export default function SignUp() {
 
               <button
                 type="submit"
-                className="w-full px-6 py-3 sm:py-4 rounded-xl font-bold text-sm sm:text-base transition-all cursor-pointer"
+                className="w-full px-6 py-3 sm:py-4 rounded-xl font-bold text-sm sm:text-base transition-all cursor-pointer flex items-center justify-center gap-2"
                 style={{
                   backgroundColor: !email || !password || !confirmPassword ? '#d1d5db' : '#496B71',
                   color: 'white',
@@ -494,6 +494,7 @@ export default function SignUp() {
                 }}
                 disabled={loading || !email || !password || !confirmPassword}
               >
+                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 {loading ? 'Creating account...' : 'Create account'}
               </button>
 
