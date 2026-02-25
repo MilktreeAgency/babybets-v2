@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X, ChevronDown, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
@@ -18,11 +19,14 @@ interface CustomSelectProps {
 
 function CustomSelect({ label, value, options, onChange, required }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+          buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
         setIsOpen(false)
       }
     }
@@ -36,6 +40,17 @@ function CustomSelect({ label, value, options, onChange, required }: CustomSelec
     }
   }, [isOpen])
 
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 8,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      })
+    }
+  }, [isOpen])
+
   const selectedOption = options.find(opt => opt.value === value)
 
   return (
@@ -43,8 +58,9 @@ function CustomSelect({ label, value, options, onChange, required }: CustomSelec
       <label className="block text-xs sm:text-sm font-bold mb-1.5 sm:mb-2" style={{ color: '#151e20' }}>
         {label} {required && '*'}
       </label>
-      <div className="relative" ref={dropdownRef}>
+      <div className="relative">
         <button
+          ref={buttonRef}
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className="w-full px-3 sm:px-4 py-2.5 sm:py-3 pr-9 sm:pr-10 text-sm sm:text-base rounded-lg border-2 transition-colors text-left cursor-pointer relative"
@@ -68,10 +84,19 @@ function CustomSelect({ label, value, options, onChange, required }: CustomSelec
           />
         </button>
 
-        {isOpen && (
+        {isOpen && createPortal(
           <div
-            className="absolute z-10 w-full mt-2 rounded-lg border-2 shadow-lg overflow-hidden"
-            style={{ borderColor: '#e7e5e4', backgroundColor: 'white' }}
+            ref={dropdownRef}
+            className="rounded-lg border-2 shadow-lg overflow-hidden"
+            style={{
+              position: 'absolute',
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
+              width: `${dropdownPosition.width}px`,
+              zIndex: 9999,
+              borderColor: '#e7e5e4',
+              backgroundColor: 'white'
+            }}
           >
             {options.map((option) => (
               <button
@@ -105,7 +130,8 @@ function CustomSelect({ label, value, options, onChange, required }: CustomSelec
                 )}
               </button>
             ))}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>
@@ -118,7 +144,9 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
     name: '',
     email: '',
     primary_platform: 'Instagram' as 'Instagram' | 'TikTok' | 'YouTube',
-    social_profile_url: '',
+    instagram_url: '',
+    tiktok_url: '',
+    facebook_url: '',
     total_followers: '',
     program_interest: 'Not sure' as 'Affiliate' | 'Brand Ambassador' | 'Not sure'
   })
@@ -126,6 +154,15 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [error, setError] = useState('')
   const [isAutoFilled, setIsAutoFilled] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({
+    name: '',
+    email: '',
+    instagram_url: '',
+    tiktok_url: '',
+    facebook_url: '',
+    social_urls: '',
+    total_followers: ''
+  })
 
   // Auto-fill name and email if user is logged in
   useEffect(() => {
@@ -136,13 +173,123 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
         email: user.email || ''
       }))
       setIsAutoFilled(true)
+      // Clear any previous errors when modal opens
+      setFieldErrors({
+        name: '',
+        email: '',
+        instagram_url: '',
+        tiktok_url: '',
+        facebook_url: '',
+        social_urls: '',
+        total_followers: ''
+      })
     } else if (isOpen && !user) {
       setIsAutoFilled(false)
+      // Clear any previous errors when modal opens
+      setFieldErrors({
+        name: '',
+        email: '',
+        instagram_url: '',
+        tiktok_url: '',
+        facebook_url: '',
+        social_urls: '',
+        total_followers: ''
+      })
     }
   }, [isOpen, user])
 
+  const validateForm = () => {
+    const errors = {
+      name: '',
+      email: '',
+      instagram_url: '',
+      tiktok_url: '',
+      facebook_url: '',
+      social_urls: '',
+      total_followers: ''
+    }
+
+    let isValid = true
+
+    // Validate name
+    if (!formData.name.trim()) {
+      errors.name = 'Name is required'
+      isValid = false
+    } else if (formData.name.trim().length < 2) {
+      errors.name = 'Name must be at least 2 characters'
+      isValid = false
+    }
+
+    // Validate email
+    if (!formData.email.trim()) {
+      errors.email = 'Email is required'
+      isValid = false
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'Please enter a valid email address'
+      isValid = false
+    }
+
+    // Validate at least one social URL is provided
+    const hasInstagram = formData.instagram_url.trim()
+    const hasTikTok = formData.tiktok_url.trim()
+    const hasFacebook = formData.facebook_url.trim()
+
+    if (!hasInstagram && !hasTikTok && !hasFacebook) {
+      errors.social_urls = 'At least one social media URL is required'
+      isValid = false
+    }
+
+    // Validate Instagram URL if provided
+    if (hasInstagram) {
+      try {
+        new URL(formData.instagram_url)
+      } catch {
+        errors.instagram_url = 'Please enter a valid URL'
+        isValid = false
+      }
+    }
+
+    // Validate TikTok URL if provided
+    if (hasTikTok) {
+      try {
+        new URL(formData.tiktok_url)
+      } catch {
+        errors.tiktok_url = 'Please enter a valid URL'
+        isValid = false
+      }
+    }
+
+    // Validate Facebook URL if provided
+    if (hasFacebook) {
+      try {
+        new URL(formData.facebook_url)
+      } catch {
+        errors.facebook_url = 'Please enter a valid URL'
+        isValid = false
+      }
+    }
+
+    // Validate total followers
+    if (!formData.total_followers) {
+      errors.total_followers = 'Total followers is required'
+      isValid = false
+    } else if (parseInt(formData.total_followers) < 100) {
+      errors.total_followers = 'Minimum 100 followers required'
+      isValid = false
+    }
+
+    setFieldErrors(errors)
+    return isValid
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validate form
+    if (!validateForm()) {
+      return
+    }
+
     setIsSubmitting(true)
     setError('')
 
@@ -155,7 +302,7 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
         .maybeSingle()
 
       if (existingApplication) {
-        setError('An application with this name already exists. Please use a different name.')
+        setFieldErrors({ ...fieldErrors, name: 'An application with this name already exists' })
         return
       }
 
@@ -165,15 +312,25 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '')
 
+      // Determine the primary social URL based on selected platform (for backwards compatibility)
+      const primarySocialUrl =
+        formData.primary_platform === 'Instagram' ? formData.instagram_url :
+        formData.primary_platform === 'TikTok' ? formData.tiktok_url :
+        formData.facebook_url || formData.instagram_url || formData.tiktok_url
+
       // Insert application into influencers table
       const { error: insertError } = await supabase
         .from('influencers')
         .insert({
-          user_id: user?.id || '',
+          user_id: user?.id || null,
+          email: formData.email,
           display_name: formData.name,
           slug: slug,
           primary_platform: formData.primary_platform,
-          social_profile_url: formData.social_profile_url,
+          social_profile_url: primarySocialUrl,
+          instagram_url: formData.instagram_url || null,
+          tiktok_url: formData.tiktok_url || null,
+          facebook_url: formData.facebook_url || null,
           total_followers: formData.total_followers,
           bio: formData.program_interest,
           commission_tier: 1,
@@ -191,9 +348,20 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
           name: '',
           email: '',
           primary_platform: 'Instagram',
-          social_profile_url: '',
+          instagram_url: '',
+          tiktok_url: '',
+          facebook_url: '',
           total_followers: '',
           program_interest: 'Not sure'
+        })
+        setFieldErrors({
+          name: '',
+          email: '',
+          instagram_url: '',
+          tiktok_url: '',
+          facebook_url: '',
+          social_urls: '',
+          total_followers: ''
         })
       }, 2000)
     } catch (err) {
@@ -260,21 +428,32 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
                   maxLength={25}
                   placeholder="Your display name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value })
+                    if (fieldErrors.name) {
+                      setFieldErrors({ ...fieldErrors, name: '' })
+                    }
+                  }}
                   disabled={isAutoFilled}
                   className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border-2 transition-colors"
                   style={{
-                    borderColor: '#e7e5e4',
+                    borderColor: fieldErrors.name ? '#dc2626' : '#e7e5e4',
                     color: '#151e20',
                     backgroundColor: isAutoFilled ? '#f5f5f5' : 'white',
                     cursor: isAutoFilled ? 'not-allowed' : 'text'
                   }}
-                  onFocus={(e) => !isAutoFilled && (e.currentTarget.style.borderColor = '#496B71')}
-                  onBlur={(e) => e.currentTarget.style.borderColor = '#e7e5e4'}
+                  onFocus={(e) => !isAutoFilled && !fieldErrors.name && (e.currentTarget.style.borderColor = '#496B71')}
+                  onBlur={(e) => !fieldErrors.name && (e.currentTarget.style.borderColor = '#e7e5e4')}
                 />
-                <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#78716c' }}>
-                  {isAutoFilled ? 'Auto-filled from your account' : `${formData.name.length}/25 characters`}
-                </p>
+                {fieldErrors.name ? (
+                  <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#dc2626' }}>
+                    {fieldErrors.name}
+                  </p>
+                ) : (
+                  <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#78716c' }}>
+                    {isAutoFilled ? 'Auto-filled from your account' : `${formData.name.length}/25 characters`}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -287,21 +466,32 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
                   maxLength={100}
                   placeholder="your@email.com"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, email: e.target.value })
+                    if (fieldErrors.email) {
+                      setFieldErrors({ ...fieldErrors, email: '' })
+                    }
+                  }}
                   disabled={isAutoFilled}
                   className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border-2 transition-colors"
                   style={{
-                    borderColor: '#e7e5e4',
+                    borderColor: fieldErrors.email ? '#dc2626' : '#e7e5e4',
                     color: '#151e20',
                     backgroundColor: isAutoFilled ? '#f5f5f5' : 'white',
                     cursor: isAutoFilled ? 'not-allowed' : 'text'
                   }}
-                  onFocus={(e) => !isAutoFilled && (e.currentTarget.style.borderColor = '#496B71')}
-                  onBlur={(e) => e.currentTarget.style.borderColor = '#e7e5e4'}
+                  onFocus={(e) => !isAutoFilled && !fieldErrors.email && (e.currentTarget.style.borderColor = '#496B71')}
+                  onBlur={(e) => !fieldErrors.email && (e.currentTarget.style.borderColor = '#e7e5e4')}
                 />
-                <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#78716c' }}>
-                  {isAutoFilled ? 'Auto-filled from your account' : `${formData.email.length}/100 characters`}
-                </p>
+                {fieldErrors.email ? (
+                  <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#dc2626' }}>
+                    {fieldErrors.email}
+                  </p>
+                ) : (
+                  <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#78716c' }}>
+                    {isAutoFilled ? 'Auto-filled from your account' : `${formData.email.length}/100 characters`}
+                  </p>
+                )}
               </div>
 
               <CustomSelect
@@ -316,25 +506,114 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
                 required
               />
 
+              {/* Social Media URLs Section */}
               <div>
                 <label className="block text-xs sm:text-sm font-bold mb-1.5 sm:mb-2" style={{ color: '#151e20' }}>
-                  Social Profile URL *
+                  Social Media Links *
                 </label>
-                <input
-                  type="url"
-                  required
-                  maxLength={200}
-                  placeholder="https://instagram.com/yourprofile"
-                  value={formData.social_profile_url}
-                  onChange={(e) => setFormData({ ...formData, social_profile_url: e.target.value })}
-                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border-2 transition-colors"
-                  style={{ borderColor: '#e7e5e4', color: '#151e20' }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#496B71'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = '#e7e5e4'}
-                />
-                <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#78716c' }}>
-                  {formData.social_profile_url.length}/200 characters
+                <p className="text-[10px] sm:text-xs mb-3" style={{ color: '#78716c' }}>
+                  At least one social media link is required
                 </p>
+
+                {/* Instagram URL */}
+                <div className="mb-3">
+                  <label className="block text-[10px] sm:text-xs font-semibold mb-1" style={{ color: '#78716c' }}>
+                    Instagram
+                  </label>
+                  <input
+                    type="url"
+                    maxLength={200}
+                    placeholder="https://instagram.com/yourprofile"
+                    value={formData.instagram_url}
+                    onChange={(e) => {
+                      setFormData({ ...formData, instagram_url: e.target.value })
+                      if (fieldErrors.instagram_url || fieldErrors.social_urls) {
+                        setFieldErrors({ ...fieldErrors, instagram_url: '', social_urls: '' })
+                      }
+                    }}
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border-2 transition-colors"
+                    style={{
+                      borderColor: fieldErrors.instagram_url ? '#dc2626' : '#e7e5e4',
+                      color: '#151e20'
+                    }}
+                    onFocus={(e) => !fieldErrors.instagram_url && (e.currentTarget.style.borderColor = '#496B71')}
+                    onBlur={(e) => !fieldErrors.instagram_url && (e.currentTarget.style.borderColor = '#e7e5e4')}
+                  />
+                  {fieldErrors.instagram_url && (
+                    <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#dc2626' }}>
+                      {fieldErrors.instagram_url}
+                    </p>
+                  )}
+                </div>
+
+                {/* TikTok URL */}
+                <div className="mb-3">
+                  <label className="block text-[10px] sm:text-xs font-semibold mb-1" style={{ color: '#78716c' }}>
+                    TikTok
+                  </label>
+                  <input
+                    type="url"
+                    maxLength={200}
+                    placeholder="https://tiktok.com/@yourprofile"
+                    value={formData.tiktok_url}
+                    onChange={(e) => {
+                      setFormData({ ...formData, tiktok_url: e.target.value })
+                      if (fieldErrors.tiktok_url || fieldErrors.social_urls) {
+                        setFieldErrors({ ...fieldErrors, tiktok_url: '', social_urls: '' })
+                      }
+                    }}
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border-2 transition-colors"
+                    style={{
+                      borderColor: fieldErrors.tiktok_url ? '#dc2626' : '#e7e5e4',
+                      color: '#151e20'
+                    }}
+                    onFocus={(e) => !fieldErrors.tiktok_url && (e.currentTarget.style.borderColor = '#496B71')}
+                    onBlur={(e) => !fieldErrors.tiktok_url && (e.currentTarget.style.borderColor = '#e7e5e4')}
+                  />
+                  {fieldErrors.tiktok_url && (
+                    <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#dc2626' }}>
+                      {fieldErrors.tiktok_url}
+                    </p>
+                  )}
+                </div>
+
+                {/* Facebook URL */}
+                <div>
+                  <label className="block text-[10px] sm:text-xs font-semibold mb-1" style={{ color: '#78716c' }}>
+                    Facebook
+                  </label>
+                  <input
+                    type="url"
+                    maxLength={200}
+                    placeholder="https://facebook.com/yourprofile"
+                    value={formData.facebook_url}
+                    onChange={(e) => {
+                      setFormData({ ...formData, facebook_url: e.target.value })
+                      if (fieldErrors.facebook_url || fieldErrors.social_urls) {
+                        setFieldErrors({ ...fieldErrors, facebook_url: '', social_urls: '' })
+                      }
+                    }}
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border-2 transition-colors"
+                    style={{
+                      borderColor: fieldErrors.facebook_url ? '#dc2626' : '#e7e5e4',
+                      color: '#151e20'
+                    }}
+                    onFocus={(e) => !fieldErrors.facebook_url && (e.currentTarget.style.borderColor = '#496B71')}
+                    onBlur={(e) => !fieldErrors.facebook_url && (e.currentTarget.style.borderColor = '#e7e5e4')}
+                  />
+                  {fieldErrors.facebook_url && (
+                    <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#dc2626' }}>
+                      {fieldErrors.facebook_url}
+                    </p>
+                  )}
+                </div>
+
+                {/* General error if no social URLs provided */}
+                {fieldErrors.social_urls && (
+                  <p className="text-[10px] sm:text-xs mt-2" style={{ color: '#dc2626' }}>
+                    {fieldErrors.social_urls}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -347,12 +626,25 @@ export default function PartnerApplicationForm({ isOpen, onClose }: PartnerAppli
                   min="100"
                   placeholder="e.g., 5000"
                   value={formData.total_followers}
-                  onChange={(e) => setFormData({ ...formData, total_followers: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, total_followers: e.target.value })
+                    if (fieldErrors.total_followers) {
+                      setFieldErrors({ ...fieldErrors, total_followers: '' })
+                    }
+                  }}
                   className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-lg border-2 transition-colors"
-                  style={{ borderColor: '#e7e5e4', color: '#151e20' }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#496B71'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = '#e7e5e4'}
+                  style={{
+                    borderColor: fieldErrors.total_followers ? '#dc2626' : '#e7e5e4',
+                    color: '#151e20'
+                  }}
+                  onFocus={(e) => !fieldErrors.total_followers && (e.currentTarget.style.borderColor = '#496B71')}
+                  onBlur={(e) => !fieldErrors.total_followers && (e.currentTarget.style.borderColor = '#e7e5e4')}
                 />
+                {fieldErrors.total_followers && (
+                  <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#dc2626' }}>
+                    {fieldErrors.total_followers}
+                  </p>
+                )}
               </div>
 
               <CustomSelect
