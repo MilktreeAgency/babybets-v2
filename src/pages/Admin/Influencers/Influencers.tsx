@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { DashboardHeader } from '../components'
-import { CheckCircle, XCircle, ExternalLink, Mail, Instagram, Youtube, UserCheck, Loader } from 'lucide-react'
+import { CheckCircle, XCircle, ExternalLink, Mail, Instagram, Youtube, UserCheck, Loader, Facebook } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
   Select,
@@ -22,6 +22,9 @@ interface Influencer extends Record<string, unknown> {
   bio: string | null
   page_bio: string | null
   social_profile_url: string | null
+  instagram_url: string | null
+  tiktok_url: string | null
+  facebook_url: string | null
   profile_image_url: string | null
   page_image_url: string | null
   is_active: boolean | null
@@ -118,7 +121,21 @@ export default function Influencers() {
           }
 
           const result = await response.json()
-          alert(result.message || `Application approved! User account created and login credentials sent to ${influencer.email}`)
+          console.log('Approval result:', result)
+
+          // Check email status and show appropriate message
+          let alertMessage = result.message || `Application approved! User account created.`
+
+          if (result.emailStatus === 'failed') {
+            alertMessage += `\n\n⚠️ Warning: Email notification failed to send.\nError: ${result.emailError || 'Unknown error'}\n\nPlease contact ${influencer.email} manually.`
+            console.error('Email sending failed:', result.emailError)
+          } else if (result.emailStatus === 'sent') {
+            alertMessage += `\n✓ Login credentials sent to ${influencer.email}`
+          } else {
+            alertMessage += `\n\n⚠️ Warning: Email status unknown (${result.emailStatus})`
+          }
+
+          alert(alertMessage)
         }
         // CASE 2: Approving/reactivating existing influencer with user account
         else {
@@ -295,6 +312,8 @@ export default function Influencers() {
             <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" />
           </svg>
         )
+      case 'Facebook':
+        return <Facebook className="size-4" />
       default:
         return <ExternalLink className="size-4" />
     }
@@ -407,7 +426,7 @@ export default function Influencers() {
                           {(influencer.email || influencer.profiles?.email) && (
                             <a
                               href={`mailto:${influencer.email || influencer.profiles?.email}`}
-                              className="flex items-center gap-1.5 hover:underline text-admin-info-fg cursor-pointer text-sm font-medium"
+                              className="flex items-center gap-1.5 hover:underline text-admin-info-fg cursor-pointer text-sm font-medium mb-1"
                             >
                               <Mail className="size-3.5" />
                               <span className="truncate max-w-[200px]">
@@ -415,17 +434,43 @@ export default function Influencers() {
                               </span>
                             </a>
                           )}
-                          {influencer.social_profile_url && (
-                            <a
-                              href={influencer.social_profile_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1.5 hover:underline text-muted-foreground cursor-pointer text-xs mt-1"
-                            >
-                              <ExternalLink className="size-3" />
-                              Social
-                            </a>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {influencer.instagram_url && (
+                              <a
+                                href={influencer.instagram_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 hover:underline text-muted-foreground cursor-pointer text-xs"
+                              >
+                                <Instagram className="size-3" />
+                                Instagram
+                              </a>
+                            )}
+                            {influencer.tiktok_url && (
+                              <a
+                                href={influencer.tiktok_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 hover:underline text-muted-foreground cursor-pointer text-xs"
+                              >
+                                <svg className="size-3" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" />
+                                </svg>
+                                TikTok
+                              </a>
+                            )}
+                            {influencer.facebook_url && (
+                              <a
+                                href={influencer.facebook_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 hover:underline text-muted-foreground cursor-pointer text-xs"
+                              >
+                                <Facebook className="size-3" />
+                                Facebook
+                              </a>
+                            )}
+                          </div>
                         </td>
 
                         {/* Platform */}
