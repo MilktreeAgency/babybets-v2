@@ -9,6 +9,7 @@ import { getCompetitionEndingHTML, getCompetitionEndingText } from './templates/
 import { getWelcomeHTML, getWelcomeText } from './templates/welcome.ts'
 import { getInfluencerApplicationSubmittedHTML, getInfluencerApplicationSubmittedText } from './templates/influencer-application-submitted.ts'
 import { getInfluencerApprovedHTML, getInfluencerApprovedText } from './templates/influencer-approved.ts'
+import { getInfluencerApprovedWithPasswordHTML, getInfluencerApprovedWithPasswordText } from './templates/influencer-approved-with-password.ts'
 import { getInfluencerRejectedHTML, getInfluencerRejectedText } from './templates/influencer-rejected.ts'
 import { getPrizeFulfillmentUpdateHTML, getPrizeFulfillmentUpdateText } from './templates/prize-fulfillment-update.ts'
 import { getWalletCreditHTML, getWalletCreditText } from './templates/wallet-credit.ts'
@@ -20,7 +21,7 @@ const corsHeaders = {
 }
 
 interface EmailNotification {
-  type: 'prize_win' | 'order_confirmation' | 'withdrawal_request' | 'withdrawal_approved' | 'withdrawal_rejected' | 'competition_ending' | 'welcome' | 'influencer_application_submitted' | 'influencer_approved' | 'influencer_rejected' | 'prize_fulfillment_update' | 'wallet_credit' | 'wheel_prize' | 'custom'
+  type: 'prize_win' | 'order_confirmation' | 'withdrawal_request' | 'withdrawal_approved' | 'withdrawal_rejected' | 'competition_ending' | 'welcome' | 'influencer_application_submitted' | 'influencer_approved' | 'influencer_approved_with_password' | 'influencer_rejected' | 'prize_fulfillment_update' | 'wallet_credit' | 'wheel_prize' | 'custom'
   recipientEmail: string
   recipientName?: string
   data: Record<string, unknown>
@@ -115,6 +116,13 @@ async function getEmailTemplate(notification: EmailNotification, supabaseClient:
         text: getInfluencerApprovedText(firstName, data),
       }
 
+    case 'influencer_approved_with_password':
+      return {
+        subject: '🎉 Welcome to BabyBets Partners - Your Account Details',
+        html: getInfluencerApprovedWithPasswordHTML(firstName, data, emailLogoUrl),
+        text: getInfluencerApprovedWithPasswordText(firstName, data),
+      }
+
     case 'influencer_rejected':
       return {
         subject: 'BabyBets Partner Application Update',
@@ -166,7 +174,14 @@ serve(async (req) => {
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+          detectSessionInUrl: false
+        }
+      }
     )
 
     const notification: EmailNotification = await req.json()
