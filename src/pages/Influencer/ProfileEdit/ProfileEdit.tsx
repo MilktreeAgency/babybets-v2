@@ -17,6 +17,9 @@ export default function ProfileEdit() {
     display_name: '',
     page_bio: '',
     social_profile_url: '',
+    instagram_url: '',
+    tiktok_url: '',
+    facebook_url: '',
     profile_image_url: ''
   })
   const [uploadingProfile, setUploadingProfile] = useState(false)
@@ -61,6 +64,9 @@ export default function ProfileEdit() {
         display_name: influencerData.display_name || '',
         page_bio: influencerData.page_bio || '',
         social_profile_url: influencerData.social_profile_url || '',
+        instagram_url: influencerData.instagram_url || '',
+        tiktok_url: influencerData.tiktok_url || '',
+        facebook_url: influencerData.facebook_url || '',
         profile_image_url: influencerData.profile_image_url || ''
       })
     } catch (error) {
@@ -123,6 +129,9 @@ export default function ProfileEdit() {
           display_name: formData.display_name,
           page_bio: formData.page_bio,
           social_profile_url: formData.social_profile_url,
+          instagram_url: formData.instagram_url || null,
+          tiktok_url: formData.tiktok_url || null,
+          facebook_url: formData.facebook_url || null,
           profile_image_url: formData.profile_image_url
         })
         .eq('id', influencer.id)
@@ -148,12 +157,14 @@ export default function ProfileEdit() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="h-screen flex flex-col" style={{ backgroundColor: '#FFFBF7' }}>
         <Header />
         <div className="flex-1 flex items-center justify-center">
-          <div className="inline-block size-12 border-4 border-border border-t-[#496B71] rounded-full animate-spin"></div>
+          <div className="text-center">
+            <div className="inline-block size-12 border-4 rounded-full animate-spin mb-4" style={{ borderColor: '#e7e5e4', borderTopColor: '#496B71' }}></div>
+            <p className="text-base font-medium" style={{ color: '#78716c' }}>Loading profile...</p>
+          </div>
         </div>
-        <Footer />
       </div>
     )
   }
@@ -237,22 +248,60 @@ export default function ProfileEdit() {
                 </p>
               </div>
 
+              {/* Social Media URLs */}
               <div>
-                <label className="block text-sm font-bold mb-2" style={{ color: '#151e20' }}>
-                  Social Profile URL
+                <label className="block text-sm font-bold mb-3" style={{ color: '#151e20' }}>
+                  Social Media Links
                 </label>
-                <input
-                  type="url"
-                  maxLength={200}
-                  value={formData.social_profile_url}
-                  onChange={(e) => setFormData({ ...formData, social_profile_url: e.target.value })}
-                  placeholder="https://instagram.com/yourprofile"
-                  className="w-full px-4 py-3 rounded-lg border-2 transition-colors"
-                  style={{ borderColor: '#e7e5e4', color: '#151e20' }}
-                />
-                <p className="text-xs mt-1" style={{ color: '#78716c' }}>
-                  {formData.social_profile_url.length}/200 characters
-                </p>
+                <div className="space-y-4">
+                  {/* Instagram */}
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5" style={{ color: '#78716c' }}>
+                      Instagram
+                    </label>
+                    <input
+                      type="url"
+                      maxLength={200}
+                      value={formData.instagram_url}
+                      onChange={(e) => setFormData({ ...formData, instagram_url: e.target.value })}
+                      placeholder="https://instagram.com/yourprofile"
+                      className="w-full px-4 py-3 rounded-lg border-2 transition-colors"
+                      style={{ borderColor: '#e7e5e4', color: '#151e20' }}
+                    />
+                  </div>
+
+                  {/* TikTok */}
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5" style={{ color: '#78716c' }}>
+                      TikTok
+                    </label>
+                    <input
+                      type="url"
+                      maxLength={200}
+                      value={formData.tiktok_url}
+                      onChange={(e) => setFormData({ ...formData, tiktok_url: e.target.value })}
+                      placeholder="https://tiktok.com/@yourprofile"
+                      className="w-full px-4 py-3 rounded-lg border-2 transition-colors"
+                      style={{ borderColor: '#e7e5e4', color: '#151e20' }}
+                    />
+                  </div>
+
+                  {/* Facebook */}
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5" style={{ color: '#78716c' }}>
+                      Facebook
+                    </label>
+                    <input
+                      type="url"
+                      maxLength={200}
+                      value={formData.facebook_url}
+                      onChange={(e) => setFormData({ ...formData, facebook_url: e.target.value })}
+                      placeholder="https://facebook.com/yourprofile"
+                      className="w-full px-4 py-3 rounded-lg border-2 transition-colors"
+                      style={{ borderColor: '#e7e5e4', color: '#151e20' }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
