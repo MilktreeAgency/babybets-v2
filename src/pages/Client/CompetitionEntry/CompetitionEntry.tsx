@@ -433,7 +433,7 @@ function CompetitionEntry() {
             <div className="space-y-3">
               {/* Featured Image */}
               <div
-                className="relative aspect-square rounded-xl overflow-hidden"
+                className="relative rounded-xl overflow-hidden"
                 style={{
                   backgroundColor: '#FBEFDF',
                   borderWidth: '1px',
@@ -444,7 +444,7 @@ function CompetitionEntry() {
                   key={selectedImageIndex}
                   src={allImages[selectedImageIndex]}
                   alt={competition.title}
-                  className="w-full h-full object-cover animate-fade-in"
+                  className="w-full h-auto object-contain animate-fade-in"
                 />
 
                 {competition.status === 'ending_soon' && (
@@ -906,7 +906,7 @@ function CompetitionEntry() {
             <div className="space-y-4">
               {/* Featured Image */}
               <div
-                className="relative aspect-square rounded-xl overflow-hidden"
+                className="relative rounded-xl overflow-hidden"
                 style={{
                   backgroundColor: '#FBEFDF',
                   borderWidth: '1px',
@@ -917,7 +917,7 @@ function CompetitionEntry() {
                   key={selectedImageIndex}
                   src={allImages[selectedImageIndex]}
                   alt={competition.title}
-                  className="w-full h-full object-cover animate-fade-in"
+                  className="w-full h-auto object-contain animate-fade-in"
                 />
 
                 {competition.status === 'ending_soon' && (

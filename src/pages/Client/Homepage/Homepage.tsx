@@ -1,4 +1,3 @@
-import { useAuth } from '@/hooks/useAuth'
 import { useSystemSettings } from '@/hooks/useSystemSettings'
 import { useSpinWheelModal } from '@/hooks/useSpinWheelModal'
 import Header from '@/components/common/Header'
@@ -17,13 +16,8 @@ import WinnersSection from './sections/WinnersSection'
 import NewsletterSection from './sections/NewsletterSection'
 
 function Homepage() {
-  const { isLoading } = useAuth()
-  const { liveTicker, loading: settingsLoading } = useSystemSettings()
+  const { liveTicker } = useSystemSettings()
   const { isOpen: isWheelOpen, closeModal: closeWheel } = useSpinWheelModal()
-
-  if (isLoading || settingsLoading) {
-    return null
-  }
 
   // Show live ticker only if enabled and URL is provided
   const showLiveTicker = liveTicker?.enabled && liveTicker?.url

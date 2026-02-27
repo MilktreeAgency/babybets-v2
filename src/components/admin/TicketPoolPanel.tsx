@@ -67,7 +67,10 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
     }
   }
 
-  const handleGeneratePool = async () => {
+  const handleGeneratePool = async (retryCount = 0) => {
+    const MAX_RETRIES = 3
+    const RETRY_DELAY = 2000 // 2 seconds
+
     setError(null)
     setSuccess(null)
     setShowConfirmModal(false)
@@ -86,9 +89,16 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
         })
       }, 200)
 
-      const { data, error } = await supabase.rpc('generate_ticket_pool', {
+      // Set a longer timeout for the RPC call
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Operation timed out')), 180000) // 3 minutes
+      )
+
+      const rpcPromise = supabase.rpc('generate_ticket_pool', {
         p_competition_id: competition.id,
       })
+
+      const { data, error } = await Promise.race([rpcPromise, timeoutPromise]) as Awaited<typeof rpcPromise>
 
       clearInterval(progressInterval)
       setGenerationProgress(100)
@@ -110,7 +120,34 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
         setGenerationProgress(0)
       }, 2000)
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate ticket pool'
+      const error = err as { code?: string; message?: string }
+      const isTimeout = error.code === '57014' || error.message?.includes('timeout') || error.message?.includes('timed out')
+
+      // Auto-retry on timeout
+      if (isTimeout && retryCount < MAX_RETRIES) {
+        console.log(`Timeout occurred. Retrying... (${retryCount + 1}/${MAX_RETRIES})`)
+        setError(`Generation timeout. Retrying automatically... (${retryCount + 1}/${MAX_RETRIES})`)
+
+        // Wait before retrying
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY))
+
+        // Reset progress for retry
+        setGenerationProgress(0)
+
+        // Retry
+        return handleGeneratePool(retryCount + 1)
+      }
+
+      // Final error handling
+      let errorMessage = 'Failed to generate ticket pool'
+      if (isTimeout) {
+        errorMessage = `Generation timed out after ${MAX_RETRIES + 1} attempts. This may indicate a very large ticket pool. Please try again or contact support.`
+      } else if (err instanceof Error) {
+        errorMessage = err.message
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
       setError(errorMessage)
       setShowGenerationAnimation(false)
       setGenerationProgress(0)
@@ -325,7 +362,7 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
           <AlertDialogFooter>
             <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleGeneratePool}
+              onClick={() => handleGeneratePool()}
               disabled={isGenerating}
               className="cursor-pointer"
             >

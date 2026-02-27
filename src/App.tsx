@@ -47,7 +47,7 @@ import WheelClaims from './pages/Admin/WheelClaims'
 import Assets from './pages/Admin/Assets/Assets'
 import Testimonials from './pages/Admin/Testimonials'
 import { DashboardLayout } from './pages/Admin/components'
-import { AdminRoute, CartDrawer } from './components/common'
+import { AdminRoute, CartDrawer, AppLoading } from './components/common'
 import ScrollToTop from './components/common/ScrollToTop'
 import { ReferralTracker } from './components/ReferralTracker'
 import { CookieConsent } from './components/CookieConsent'
@@ -64,7 +64,7 @@ function App() {
 
   // Show loading while checking auth and settings
   if (authLoading || settingsLoading) {
-    return null
+    return <AppLoading />
   }
 
   // Check if in maintenance mode and user is not admin
