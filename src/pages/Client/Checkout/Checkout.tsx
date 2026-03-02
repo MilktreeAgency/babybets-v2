@@ -16,6 +16,9 @@ import {
   PriceSummary,
   ContactInformation,
   TermsCheckboxes,
+  CardPayment,
+  validateCardDetails,
+  DigitalWallets,
 } from './components'
 
 function Checkout() {
@@ -43,6 +46,14 @@ function Checkout() {
   const [isUKResident, setIsUKResident] = useState(false)
   const [isOver18, setIsOver18] = useState(false)
 
+  // Card payment state
+  const [cardNumber, setCardNumber] = useState('')
+  const [expiryDate, setExpiryDate] = useState('')
+  const [cvv, setCvv] = useState('')
+  const [cardholderName, setCardholderName] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'googlepay' | 'applepay'>('card')
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+
   // Validate UK mobile number format
   const validateMobileNumber = (mobile: string): boolean => {
     // Remove spaces and check if it's a valid UK mobile
@@ -52,7 +63,7 @@ function Checkout() {
   }
 
   const isMobileValid = validateMobileNumber(mobileNumber)
-  const canProceed = agreeTerms && isUKResident && isOver18 && isMobileValid
+  const isCardValid = paymentMethod === 'card' ? validateCardDetails(cardNumber, expiryDate, cvv, cardholderName) : true
 
   const totalPrice = getTotalPrice()
   const availableCreditGBP = summary.availableBalance / 100
@@ -60,6 +71,7 @@ function Checkout() {
   const priceAfterPromo = totalPrice - discountAmount
   const maxApplicableCredit = Math.min(availableCreditGBP, priceAfterPromo)
   const finalPrice = Math.max(0, priceAfterPromo - appliedCredit)
+  const canProceed = agreeTerms && isUKResident && isOver18 && isMobileValid && (finalPrice === 0 || isCardValid)
 
   useEffect(() => {
     // Wait for auth to initialize before checking authentication
@@ -296,6 +308,7 @@ function Checkout() {
   const handlePayment = async () => {
     try {
       setLoading(true)
+      setPaymentError(null) // Clear previous errors
 
       // Validate cart is not empty
       if (items.length === 0) {
@@ -480,7 +493,7 @@ function Checkout() {
         throw new Error('Please enter a valid UK mobile number (e.g., 07xxx xxxxxx)')
       }
 
-      // Deduct wallet credits if any were applied (before redirect)
+      // Deduct wallet credits if any were applied (before payment)
       if (creditPence > 0) {
         await supabase.rpc('debit_wallet_credits', {
           p_user_id: authenticatedUserId,
@@ -489,41 +502,58 @@ function Checkout() {
         })
       }
 
-      // Create hosted payment session
-      const hostedSessionResult = await createHostedPaymentSession(
-        order.id,
-        session.user.email,
-        mobileNumber
-      )
-
-      if (!hostedSessionResult.success || !hostedSessionResult.hostedURL) {
-        throw new Error(hostedSessionResult.error || 'Failed to create payment session')
+      // Prepare card details for direct payment
+      const [expMonth, expYear] = expiryDate.split('/')
+      const cardDetailsPayload = {
+        cardNumber: cardNumber.replace(/\s/g, ''),
+        expiryMonth: expMonth,
+        expiryYear: expYear,
+        cvv,
+        cardholderName,
       }
 
-      // For G2Pay Hosted Modal, we need to POST a form (not GET redirect)
-      // Create and auto-submit a form with payment parameters
-      const form = document.createElement('form')
-      form.method = 'POST'
-      form.action = hostedSessionResult.hostedURL
-      form.style.display = 'none'
+      // Create direct payment session with card details
+      const paymentResult = await createHostedPaymentSession(
+        order.id,
+        session.user.email,
+        mobileNumber,
+        cardDetailsPayload
+      )
 
-      // Add all payment parameters as hidden inputs
-      if (hostedSessionResult.paymentParameters) {
-        Object.entries(hostedSessionResult.paymentParameters).forEach(([key, value]) => {
-          const input = document.createElement('input')
-          input.type = 'hidden'
-          input.name = key
-          input.value = String(value)
-          form.appendChild(input)
+      if (!paymentResult.success) {
+        throw new Error(paymentResult.error || 'Failed to process payment')
+      }
+
+      // Payment successful - Complete order and allocate tickets
+      console.log('[Checkout] Payment successful:', paymentResult)
+
+      // Deduct wallet credits if any were applied
+      if (creditPence > 0) {
+        await supabase.rpc('debit_wallet_credits', {
+          p_user_id: authenticatedUserId,
+          p_amount_pence: creditPence,
+          p_description: `Order #${order.id.slice(0, 8)}`,
         })
       }
 
-      // Append form to body and submit
-      document.body.appendChild(form)
-      form.submit()
+      // Complete order and allocate tickets via Edge Function
+      const { error: completeError } = await supabase.functions.invoke('complete-g2pay-order', {
+        body: { orderId: order.id, userId: authenticatedUserId },
+      })
+
+      if (completeError) {
+        console.error('[Checkout] Edge function error:', completeError)
+        throw new Error(completeError.message || 'Failed to complete order')
+      }
+
+      // Mark purchase as completed and clear cart
+      setPurchaseCompleted(true)
+      clearCart()
+      navigate(`/payment-success?orderId=${order.id}&transactionId=${paymentResult.transactionID || ''}`)
     } catch (err) {
       console.error('Error processing payment:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to process payment'
+      setPaymentError(errorMessage)
       showErrorToast(errorMessage)
     } finally {
       setLoading(false)
@@ -552,27 +582,13 @@ function Checkout() {
       {/* Processing Modal */}
       {loading && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div
-            className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-4 text-center"
-            style={{ borderWidth: '1px', borderColor: '#e7e5e4' }}
-          >
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 mx-auto mb-6" style={{ borderColor: '#496B71' }}></div>
-            <h3
-              className="text-2xl font-bold mb-3"
-              style={{ fontFamily: "'Fraunces', serif", color: '#151e20' }}
-            >
-              {finalPrice === 0 ? 'Processing Order' : 'Redirecting to Payment'}
-            </h3>
-            <p className="text-sm" style={{ color: '#78716c' }}>
-              {finalPrice === 0
-                ? 'Please wait while we process your order...'
-                : 'Redirecting you to our secure payment page...'}
-            </p>
-            <p className="text-xs mt-4" style={{ color: '#78716c' }}>
-              {finalPrice === 0
-                ? 'Do not close this window'
-                : 'You will be redirected in a moment'}
-            </p>
+          <div className="bg-white p-6 rounded-xl shadow-xl">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-3 border-[#FF6B9D]/20 border-t-[#FF6B9D] rounded-full animate-spin"></div>
+              <p className="text-sm text-[#2D251E]/60 font-medium">
+                {finalPrice === 0 ? 'Processing order...' : 'Processing payment...'}
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -654,13 +670,49 @@ function Checkout() {
                     Payment Details
                   </h2>
 
-                  {/* Express Checkout */}
+                  {/* Card Payment */}
+                  <div className="mb-6">
+                    <CardPayment
+                      cardNumber={cardNumber}
+                      setCardNumber={setCardNumber}
+                      expiryDate={expiryDate}
+                      setExpiryDate={setExpiryDate}
+                      cvv={cvv}
+                      setCvv={setCvv}
+                      cardholderName={cardholderName}
+                      setCardholderName={setCardholderName}
+                    />
 
-                  {/* Payment Info */}
-                  <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#f0f9ff', borderWidth: '1px', borderColor: '#bae6fd' }}>
-                    <p className="text-sm" style={{ color: '#0c4a6e' }}>
-                      <strong>Secure Payment:</strong> You'll be redirected to our secure payment page to complete your purchase with card, Apple Pay, or Google Pay.
-                    </p>
+                    {/* Payment Error Display */}
+                    {paymentError && (
+                      <div className="mt-4 p-4 rounded-lg border" style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca' }}>
+                        <div className="flex items-start">
+                          <svg className="w-5 h-5 mr-2 shrink-0" style={{ color: '#dc2626' }} fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                          <div>
+                            <p className="text-sm font-medium" style={{ color: '#991b1b' }}>Payment Failed</p>
+                            <p className="text-sm mt-1" style={{ color: '#dc2626' }}>{paymentError}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Digital Wallets */}
+                  <div className="mb-6">
+                    <DigitalWallets
+                      amount={finalPrice}
+                      onGooglePayClick={() => {
+                        setPaymentMethod('googlepay')
+                        // Google Pay logic will be handled here
+                      }}
+                      onApplePayClick={() => {
+                        setPaymentMethod('applepay')
+                        // Apple Pay logic will be handled here
+                      }}
+                      disabled={loading}
+                    />
                   </div>
 
                   <ContactInformation
