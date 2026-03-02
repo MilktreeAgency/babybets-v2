@@ -8,22 +8,35 @@ export const G2PAY_CONFIG = {
   edgeFunctionUrl: import.meta.env.VITE_SUPABASE_URL + '/functions/v1',
 }
 
-// Hosted payment session response
+// Card details interface
+export interface CardDetails {
+  cardNumber: string
+  expiryMonth: string
+  expiryYear: string
+  cvv: string
+  cardholderName: string
+}
+
+// Direct payment session response
 interface HostedSessionResponse {
   success: boolean
-  hostedURL?: string
-  paymentParameters?: Record<string, string | number>
+  requires3DS?: boolean
+  threeDSURL?: string
+  threeDSRequest?: string
+  transactionID?: string
   transactionUnique?: string
   orderRef?: string
+  responseCode?: string
+  responseMessage?: string
   error?: string
 }
 
-// Create a hosted payment session via Edge Function
-// This replaces direct API integration - user will be redirected to G2Pay's hosted page
+// Create a direct payment session via Edge Function
 export const createHostedPaymentSession = async (
   orderRef: string,
   customerEmail?: string,
-  customerPhone?: string
+  customerPhone?: string,
+  cardDetails?: CardDetails
 ): Promise<HostedSessionResponse> => {
   // Get current session
   const {
@@ -87,24 +100,59 @@ export const createHostedPaymentSession = async (
     }
   )
 
-  // Call Edge Function to create hosted payment session
+  // Call Edge Function to create direct payment session
   const { data, error } = await supabaseWithAuth.functions.invoke('create-g2pay-hosted-session', {
     body: {
       orderRef,
       customerEmail,
       customerPhone,
+      ...(cardDetails && { cardDetails }),
     },
   })
 
   if (error) {
     console.error('[G2Pay Hosted] Edge function error:', error)
+    console.error('[G2Pay Hosted] Error details:', {
+      message: error.message,
+      context: error.context,
+      details: error
+    })
 
     // Handle JWT-specific errors
     if (error.message?.includes('JWT') || error.message?.includes('401')) {
       throw new Error('Session expired. Please refresh the page and log in again.')
     }
 
+    // Try to extract error from response body (when edge function returns 400 with error details)
+    // The error context might contain the parsed JSON response
+    if (error.context && typeof error.context === 'object') {
+      const errorData = error.context as { error?: string; rawMessage?: string; responseCode?: string }
+      console.log('[G2Pay Hosted] Error context data:', errorData)
+      if (errorData.error) {
+        throw new Error(errorData.error)
+      }
+      if (errorData.rawMessage) {
+        throw new Error(errorData.rawMessage)
+      }
+    }
+
+    // Try to parse error message as JSON (sometimes the error message contains the JSON response)
+    try {
+      const errorJson = JSON.parse(error.message)
+      if (errorJson.error) {
+        throw new Error(errorJson.error)
+      }
+    } catch (e) {
+      // Not JSON, continue
+    }
+
     throw new Error(error.message || 'Failed to create payment session')
+  }
+
+  // Check if the payment failed (edge function returned success: false in the data)
+  if (data && !data.success) {
+    console.error('[G2Pay Hosted] Payment failed:', data)
+    throw new Error(data.error || data.rawMessage || 'Payment failed')
   }
 
   return data
