@@ -1,12 +1,10 @@
 interface DigitalWalletsProps {
-  amount: number
   onGooglePayClick: () => void
   onApplePayClick: () => void
   disabled?: boolean
 }
 
 export function DigitalWallets({
-  amount,
   onGooglePayClick,
   onApplePayClick,
   disabled = false,

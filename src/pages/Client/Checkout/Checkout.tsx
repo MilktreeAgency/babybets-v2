@@ -702,7 +702,6 @@ function Checkout() {
                   {/* Digital Wallets */}
                   <div className="mb-6">
                     <DigitalWallets
-                      amount={finalPrice}
                       onGooglePayClick={() => {
                         setPaymentMethod('googlepay')
                         // Google Pay logic will be handled here
