@@ -25,7 +25,7 @@ if [ ! -f ".env" ]; then
     echo "  - SMTP_FROM"
     echo "  - G2PAY_MERCHANT_ID"
     echo "  - G2PAY_SIGNATURE_KEY"
-    echo "  - G2PAY_HOSTED_URL"
+    echo "  - G2PAY_GATEWAY_URL or G2PAY_DIRECT_API_URL"
     echo "  - SUPABASE_URL"
     echo "  - SUPABASE_ANON_KEY"
     echo "  - SUPABASE_SERVICE_ROLE_KEY"
@@ -49,7 +49,6 @@ REQUIRED_SECRETS=(
     "SMTP_FROM"
     "G2PAY_MERCHANT_ID"
     "G2PAY_SIGNATURE_KEY"
-    "G2PAY_HOSTED_URL"
     "SUPABASE_URL"
     "SUPABASE_ANON_KEY"
     "SUPABASE_SERVICE_ROLE_KEY"
@@ -63,6 +62,11 @@ for secret in "${REQUIRED_SECRETS[@]}"; do
         MISSING_SECRETS+=("$secret")
     fi
 done
+
+# Check for either G2PAY_GATEWAY_URL or G2PAY_DIRECT_API_URL
+if [ -z "$G2PAY_GATEWAY_URL" ] && [ -z "$G2PAY_DIRECT_API_URL" ]; then
+    MISSING_SECRETS+=("G2PAY_GATEWAY_URL or G2PAY_DIRECT_API_URL")
+fi
 
 if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
     echo "❌ Missing required secrets:"
@@ -86,15 +90,26 @@ echo "✅ Email secrets deployed"
 echo ""
 
 # Deploy G2Pay Payment Secrets (Production Credentials)
-echo "💳 Deploying G2Pay Payment Secrets (Hosted Solution)..."
+echo "💳 Deploying G2Pay Payment Secrets (Direct API Integration)..."
 supabase secrets set G2PAY_MERCHANT_ID="$G2PAY_MERCHANT_ID"
 supabase secrets set G2PAY_SIGNATURE_KEY="$G2PAY_SIGNATURE_KEY"
-supabase secrets set G2PAY_HOSTED_URL="$G2PAY_HOSTED_URL"
+
+# Use G2PAY_DIRECT_API_URL if available, otherwise fallback to G2PAY_GATEWAY_URL
+if [ ! -z "$G2PAY_DIRECT_API_URL" ]; then
+    supabase secrets set G2PAY_DIRECT_API_URL="$G2PAY_DIRECT_API_URL"
+    G2PAY_URL="$G2PAY_DIRECT_API_URL"
+    echo "✅ Using G2PAY_DIRECT_API_URL"
+elif [ ! -z "$G2PAY_GATEWAY_URL" ]; then
+    supabase secrets set G2PAY_GATEWAY_URL="$G2PAY_GATEWAY_URL"
+    G2PAY_URL="$G2PAY_GATEWAY_URL"
+    echo "✅ Using G2PAY_GATEWAY_URL"
+fi
+
 echo "✅ Payment secrets deployed"
 echo ""
 echo "📋 G2Pay Production Configuration:"
 echo "   • Merchant ID: $G2PAY_MERCHANT_ID"
-echo "   • Hosted URL: $G2PAY_HOSTED_URL"
+echo "   • API URL: $G2PAY_URL"
 echo "   • Signature Key: [HIDDEN]"
 echo ""
 
@@ -120,23 +135,23 @@ echo "   ✓ MAILGUN_DOMAIN - Email sending domain"
 echo "   ✓ SMTP_FROM - From email address"
 echo "   ✓ G2PAY_MERCHANT_ID - G2Pay production merchant ID (283797)"
 echo "   ✓ G2PAY_SIGNATURE_KEY - G2Pay webhook signature verification"
-echo "   ✓ G2PAY_HOSTED_URL - G2Pay hosted payment page URL"
+echo "   ✓ G2PAY_GATEWAY_URL / G2PAY_DIRECT_API_URL - G2Pay direct API endpoint"
 echo "   ✓ PUBLIC_SITE_URL - Public website URL (for emails)"
 echo "   ✓ SITE_URL - Site URL (for redirects)"
 echo ""
 echo "💳 Payment Integration Notes:"
-echo "   • Using G2Pay Hosted Payment Page (Postbridge Modal)"
-echo "   • Apple Pay and Google Pay handled by G2Pay (no domain verification needed)"
-echo "   • G2Pay Merchant Name: Babybets"
-echo "   • Google Pay Merchant ID: BCR2DN5TW2AJL7K3"
+echo "   • Using G2Pay Direct API Integration"
+echo "   • Payment processed server-to-server with G2Pay"
+echo "   • 3DS authentication supported when required"
 echo "   • Payment methods: Card, Apple Pay, Google Pay"
 echo ""
 echo "📋 Next Steps:"
 echo "1. Run ./deploy-functions.sh to deploy edge functions"
 echo "2. Test email notifications (signup, orders, withdrawals)"
-echo "3. Test hosted payment flow:"
-echo "   - Create order → Redirect to G2Pay hosted page"
-echo "   - Complete payment → Redirect back to /payment-return"
+echo "3. Test direct payment flow:"
+echo "   - Create order → Process payment via direct API"
+echo "   - Handle 3DS redirect if required"
+echo "   - Payment success → Redirect to success page"
 echo "   - Webhook confirms payment → Tickets allocated"
 echo "4. Test Apple Pay on Safari/iOS device"
 echo "5. Test Google Pay on Chrome/Android device"
