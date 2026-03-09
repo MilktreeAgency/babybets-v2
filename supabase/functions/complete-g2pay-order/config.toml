@@ -1,0 +1,4 @@
+# Disable JWT verification at infrastructure level
+# We'll handle authentication manually in the function
+[function.complete-g2pay-order]
+verify_jwt = false

@@ -1,0 +1,42 @@
+name: Monthly Influencer Commission Payouts
+
+on:
+  schedule:
+    # Run at 00:30 UTC on the 1st of every month
+    - cron: '30 0 1 * *'
+  workflow_dispatch: # Allow manual triggering for testing
+
+jobs:
+  process-payouts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process Monthly Influencer Payouts
+        run: |
+          curl -X POST '${{ secrets.SUPABASE_URL }}/functions/v1/process-monthly-payouts' \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -w "\nHTTP Status: %{http_code}\n" \
+            -o response.json
+
+          echo "Response:"
+          cat response.json
+          echo ""
+
+          # Check if the request was successful
+          if [ $(jq -r '.success' response.json) = "true" ]; then
+            echo "✅ Monthly payouts processed successfully!"
+            echo "Total influencers: $(jq -r '.data.total_influencers' response.json)"
+            echo "Successful payouts: $(jq -r '.data.successful_payouts' response.json)"
+            echo "Failed payouts: $(jq -r '.data.failed_payouts' response.json)"
+            echo "Total amount: £$(jq -r '.data.total_amount_gbp' response.json)"
+            exit 0
+          else
+            echo "❌ Monthly payouts failed!"
+            exit 1
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Monthly payout process failed. Please check the logs."
+          # Add notification logic here (e.g., send email, Slack message, etc.)
