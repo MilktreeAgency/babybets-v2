@@ -23,6 +23,8 @@ interface HostedSessionResponse {
   requires3DS?: boolean
   threeDSURL?: string
   threeDSRequest?: string
+  threeDSMD?: string
+  threeDSACSURL?: string
   transactionID?: string
   transactionUnique?: string
   orderRef?: string

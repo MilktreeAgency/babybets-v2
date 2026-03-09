@@ -524,6 +524,18 @@ function Checkout() {
         throw new Error(paymentResult.error || 'Failed to process payment')
       }
 
+      // Check if 3D Secure authentication is required
+      if (paymentResult.requires3DS && paymentResult.threeDSURL) {
+        console.log('[Checkout] 3DS authentication required, redirecting to:', paymentResult.threeDSURL)
+
+        // Save order ID to localStorage so we can retrieve it after 3DS redirect
+        localStorage.setItem('pending3DSOrder', order.id)
+
+        // Redirect to 3DS authentication page
+        window.location.href = paymentResult.threeDSURL
+        return
+      }
+
       // Payment successful - Complete order and allocate tickets
       console.log('[Checkout] Payment successful:', paymentResult)
 
