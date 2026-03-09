@@ -97,11 +97,11 @@ export default function Partners() {
           {/* Video */}
           <div
             className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl max-w-4xl mx-auto"
-            style={{ padding: '56.25% 0 0 0', position: 'relative', backgroundColor: '#151e20', borderWidth: '4px', borderColor: 'rgba(255,255,255,0.15)' }}
+            style={{ aspectRatio: '16/9', backgroundColor: '#151e20', borderWidth: '4px', borderColor: 'rgba(255,255,255,0.15)' }}
           >
             <iframe
-              src="https://player.vimeo.com/video/1171846985?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1"
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+              src="https://player.vimeo.com/video/1171846985?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&rel=0&end_card=0"
+              className="w-full h-full"
               frameBorder="0"
               allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
               referrerPolicy="strict-origin-when-cross-origin"
