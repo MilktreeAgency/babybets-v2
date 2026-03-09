@@ -6,6 +6,7 @@ import { useCartStore } from '@/store/cartStore'
 import { useAuthStore } from '@/store/authStore'
 import { useWallet } from '@/hooks/useWallet'
 import { createHostedPaymentSession } from '@/lib/g2pay'
+import { createApplePaySession, processApplePayPayment } from '@/lib/applePay'
 import { supabase } from '@/lib/supabase'
 import { getReferral, clearReferral, setReferral } from '@/lib/referralTracking'
 import { showErrorToast, showWarningToast } from '@/lib/toast'
@@ -302,6 +303,183 @@ function Checkout() {
       setAppliedCredit(maxApplicableCredit)
     } else {
       setAppliedCredit(0)
+    }
+  }
+
+  const handleApplePayClick = async () => {
+    try {
+      // Validate prerequisites
+      if (!agreeTerms || !isUKResident || !isOver18) {
+        showErrorToast('Please agree to all terms and conditions')
+        return
+      }
+
+      if (!isMobileValid) {
+        showErrorToast('Please enter a valid UK mobile number')
+        return
+      }
+
+      setLoading(true)
+      setPaymentError(null)
+
+      // Validate cart
+      if (items.length === 0) {
+        throw new Error('Your cart is empty')
+      }
+
+      // Get session
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.refreshSession()
+
+      if (sessionError || !session?.user) {
+        navigate('/login?redirect=/checkout&error=session_expired')
+        throw new Error('Your session has expired. Please log in again.')
+      }
+
+      const authenticatedUserId = session.user.id
+
+      // Convert GBP to pence
+      const totalPence = Math.round(totalPrice * 100)
+      const creditPence = Math.round(appliedCredit * 100)
+      const finalPence = Math.round(finalPrice * 100)
+      const discountPence = Math.round(discountAmount * 100)
+
+      // Get influencer data
+      let influencerUserId: string | null = null
+      if (activeReferral) {
+        const { data: influencerData } = await supabase
+          .from('influencers')
+          .select('user_id')
+          .eq('id', activeReferral.influencerId)
+          .single()
+
+        if (influencerData) {
+          influencerUserId = influencerData.user_id
+        }
+      }
+
+      // Create order
+      const orderData: {
+        user_id: string
+        subtotal_pence: number
+        discount_pence: number
+        credit_applied_pence: number
+        total_pence: number
+        status: 'pending'
+        influencer_id?: string
+      } = {
+        user_id: authenticatedUserId,
+        subtotal_pence: totalPence,
+        discount_pence: discountPence,
+        credit_applied_pence: creditPence,
+        total_pence: finalPence,
+        status: 'pending',
+      }
+
+      if (influencerUserId) {
+        orderData.influencer_id = influencerUserId
+      }
+
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert(orderData)
+        .select()
+        .single()
+
+      if (orderError) {
+        console.error('Order creation error:', orderError)
+        throw orderError
+      }
+
+      // Create order items
+      const orderItems = items.map((item) => ({
+        order_id: order.id,
+        competition_id: item.competitionId,
+        ticket_count: item.quantity,
+        price_per_ticket_pence: Math.round(item.pricePerTicket * 100),
+        total_pence: Math.round(item.totalPrice * 100),
+      }))
+
+      const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
+
+      if (itemsError) {
+        console.error('Order items error:', itemsError)
+        throw itemsError
+      }
+
+      // Update phone number
+      if (mobileNumber) {
+        const cleanedPhone = mobileNumber.replace(/\s/g, '')
+        await supabase.from('profiles').update({ phone: cleanedPhone }).eq('id', authenticatedUserId)
+      }
+
+      // Start Apple Pay session
+      const applePaySession = createApplePaySession(
+        finalPrice,
+        async (payment) => {
+          try {
+            // Process payment with G2Pay
+            const result = await processApplePayPayment(
+              order.id,
+              payment.token,
+              session.user.email,
+              mobileNumber
+            )
+
+            if (result.success) {
+              // Deduct wallet credits if any were applied
+              if (creditPence > 0) {
+                await supabase.rpc('debit_wallet_credits', {
+                  p_user_id: authenticatedUserId,
+                  p_amount_pence: creditPence,
+                  p_description: `Order #${order.id.slice(0, 8)}`,
+                })
+              }
+
+              // Complete order via Edge Function
+              await supabase.functions.invoke('complete-g2pay-order', {
+                body: { orderId: order.id, userId: authenticatedUserId },
+              })
+
+              // Success
+              setPurchaseCompleted(true)
+              clearCart()
+              navigate(`/payment-success?orderId=${order.id}&transactionId=${result.transactionID || ''}`)
+              return true
+            } else {
+              setPaymentError(result.error || 'Payment failed')
+              showErrorToast(result.error || 'Payment failed')
+              return false
+            }
+          } catch (error) {
+            console.error('Apple Pay payment error:', error)
+            const errorMessage = error instanceof Error ? error.message : 'Payment failed'
+            setPaymentError(errorMessage)
+            showErrorToast(errorMessage)
+            return false
+          }
+        },
+        () => {
+          // User cancelled
+          setLoading(false)
+        }
+      )
+
+      if (!applePaySession) {
+        throw new Error('Apple Pay is not available on this device')
+      }
+
+      // Start the Apple Pay session
+      applePaySession.begin()
+    } catch (err) {
+      console.error('Error starting Apple Pay:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to start Apple Pay'
+      setPaymentError(errorMessage)
+      showErrorToast(errorMessage)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -715,13 +893,10 @@ function Checkout() {
                   <div className="mb-6">
                     <DigitalWallets
                       onGooglePayClick={() => {
-                        setPaymentMethod('googlepay')
-                        // Google Pay logic will be handled here
+                        // Google Pay - Coming Soon
+                        showErrorToast('Google Pay is coming soon!')
                       }}
-                      onApplePayClick={() => {
-                        setPaymentMethod('applepay')
-                        // Apple Pay logic will be handled here
-                      }}
+                      onApplePayClick={handleApplePayClick}
                       disabled={loading}
                     />
                   </div>
