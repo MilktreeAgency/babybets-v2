@@ -146,7 +146,7 @@ export default function Footer() {
                 <h3 className="text-base font-bold mb-6" style={{ color: '#FED0B9', fontFamily: "'Fraunces', serif" }}>Information</h3>
                 <ul className="space-y-3">
                   <li>
-                    <Link to="/about" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
+                    <Link to="/founders" className="cursor-pointer text-[14px] font-normal transition-colors" style={{ color: '#e1eaec' }} onMouseEnter={e => (e.currentTarget.style.color = '#FED0B9')} onMouseLeave={e => (e.currentTarget.style.color = '#e1eaec')}>
                       About Us
                     </Link>
                   </li>

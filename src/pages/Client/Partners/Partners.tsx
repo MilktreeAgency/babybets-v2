@@ -91,7 +91,7 @@ export default function Partners() {
           </p>
 
           <p className="font-bold text-xs sm:text-sm uppercase tracking-widest mb-8 animate-pulse" style={{ color: '#FED0B9' }}>
-            Limited Spaces Available for Q1 2026
+            Limited Spaces Available
           </p>
 
           {/* Video */}
@@ -100,11 +100,12 @@ export default function Partners() {
             style={{ aspectRatio: '16/9', backgroundColor: '#151e20', borderWidth: '4px', borderColor: 'rgba(255,255,255,0.15)' }}
           >
             <iframe
-              src="https://player.vimeo.com/video/1138594596?badge=0&autopause=0&player_id=0&app_id=58479"
+              src="https://player.vimeo.com/video/1171846985?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&rel=0&end_card=0"
               className="w-full h-full"
               frameBorder="0"
-              allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
-              title="BabyBets Partnership Video"
+              allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              title="BABY BETS FUNNELS 2"
             />
           </div>
         </div>

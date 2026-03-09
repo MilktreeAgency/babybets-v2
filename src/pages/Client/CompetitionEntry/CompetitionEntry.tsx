@@ -1663,10 +1663,10 @@ function CompetitionEntry() {
                       />
                     </div>
                     <h3 className="font-bold text-xl mb-3" style={{ color: '#151e20' }}>
-                      Buy your tickets
+                      Get your tickets
                     </h3>
                     <p className="text-base leading-relaxed" style={{ color: '#78716c' }}>
-                      Choose how many tickets you want to enter
+                      Buy online or enter for free by post
                     </p>
                   </div>
                 </div>
@@ -1812,10 +1812,10 @@ function CompetitionEntry() {
                       />
                     </div>
                     <h3 className="font-bold text-xl mb-3" style={{ color: '#151e20' }}>
-                      Buy your tickets
+                      Get your tickets
                     </h3>
                     <p className="text-base leading-relaxed" style={{ color: '#78716c' }}>
-                      Choose how many tickets you want to enter
+                      Buy online or enter for free by post
                     </p>
                   </div>
                 </div>

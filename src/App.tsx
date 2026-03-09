@@ -16,6 +16,7 @@ import Account from './pages/Client/Account/Account'
 import ScratchReveal from './pages/Client/ScratchReveal'
 import HowItWorks from './pages/Client/HowItWorks/HowItWorks'
 import FAQ from './pages/Client/FAQ/FAQ'
+import Contact from './pages/Client/Contact/Contact'
 import PrivacyPolicy from './pages/Client/Legal/PrivacyPolicy'
 import Terms from './pages/Client/Legal/Terms'
 import AcceptableUsePolicy from './pages/Client/Legal/AcceptableUsePolicy'
@@ -96,6 +97,7 @@ function App() {
         <Route path="/scratch-reveal" element={<ScratchReveal />} />
         <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/partners" element={<Partners />} />
         <Route path="/partner/:slug" element={<PartnerProfile />} />
         <Route path="/founders" element={<Founders />} />

@@ -43,7 +43,7 @@ export default function HowItWorksSection() {
               className="inline-flex items-center px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest"
               style={{ backgroundColor: '#FED0B9', color: '#151e20' }}
             >
-              Instant Win
+              Getting Started
             </span>
           </div>
           <h2
@@ -53,7 +53,7 @@ export default function HowItWorksSection() {
             How It Works
           </h2>
           <p className="text-base sm:text-lg max-w-lg mx-auto leading-relaxed" style={{ color: '#c8dde0' }}>
-            Enter our instant win competition and discover if you've won straight away.
+            Pick a competition, grab your tickets and you're in with a chance to win amazing prizes.
           </p>
         </div>
 

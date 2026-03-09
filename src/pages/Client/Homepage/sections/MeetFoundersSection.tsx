@@ -32,7 +32,7 @@ export default function MeetFoundersSection() {
             </p>
 
             {/* CTA */}
-            <Link to="/partners">
+            <Link to="/founders">
               <button
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer"
                 style={{ backgroundColor: '#FED0B9', color: '#151e20' }}

@@ -121,7 +121,7 @@ export default function CompetitionCard({ competition }: CompetitionCardProps) {
         style={{ backgroundColor: '#151e20', borderWidth: '1px', borderColor: '#e7e5e4' }}
       >
         {/* Image */}
-        <div className="relative aspect-[4/3] overflow-hidden" style={{ backgroundColor: '#fffbf7' }}>
+        <div className="relative aspect-[4/5] overflow-hidden" style={{ backgroundColor: '#fffbf7' }}>
           <img
             src={displayImage}
             alt={competition.title}
