@@ -17,41 +17,21 @@ export interface CardDetails {
   cardholderName: string
 }
 
-// Direct payment session response
+// Hosted payment session response
 interface HostedSessionResponse {
   success: boolean
-  requires3DS?: boolean
-  threeDSURL?: string
-  threeDSRequest?: string
-  threeDSMD?: string
-  threeDSACSURL?: string
-  transactionID?: string
-  transactionUnique?: string
+  hostedPaymentURL?: string
   orderRef?: string
-  responseCode?: string
-  responseMessage?: string
+  transactionUnique?: string
   error?: string
 }
 
-// Browser information interface
-export interface BrowserInfo {
-  deviceChannel: string
-  deviceIdentity: string
-  deviceTimeZone: string
-  deviceCapabilities: string
-  deviceScreenResolution: string
-  deviceAcceptContent: string
-  deviceAcceptEncoding: string
-  deviceAcceptLanguage: string
-}
-
-// Create a direct payment session via Edge Function
+// Create a hosted payment session via Edge Function
+// User will be redirected to G2Pay's page to enter card details
 export const createHostedPaymentSession = async (
   orderRef: string,
   customerEmail?: string,
-  customerPhone?: string,
-  cardDetails?: CardDetails,
-  browserInfo?: BrowserInfo
+  customerPhone?: string
 ): Promise<HostedSessionResponse> => {
   // Get current session
   const {
@@ -115,14 +95,12 @@ export const createHostedPaymentSession = async (
     }
   )
 
-  // Call Edge Function to create direct payment session
+  // Call Edge Function to create hosted payment session
   const { data, error } = await supabaseWithAuth.functions.invoke('create-g2pay-hosted-session', {
     body: {
       orderRef,
       customerEmail,
       customerPhone,
-      ...(cardDetails && { cardDetails }),
-      ...(browserInfo && { browserInfo }),
     },
   })
 

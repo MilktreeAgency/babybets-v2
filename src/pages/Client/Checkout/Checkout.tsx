@@ -6,7 +6,6 @@ import { useCartStore } from '@/store/cartStore'
 import { useAuthStore } from '@/store/authStore'
 import { useWallet } from '@/hooks/useWallet'
 import { createHostedPaymentSession } from '@/lib/g2pay'
-import { collectBrowserInfo } from '@/lib/browserInfo'
 import { supabase } from '@/lib/supabase'
 import { getReferral, clearReferral, setReferral } from '@/lib/referralTracking'
 import { showErrorToast, showWarningToast } from '@/lib/toast'
@@ -17,9 +16,6 @@ import {
   PriceSummary,
   ContactInformation,
   TermsCheckboxes,
-  CardPayment,
-  validateCardDetails,
-  DigitalWallets,
 } from './components'
 
 function Checkout() {
@@ -46,13 +42,6 @@ function Checkout() {
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [isUKResident, setIsUKResident] = useState(false)
   const [isOver18, setIsOver18] = useState(false)
-
-  // Card payment state
-  const [cardNumber, setCardNumber] = useState('')
-  const [expiryDate, setExpiryDate] = useState('')
-  const [cvv, setCvv] = useState('')
-  const [cardholderName, setCardholderName] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'googlepay' | 'applepay'>('card')
   const [paymentError, setPaymentError] = useState<string | null>(null)
 
   // Validate UK mobile number format
@@ -64,7 +53,6 @@ function Checkout() {
   }
 
   const isMobileValid = validateMobileNumber(mobileNumber)
-  const isCardValid = paymentMethod === 'card' ? validateCardDetails(cardNumber, expiryDate, cvv, cardholderName) : true
 
   const totalPrice = getTotalPrice()
   const availableCreditGBP = summary.availableBalance / 100
@@ -72,7 +60,7 @@ function Checkout() {
   const priceAfterPromo = totalPrice - discountAmount
   const maxApplicableCredit = Math.min(availableCreditGBP, priceAfterPromo)
   const finalPrice = Math.max(0, priceAfterPromo - appliedCredit)
-  const canProceed = agreeTerms && isUKResident && isOver18 && isMobileValid && (finalPrice === 0 || isCardValid)
+  const canProceed = agreeTerms && isUKResident && isOver18 && isMobileValid
 
   useEffect(() => {
     // Wait for auth to initialize before checking authentication
@@ -503,70 +491,31 @@ function Checkout() {
         })
       }
 
-      // Collect browser information for 3DS v2
-      const browserInfo = collectBrowserInfo()
-
-      // Prepare card details for direct payment
-      const [expMonth, expYear] = expiryDate.split('/')
-      const cardDetailsPayload = {
-        cardNumber: cardNumber.replace(/\s/g, ''),
-        expiryMonth: expMonth,
-        expiryYear: expYear,
-        cvv,
-        cardholderName,
-      }
-
-      // Create direct payment session with card details and browser info
+      // Create hosted payment session (no card details sent - user enters on G2Pay's page)
       const paymentResult = await createHostedPaymentSession(
         order.id,
         session.user.email,
-        mobileNumber,
-        cardDetailsPayload,
-        browserInfo
+        mobileNumber
       )
 
       if (!paymentResult.success) {
-        throw new Error(paymentResult.error || 'Failed to process payment')
+        throw new Error(paymentResult.error || 'Failed to create payment session')
       }
 
-      // Check if 3D Secure authentication is required
-      if (paymentResult.requires3DS && paymentResult.threeDSURL) {
-        console.log('[Checkout] 3DS authentication required, redirecting to:', paymentResult.threeDSURL)
-
-        // Save order ID to localStorage so we can retrieve it after 3DS redirect
-        localStorage.setItem('pending3DSOrder', order.id)
-
-        // Redirect to 3DS authentication page
-        window.location.href = paymentResult.threeDSURL
-        return
+      if (!paymentResult.hostedPaymentURL) {
+        throw new Error('No payment URL received from payment gateway')
       }
 
-      // Payment successful - Complete order and allocate tickets
-      console.log('[Checkout] Payment successful:', paymentResult)
+      // Redirect to G2Pay's hosted payment page
+      // User will enter card details on G2Pay's secure page
+      // G2Pay handles 3DS, Apple Pay, Google Pay automatically
+      console.log('[Checkout] Redirecting to G2Pay hosted payment page')
 
-      // Deduct wallet credits if any were applied
-      if (creditPence > 0) {
-        await supabase.rpc('debit_wallet_credits', {
-          p_user_id: authenticatedUserId,
-          p_amount_pence: creditPence,
-          p_description: `Order #${order.id.slice(0, 8)}`,
-        })
-      }
+      // Save order ID to localStorage so we can track it after redirect
+      localStorage.setItem('pendingOrderId', order.id)
 
-      // Complete order and allocate tickets via Edge Function
-      const { error: completeError } = await supabase.functions.invoke('complete-g2pay-order', {
-        body: { orderId: order.id, userId: authenticatedUserId },
-      })
-
-      if (completeError) {
-        console.error('[Checkout] Edge function error:', completeError)
-        throw new Error(completeError.message || 'Failed to complete order')
-      }
-
-      // Mark purchase as completed and clear cart
-      setPurchaseCompleted(true)
-      clearCart()
-      navigate(`/payment-success?orderId=${order.id}&transactionId=${paymentResult.transactionID || ''}`)
+      // Redirect to G2Pay's hosted payment page
+      window.location.href = paymentResult.hostedPaymentURL
     } catch (err) {
       console.error('Error processing payment:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to process payment'
@@ -687,18 +636,94 @@ function Checkout() {
                     Payment Details
                   </h2>
 
-                  {/* Card Payment */}
+                  {/* Secure Payment Information */}
                   <div className="mb-6">
-                    <CardPayment
-                      cardNumber={cardNumber}
-                      setCardNumber={setCardNumber}
-                      expiryDate={expiryDate}
-                      setExpiryDate={setExpiryDate}
-                      cvv={cvv}
-                      setCvv={setCvv}
-                      cardholderName={cardholderName}
-                      setCardholderName={setCardholderName}
-                    />
+                    <div
+                      className="p-6 rounded-xl border-2"
+                      style={{
+                        backgroundColor: '#f0f9ff',
+                        borderColor: '#bae6fd',
+                      }}
+                    >
+                      <div className="flex items-start mb-4">
+                        <svg
+                          className="w-6 h-6 mr-3 shrink-0"
+                          style={{ color: '#0284c7' }}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                          />
+                        </svg>
+                        <div>
+                          <h3 className="font-bold text-base mb-2" style={{ color: '#0c4a6e' }}>
+                            Secure Payment Page
+                          </h3>
+                          <p className="text-sm leading-relaxed" style={{ color: '#075985' }}>
+                            When you click "Continue to Payment", you'll be redirected to our secure payment gateway where you can safely enter your payment details.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 ml-9">
+                        <div className="flex items-center">
+                          <svg
+                            className="w-5 h-5 mr-2"
+                            style={{ color: '#10b981' }}
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          <span className="text-sm" style={{ color: '#0c4a6e' }}>
+                            Credit & Debit Cards
+                          </span>
+                        </div>
+                        <div className="flex items-center">
+                          <svg
+                            className="w-5 h-5 mr-2"
+                            style={{ color: '#10b981' }}
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          <span className="text-sm" style={{ color: '#0c4a6e' }}>
+                            Apple Pay & Google Pay
+                          </span>
+                        </div>
+                        <div className="flex items-center">
+                          <svg
+                            className="w-5 h-5 mr-2"
+                            style={{ color: '#10b981' }}
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          <span className="text-sm" style={{ color: '#0c4a6e' }}>
+                            3D Secure Authentication
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
                     {/* Payment Error Display */}
                     {paymentError && (
@@ -714,21 +739,6 @@ function Checkout() {
                         </div>
                       </div>
                     )}
-                  </div>
-
-                  {/* Digital Wallets */}
-                  <div className="mb-6">
-                    <DigitalWallets
-                      onGooglePayClick={() => {
-                        setPaymentMethod('googlepay')
-                        // Google Pay logic will be handled here
-                      }}
-                      onApplePayClick={() => {
-                        setPaymentMethod('applepay')
-                        // Apple Pay logic will be handled here
-                      }}
-                      disabled={loading}
-                    />
                   </div>
 
                   <ContactInformation
@@ -765,11 +775,11 @@ function Checkout() {
                       e.currentTarget.style.backgroundColor = '#496B71'
                     }}
                   >
-                    {loading ? 'Processing...' : `Pay £${finalPrice.toFixed(2)}`}
+                    {loading ? 'Processing...' : `Continue to Payment (£${finalPrice.toFixed(2)})`}
                   </button>
 
                   <p className="text-xs text-center mt-4" style={{ color: '#78716c' }}>
-                    Your payment is secure and encrypted
+                    Powered by G2Pay • PCI DSS Compliant • 256-bit SSL Encryption
                   </p>
                 </div>
               )}
