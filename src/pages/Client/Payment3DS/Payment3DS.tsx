@@ -126,22 +126,26 @@ function Payment3DS() {
     }
 
     try {
-      console.log('[Payment3DS] Continuing transaction with 3DS response')
+      console.log('[Payment3DS] Continuing transaction with 3DS response:', acsResponse)
 
       // Parse the ACS response
       const responseData: Record<string, string> = {}
       if (acsResponse) {
-        // If it's a query string, parse it
-        try {
-          const params = new URLSearchParams(acsResponse)
-          params.forEach((value, key) => {
-            responseData[key] = value
-          })
-        } catch {
-          // If not a query string, just pass it as-is
+        // Try to parse as query string
+        const params = new URLSearchParams(acsResponse)
+        let hasParams = false
+        params.forEach((value, key) => {
+          responseData[key] = value
+          hasParams = true
+        })
+
+        // If no params were parsed, treat the whole string as threeDSResponse value
+        if (!hasParams) {
           responseData.threeDSResponse = acsResponse
         }
       }
+
+      console.log('[Payment3DS] Parsed response data:', Object.keys(responseData).length > 0 ? responseData : 'empty')
 
       const result = await continue3DSTransaction(orderRef, ref, responseData)
 
