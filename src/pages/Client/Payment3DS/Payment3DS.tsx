@@ -11,7 +11,6 @@ function Payment3DS() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showIframe, setShowIframe] = useState(true)
-  const [showContinue, setShowContinue] = useState(false)
 
   const orderRef = searchParams.get('orderRef')
   const threeDSURL = searchParams.get('threeDSURL')
@@ -64,13 +63,16 @@ function Payment3DS() {
 
       // Submit the form after a short delay to ensure iframe is ready
       setTimeout(() => {
-        console.log('[Payment3DS] Submitting 3DS challenge form to ACS')
+        console.log('[Payment3DS] Submitting 3DS method form to ACS')
         form.submit()
 
-        // Show continue button after method completes (fingerprinting is quick)
+        // Automatically continue after method completes (fingerprinting is quick)
         setTimeout(() => {
-          console.log('[Payment3DS] Method fingerprinting should be complete')
-          setShowContinue(true)
+          console.log('[Payment3DS] Method fingerprinting should be complete, continuing automatically...')
+          if (threeDSRef) {
+            // Automatically continue the transaction after fingerprinting
+            processACSResponse('', threeDSRef)
+          }
         }, 3000)
       }, 100)
 
@@ -88,6 +90,12 @@ function Payment3DS() {
   const processACSResponse = async (acsResponse: string, ref: string) => {
     setLoading(true)
     setShowIframe(false)
+
+    if (!orderRef) {
+      setError('Missing order reference')
+      setLoading(false)
+      return
+    }
 
     try {
       console.log('[Payment3DS] Continuing transaction with 3DS response')
@@ -107,7 +115,7 @@ function Payment3DS() {
         }
       }
 
-      const result = await continue3DSTransaction(ref, responseData)
+      const result = await continue3DSTransaction(orderRef, ref, responseData)
 
       if (result.success) {
         console.log('[Payment3DS] ✅ Payment successful after 3DS')
@@ -163,7 +171,7 @@ function Payment3DS() {
           <div className="bg-white rounded-lg shadow-lg p-8">
             <h2 className="text-2xl font-bold mb-4 text-center">Secure Payment Verification</h2>
             <p className="text-gray-600 mb-6 text-center">
-              Please complete the additional security verification to proceed with your payment.
+              {loading ? 'Processing your payment...' : 'Verifying your payment with your bank...'}
             </p>
 
             {loading && (
@@ -185,24 +193,13 @@ function Payment3DS() {
               </div>
             )}
 
-            {/* Continue button after method completes */}
-            {showContinue && !loading && threeDSRef && (
-              <div className="mt-6 text-center">
-                <button
-                  onClick={() => processACSResponse('', threeDSRef)}
-                  className="px-8 py-3 rounded-lg font-medium cursor-pointer"
-                  style={{ backgroundColor: '#496B71', color: 'white' }}
-                >
-                  Continue Payment
-                </button>
-                <p className="text-sm text-gray-500 mt-2">Click to complete your payment</p>
+
+            {!loading && (
+              <div className="mt-6 text-center text-sm text-gray-500">
+                <p>🔒 This is a secure payment verification process</p>
+                <p className="mt-2">Verifying your card security in the background...</p>
               </div>
             )}
-
-            <div className="mt-6 text-center text-sm text-gray-500">
-              <p>🔒 This is a secure payment verification process</p>
-              <p className="mt-2">You may be asked to verify your identity with your bank</p>
-            </div>
           </div>
         </div>
       </div>

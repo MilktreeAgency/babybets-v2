@@ -213,14 +213,22 @@ serve(async (req) => {
     }
 
     // Check if this is a 3DS continuation request
-    if (threeDSRef && threeDSResponse) {
-      // This is a 3DS continuation - we already have the 3DS response from the ACS
+    if (threeDSRef) {
+      // This is a 3DS continuation - continuing after method or challenge
+      console.log('[create-g2pay-direct] Processing 3DS continuation')
+
       const continuationData: Record<string, string | number> = {
         threeDSRef,
-        threeDSResponse,
       }
 
-      console.log('[create-g2pay-direct] Processing 3DS continuation')
+      // Only include threeDSResponse if it has actual data
+      if (threeDSResponse && Object.keys(threeDSResponse).length > 0) {
+        console.log('[create-g2pay-direct] Including 3DS response data')
+        // If threeDSResponse is an object, flatten it into continuationData
+        Object.entries(threeDSResponse).forEach(([key, value]) => {
+          continuationData[key] = String(value)
+        })
+      }
 
       const signature = await createSignature(continuationData, G2PAY_SIGNATURE_KEY)
       const finalRequest = {

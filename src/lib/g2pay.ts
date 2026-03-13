@@ -198,6 +198,7 @@ export const createHostedPaymentSession = async (
 
 // Continue 3DS transaction after ACS challenge
 export const continue3DSTransaction = async (
+  orderRef: string,
   threeDSRef: string,
   threeDSResponse: Record<string, string>
 ): Promise<HostedSessionResponse> => {
@@ -226,6 +227,7 @@ export const continue3DSTransaction = async (
   // Call Edge Function to continue 3DS
   const { data, error } = await supabaseWithAuth.functions.invoke('create-g2pay-hosted-session', {
     body: {
+      orderRef,
       threeDSRef,
       threeDSResponse,
     },
