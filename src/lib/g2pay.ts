@@ -187,7 +187,8 @@ export const createHostedPaymentSession = async (
   }
 
   // Check if the payment failed (edge function returned success: false in the data)
-  if (data && !data.success) {
+  // BUT allow success: false when requires3DS: true (that's not a failure, it's a redirect)
+  if (data && !data.success && !data.requires3DS) {
     console.error('[G2Pay Hosted] Payment failed:', data)
     throw new Error(data.error || data.rawMessage || 'Payment failed')
   }
