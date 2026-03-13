@@ -225,18 +225,23 @@ export const continue3DSTransaction = async (
   )
 
   // Call Edge Function to continue 3DS
+  // Convert empty object to string value directly to avoid serialization issues
+  const threeDSResponseValue = Object.keys(threeDSResponse).length > 0
+    ? threeDSResponse.threeDSResponse || JSON.stringify(threeDSResponse)
+    : 'method'
+
   console.log('[G2Pay 3DS Continuation] Sending to edge function:', {
     orderRef,
     threeDSRef,
-    threeDSResponse: JSON.stringify(threeDSResponse),
-    keys: Object.keys(threeDSResponse),
+    threeDSResponse: threeDSResponseValue,
+    originalKeys: Object.keys(threeDSResponse),
   })
 
   const { data, error } = await supabaseWithAuth.functions.invoke('create-g2pay-hosted-session', {
     body: {
       orderRef,
       threeDSRef,
-      threeDSResponse,
+      threeDSResponse: threeDSResponseValue,
     },
   })
 

@@ -216,30 +216,23 @@ serve(async (req) => {
     if (threeDSRef) {
       // This is a 3DS continuation - continuing after method or challenge
       console.log('[create-g2pay-direct] Processing 3DS continuation')
-      console.log('[create-g2pay-direct] threeDSResponse type:', typeof threeDSResponse, 'keys:', threeDSResponse ? Object.keys(threeDSResponse) : 'null')
+      console.log('[create-g2pay-direct] threeDSResponse:', threeDSResponse, 'type:', typeof threeDSResponse)
 
       const continuationData: Record<string, string | number> = {
         threeDSRef,
       }
 
-      // Check if threeDSResponse is provided and has data
-      let hasResponseData = false
-      if (threeDSResponse) {
-        if (typeof threeDSResponse === 'string') {
-          // String response (e.g., "method")
-          continuationData.threeDSResponse = threeDSResponse
-          hasResponseData = true
-        } else if (typeof threeDSResponse === 'object' && Object.keys(threeDSResponse).length > 0) {
-          // Object with POST data from ACS
-          console.log('[create-g2pay-direct] Including ACS POST data')
-          Object.entries(threeDSResponse).forEach(([key, value]) => {
-            continuationData[key] = String(value)
-          })
-          hasResponseData = true
-        }
+      // Always add threeDSResponse parameter - G2Pay requires it
+      if (threeDSResponse && typeof threeDSResponse === 'string' && threeDSResponse.trim() !== '') {
+        continuationData.threeDSResponse = threeDSResponse
+        console.log('[create-g2pay-direct] Added threeDSResponse:', threeDSResponse)
+      } else {
+        // Default to empty string if nothing provided
+        continuationData.threeDSResponse = ''
+        console.log('[create-g2pay-direct] Using empty threeDSResponse')
       }
 
-      console.log('[create-g2pay-direct] Continuation data keys:', Object.keys(continuationData).join(', '))
+      console.log('[create-g2pay-direct] Continuation data:', continuationData)
 
       const signature = await createSignature(continuationData, G2PAY_SIGNATURE_KEY)
 
