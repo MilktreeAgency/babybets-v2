@@ -170,6 +170,31 @@ serve(async (req) => {
     if (responseData.responseCode === '0') {
       console.log('[continue-3ds] Payment successful after 3DS')
 
+      // Mark the matching payment_transactions row as success so
+      // complete-g2pay-order's safety guard recognises the payment.
+      // Without this update the row stays at status='threeds_required'
+      // and the order can never be marked paid → 409.
+      if (orderRef) {
+        const { error: txUpdateError } = await supabaseAdmin
+          .from('payment_transactions')
+          .update({
+            transaction_id: responseData.transactionID,
+            response_code: responseData.responseCode,
+            response_message: responseData.responseMessage,
+            status: 'success',
+            response_data: responseData,
+          })
+          .eq('order_id', orderRef)
+          .in('status', ['pending', 'threeds_required'])
+
+        if (txUpdateError) {
+          console.error('[continue-3ds] Failed to update payment_transactions row to success', {
+            orderRef,
+            error: txUpdateError,
+          })
+        }
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
@@ -200,8 +225,23 @@ serve(async (req) => {
       )
     }
 
-    // Failed
+    // Failed — record the failure so we don't accidentally retry from a
+    // pending row.
     console.error('[continue-3ds] Payment failed:', responseData.responseMessage)
+
+    if (orderRef) {
+      await supabaseAdmin
+        .from('payment_transactions')
+        .update({
+          response_code: responseData.responseCode,
+          response_message: responseData.responseMessage,
+          status: 'failed',
+          response_data: responseData,
+          error_message: responseData.responseMessage,
+        })
+        .eq('order_id', orderRef)
+        .in('status', ['pending', 'threeds_required'])
+    }
 
     return new Response(
       JSON.stringify({
