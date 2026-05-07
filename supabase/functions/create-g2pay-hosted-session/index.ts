@@ -330,10 +330,30 @@ serve(async (req) => {
       responseData[key] = value
     })
 
+    // Cardstream serialises the next-step 3DS body using PHP-style bracket
+    // keys (`threeDSRequest[threeDSMethodData]=...`). URLSearchParams keeps
+    // the brackets literal, so `responseData.threeDSRequest` is undefined and
+    // the client's IF check skips the 3DS branch entirely. Reconstruct it as
+    // a URL-encoded form body the iframe can POST.
+    const threeDSRequestPairs: string[] = []
+    Object.entries(responseData).forEach(([key, value]) => {
+      const match = key.match(/^threeDSRequest\[(.+)\]$/)
+      if (match) {
+        threeDSRequestPairs.push(`${encodeURIComponent(match[1])}=${encodeURIComponent(value)}`)
+      }
+    })
+    if (!responseData.threeDSRequest && threeDSRequestPairs.length > 0) {
+      responseData.threeDSRequest = threeDSRequestPairs.join('&')
+    }
+
     console.log('[create-g2pay-direct] Parsed response:', {
       responseCode: responseData.responseCode,
       responseMessage: responseData.responseMessage,
       transactionID: responseData.transactionID,
+      threeDSURL: responseData.threeDSURL,
+      threeDSRef: responseData.threeDSRef,
+      threeDSRequest_length: responseData.threeDSRequest?.length ?? 0,
+      threeDSRequest_reconstructed: threeDSRequestPairs.length > 0,
     })
 
     // Check payment status (responseCode '0' = success)
