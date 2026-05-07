@@ -232,7 +232,7 @@ serve(async (req) => {
     // parent checkout window. Mirrors VincentVanGogh's payment.3ds.callback
     // Laravel route.
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const threeDSRedirectURL = `${supabaseUrl}/functions/v1/3ds-callback?orderRef=${orderRef}`
+    const threeDSRedirectURL = `${supabaseUrl}/functions/v1/threeds-callback?orderRef=${orderRef}`
 
     // Prepare request data for G2Pay Direct API with 3DS support
     const requestData: Record<string, string | number> = {

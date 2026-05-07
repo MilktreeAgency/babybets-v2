@@ -196,7 +196,7 @@ serve(async (req) => {
     // 3DS redirect target: a Supabase edge function that handles POST from
     // the ACS, reads the form body, and renders HTML that postMessages back
     // to the parent checkout window.
-    const threeDSRedirectURL = `${SUPABASE_URL}/functions/v1/3ds-callback?orderRef=${orderId}`
+    const threeDSRedirectURL = `${SUPABASE_URL}/functions/v1/threeds-callback?orderRef=${orderId}`
 
     // Prepare request data for G2Pay Direct API
     const requestData: Record<string, string | number> = {

@@ -142,7 +142,7 @@ serve(async (req) => {
     // the ACS, reads the form body, and renders HTML that postMessages back
     // to the parent checkout window. Mirrors VincentVanGogh's
     // payment.3ds.callback Laravel route.
-    const threeDSRedirectURL = `${SUPABASE_URL}/functions/v1/3ds-callback?orderRef=${orderId}`
+    const threeDSRedirectURL = `${SUPABASE_URL}/functions/v1/threeds-callback?orderRef=${orderId}`
 
     const requestData: Record<string, string | number> = {
       merchantID: G2PAY_MERCHANT_ID,
