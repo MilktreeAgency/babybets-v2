@@ -81,10 +81,10 @@ serve(async (req) => {
       .limit(1)
       .single()
 
-    // Get order details (includes user_id and credit_applied_pence)
+    // Get order details (includes user_id, credit_applied_pence, and total_pence)
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
-      .select('id, user_id, status, credit_applied_pence')
+      .select('id, user_id, status, credit_applied_pence, total_pence')
       .eq('id', orderId)
       .single()
 
@@ -120,42 +120,53 @@ serve(async (req) => {
       throw new Error(`Cannot complete order with status: ${order.status}`)
     }
 
-    // Verify Cardstream actually captured the payment before marking the order
-    // as paid. Without this, a buggy client (or a malicious caller) could flip
-    // 'pending' → 'paid' while the gateway is still mid-3DS, which leaves the
-    // bank's authorisation hold to expire and reverse — funds taken then
-    // refunded a few hours later.
-    const { data: successfulTransaction, error: txError } = await supabaseAdmin
-      .from('payment_transactions')
-      .select('id, status, transaction_id')
-      .eq('order_id', orderId)
-      .eq('status', 'success')
-      .limit(1)
-      .maybeSingle()
+    // Check if order was fully paid with credits (no payment required)
+    const isPaidWithCreditsOnly = order.total_pence === 0
 
-    if (txError) {
-      console.error('[Complete Order] Failed to look up payment_transactions:', txError)
-      throw new Error('Failed to verify payment status')
+    if (isPaidWithCreditsOnly) {
+      console.log('[Complete Order] Order fully paid with credits, skipping payment verification', {
+        orderId,
+        credit_applied_pence: order.credit_applied_pence,
+        total_pence: order.total_pence,
+      })
+    } else {
+      // Verify Cardstream actually captured the payment before marking the order
+      // as paid. Without this, a buggy client (or a malicious caller) could flip
+      // 'pending' → 'paid' while the gateway is still mid-3DS, which leaves the
+      // bank's authorisation hold to expire and reverse — funds taken then
+      // refunded a few hours later.
+      const { data: successfulTransaction, error: txError } = await supabaseAdmin
+        .from('payment_transactions')
+        .select('id, status, transaction_id')
+        .eq('order_id', orderId)
+        .eq('status', 'success')
+        .limit(1)
+        .maybeSingle()
+
+      if (txError) {
+        console.error('[Complete Order] Failed to look up payment_transactions:', txError)
+        throw new Error('Failed to verify payment status')
+      }
+
+      if (!successfulTransaction) {
+        console.error('[Complete Order] Refusing to complete order — no successful payment_transactions row', { orderId })
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Payment has not been confirmed by the gateway yet',
+          }),
+          {
+            status: 409,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      console.log('[Complete Order] Verified successful payment', {
+        orderId,
+        transactionId: successfulTransaction.transaction_id,
+      })
     }
-
-    if (!successfulTransaction) {
-      console.error('[Complete Order] Refusing to complete order — no successful payment_transactions row', { orderId })
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Payment has not been confirmed by the gateway yet',
-        }),
-        {
-          status: 409,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
-
-    console.log('[Complete Order] Verified successful payment', {
-      orderId,
-      transactionId: successfulTransaction.transaction_id,
-    })
 
     // Update order to paid
     const { error: updateError } = await supabaseAdmin
