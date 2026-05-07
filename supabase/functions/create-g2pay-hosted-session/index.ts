@@ -227,9 +227,12 @@ serve(async (req) => {
     // Get User-Agent from request headers
     const userAgent = req.headers.get('user-agent') || 'Mozilla/5.0'
 
-    // Build callback URL for 3DS redirect
-    const siteUrl = Deno.env.get('PUBLIC_SITE_URL') || 'https://www.babybets.co.uk'
-    const threeDSRedirectURL = `${siteUrl}/payment-3ds?orderRef=${orderRef}`
+    // 3DS redirect target: Supabase edge function that handles ACS POST,
+    // reads the form body, and renders HTML that postMessages back to the
+    // parent checkout window. Mirrors VincentVanGogh's payment.3ds.callback
+    // Laravel route.
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const threeDSRedirectURL = `${supabaseUrl}/functions/v1/3ds-callback?orderRef=${orderRef}`
 
     // Prepare request data for G2Pay Direct API with 3DS support
     const requestData: Record<string, string | number> = {

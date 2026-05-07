@@ -138,8 +138,11 @@ serve(async (req) => {
       || req.headers.get('x-real-ip')
       || '0.0.0.0'
     const userAgent = req.headers.get('user-agent') || 'Mozilla/5.0'
-    const PUBLIC_SITE_URL = Deno.env.get('PUBLIC_SITE_URL') || 'https://www.babybets.co.uk'
-    const threeDSRedirectURL = `${PUBLIC_SITE_URL}/payment-3ds?orderRef=${orderId}`
+    // 3DS redirect target: a Supabase edge function that handles POST from
+    // the ACS, reads the form body, and renders HTML that postMessages back
+    // to the parent checkout window. Mirrors VincentVanGogh's
+    // payment.3ds.callback Laravel route.
+    const threeDSRedirectURL = `${SUPABASE_URL}/functions/v1/3ds-callback?orderRef=${orderId}`
 
     const requestData: Record<string, string | number> = {
       merchantID: G2PAY_MERCHANT_ID,
