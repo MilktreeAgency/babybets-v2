@@ -47,7 +47,8 @@ export default function CompetitionForm() {
   })
 
   // Separate state for date/time fields
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined)
+  // For new competitions, default start date to current date/time
+  const [startDate, setStartDate] = useState<Date | undefined>(isEditMode ? undefined : new Date())
   const [endDate, setEndDate] = useState<Date | undefined>(undefined)
   const [drawDate, setDrawDate] = useState<Date | undefined>(undefined)
 
@@ -55,6 +56,7 @@ export default function CompetitionForm() {
 
   const [useCurrentStartDate, setUseCurrentStartDate] = useState(false)
   const [isTicketPoolLocked, setIsTicketPoolLocked] = useState(false)
+  const [isDrawDateManuallySet, setIsDrawDateManuallySet] = useState(false)
 
   // Prize selection state
   const [selectedPrizes, setSelectedPrizes] = useState<SelectedPrize[]>([])
@@ -68,6 +70,23 @@ export default function CompetitionForm() {
       loadCompetitionData(id)
     }
   }, [id, isEditMode])
+
+  // Auto-fill draw date when end date changes (only for applicable competition types)
+  useEffect(() => {
+    if (endDate && formData.competition_type !== 'instant_win' && !isDrawDateManuallySet) {
+      // Auto-fill draw date with end date value
+      setDrawDate(new Date(endDate))
+    }
+  }, [endDate, formData.competition_type, isDrawDateManuallySet])
+
+  // Reset draw date manual flag when competition type changes
+  useEffect(() => {
+    if (formData.competition_type === 'instant_win') {
+      // Clear draw date for instant win only competitions
+      setDrawDate(undefined)
+      setIsDrawDateManuallySet(false)
+    }
+  }, [formData.competition_type])
 
   const loadCompetitionData = async (competitionId: string) => {
     setLoadingData(true)
@@ -110,6 +129,7 @@ export default function CompetitionForm() {
         }
         if (data.draw_datetime) {
           setDrawDate(new Date(data.draw_datetime))
+          setIsDrawDateManuallySet(true) // Mark as manually set when loading existing data
         }
 
         // Set ticket pool locked state
@@ -661,7 +681,10 @@ export default function CompetitionForm() {
                     <label className="block text-sm font-medium mb-2">Draw Date</label>
                     <DateTimePicker
                       date={drawDate}
-                      setDate={setDrawDate}
+                      setDate={(date) => {
+                        setDrawDate(date)
+                        setIsDrawDateManuallySet(true)
+                      }}
                     />
                   </div>
                 )}
