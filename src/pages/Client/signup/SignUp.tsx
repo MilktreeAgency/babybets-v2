@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { authService } from '@/services/auth.service'
 import { useAuthStore } from '@/store/authStore'
+import { getAuthErrorMessage } from '@/lib/authErrors'
 import { showErrorToast } from '@/lib/toast'
 
 export default function SignUp() {
@@ -91,8 +92,7 @@ export default function SignUp() {
       }
     } catch (error) {
       console.error('Sign-up failed:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create account'
-      showErrorToast(errorMessage)
+      showErrorToast(getAuthErrorMessage(error, 'signUp'))
     } finally {
       setLoading(false)
     }

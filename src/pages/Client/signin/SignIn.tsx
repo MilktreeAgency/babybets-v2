@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { authService } from '@/services/auth.service'
 import { useAuthStore } from '@/store/authStore'
+import { getAuthErrorMessage } from '@/lib/authErrors'
 import { showErrorToast } from '@/lib/toast'
 
 export default function SignIn() {
@@ -39,7 +40,7 @@ export default function SignIn() {
       setResetSuccess(true)
     } catch (error) {
       console.error('Password reset failed:', error)
-      showErrorToast('Failed to send reset email. Please try again.')
+      showErrorToast(getAuthErrorMessage(error, 'resetPassword'))
     } finally {
       setResetLoading(false)
     }
@@ -68,7 +69,7 @@ export default function SignIn() {
       }
     } catch (error) {
       console.error('Sign-in failed:', error)
-      showErrorToast('Invalid email or password')
+      showErrorToast(getAuthErrorMessage(error, 'signIn'))
     } finally {
       setLoading(false)
     }
