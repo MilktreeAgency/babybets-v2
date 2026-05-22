@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { authService } from '@/services/auth.service'
 import { useAuthStore } from '@/store/authStore'
@@ -7,6 +7,7 @@ import { showErrorToast } from '@/lib/toast'
 
 export default function SignIn() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -16,9 +17,17 @@ export default function SignIn() {
   const [resetLoading, setResetLoading] = useState(false)
   const [resetSuccess, setResetSuccess] = useState(false)
 
+  useEffect(() => {
+    if (searchParams.get('error') === 'no_account') {
+      showErrorToast('No account found for this Google email. Please create an account first.')
+      searchParams.delete('error')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
+
   const handleGoogleSignIn = async () => {
     try {
-      await authService.signInWithGoogle()
+      await authService.signInWithGoogle('login')
     } catch (error) {
       console.error('Sign-in failed:', error)
       showErrorToast('Failed to sign in with Google')

@@ -4,9 +4,14 @@ import { supabase } from '@/lib/supabase'
 import { authService } from '@/services/auth.service'
 import { profileService } from '@/services/profile.service'
 import { useAuthStore } from '@/store/authStore'
+import { showErrorToast } from '@/lib/toast'
 import {
+  clearOAuthFlow,
   clearSignupConsentFromStorage,
+  getOAuthFlow,
   getPendingSignupMarketingConsent,
+  hasPendingSignupTermsAcceptance,
+  isRecentlyCreatedAuthUser,
 } from '@/lib/signupConsent'
 
 export default function AuthCallback() {
@@ -18,23 +23,43 @@ export default function AuthCallback() {
     hasRun.current = true
 
     const handleCallback = async () => {
-      try {
-        // Handle the OAuth callback
-        const { error } = await supabase.auth.getSession()
+      const oauthFlow = getOAuthFlow()
+      clearOAuthFlow()
 
-        if (error) {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+
+        if (error || !session?.user) {
           console.error('Auth callback error:', error)
+          clearSignupConsentFromStorage()
           navigate('/login', { replace: true })
           return
         }
 
-        // Refresh authentication status
+        const isNewUser = isRecentlyCreatedAuthUser(session.user.created_at)
+        const isSignupFlow = oauthFlow === 'signup'
+
+        // Login page: do not allow Google to auto-register new users
+        if (!isSignupFlow && isNewUser) {
+          clearSignupConsentFromStorage()
+          await authService.cancelRecentOAuthSignup()
+          navigate('/login?error=no_account', { replace: true })
+          return
+        }
+
+        // Sign-up page: require terms consent for new Google accounts
+        if (isSignupFlow && isNewUser && !hasPendingSignupTermsAcceptance()) {
+          clearSignupConsentFromStorage()
+          await authService.cancelRecentOAuthSignup()
+          showErrorToast('Please accept the Terms & Conditions and Privacy Policy to create an account.')
+          navigate('/signup', { replace: true })
+          return
+        }
+
         await authService.refreshAuth()
 
-        // Get the updated user from the store
         const { user } = useAuthStore.getState()
 
-        // Apply marketing consent captured on the sign-up page before Google OAuth
         const pendingMarketingConsent = getPendingSignupMarketingConsent()
         if (user?.id && pendingMarketingConsent !== null) {
           try {
@@ -47,11 +72,10 @@ export default function AuthCallback() {
           } finally {
             clearSignupConsentFromStorage()
           }
+        } else if (!isSignupFlow) {
+          clearSignupConsentFromStorage()
         }
 
-        // Welcome email will be sent automatically by database trigger on profiles INSERT
-
-        // Redirect based on user role
         if (user?.isAdmin) {
           navigate('/admin/dashboard', { replace: true })
         } else if (user?.isInfluencer) {
@@ -61,6 +85,7 @@ export default function AuthCallback() {
         }
       } catch (error) {
         console.error('Callback handling error:', error)
+        clearSignupConsentFromStorage()
         navigate('/login', { replace: true })
       }
     }

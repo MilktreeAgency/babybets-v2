@@ -1,6 +1,12 @@
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { profileService } from '@/services/profile.service'
+import {
+  clearOAuthFlow,
+  clearSignupConsentFromStorage,
+  setOAuthFlow,
+  type OAuthFlow,
+} from '@/lib/signupConsent'
 
 class AuthService {
   private isChecking = false
@@ -91,8 +97,13 @@ class AuthService {
     }
   }
 
-  async signInWithGoogle(): Promise<void> {
+  async signInWithGoogle(flow: OAuthFlow = 'login'): Promise<void> {
     try {
+      if (flow === 'login') {
+        clearSignupConsentFromStorage()
+      }
+      setOAuthFlow(flow)
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -104,13 +115,24 @@ class AuthService {
       })
 
       if (error) {
+        clearOAuthFlow()
         console.error('Google sign-in error:', error)
         throw error
       }
     } catch (error) {
+      clearOAuthFlow()
       console.error('Sign-in error:', error)
       throw error
     }
+  }
+
+  /** Remove an auth account that was just auto-created via OAuth on the login page. */
+  async cancelRecentOAuthSignup(): Promise<void> {
+    const { error } = await supabase.rpc('cancel_own_oauth_signup')
+    if (error) {
+      console.error('Failed to cancel OAuth signup:', error)
+    }
+    await this.logout()
   }
 
   async signInWithEmail(email: string, password: string): Promise<void> {

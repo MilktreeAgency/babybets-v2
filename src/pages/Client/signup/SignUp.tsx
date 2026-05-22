@@ -31,7 +31,7 @@ export default function SignUp() {
 
     try {
       storeSignupConsentForOAuth(marketingConsent)
-      await authService.signInWithGoogle()
+      await authService.signInWithGoogle('signup')
     } catch (error) {
       console.error('Sign-in failed:', error)
       showErrorToast('Failed to sign in with Google')

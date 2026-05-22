@@ -1732,6 +1732,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      cancel_own_oauth_signup: { Args: Record<string, never>; Returns: undefined }
       delete_user: { Args: { user_id: string }; Returns: undefined }
       execute_competition_draw: {
         Args: { p_admin_id: string; p_competition_id: string }
