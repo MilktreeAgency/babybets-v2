@@ -1779,6 +1779,10 @@ export type Database = {
         Args: { p_influencer_id: string }
         Returns: undefined
       }
+      reveal_all_instant_win_tickets: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       reset_monthly_influencer_sales: { Args: never; Returns: undefined }
       update_system_setting: {
         Args: { key: string; value: Json }
