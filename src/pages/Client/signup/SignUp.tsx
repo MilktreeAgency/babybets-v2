@@ -4,7 +4,6 @@ import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { authService } from '@/services/auth.service'
 import { useAuthStore } from '@/store/authStore'
 import { showErrorToast } from '@/lib/toast'
-import { storeSignupConsentForOAuth } from '@/lib/signupConsent'
 
 export default function SignUp() {
   const navigate = useNavigate()
@@ -30,8 +29,10 @@ export default function SignUp() {
     }
 
     try {
-      storeSignupConsentForOAuth(marketingConsent)
-      await authService.signInWithGoogle('signup')
+      await authService.signInWithGoogle('signup', {
+        termsAccepted: true,
+        marketingConsent,
+      })
     } catch (error) {
       console.error('Sign-in failed:', error)
       showErrorToast('Failed to sign in with Google')

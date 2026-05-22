@@ -2,9 +2,12 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { profileService } from '@/services/profile.service'
 import {
+  buildOAuthCallbackUrl,
   clearOAuthFlow,
   clearSignupConsentFromStorage,
+  setLoginOAuthIntent,
   setOAuthFlow,
+  storeSignupConsentForOAuth,
   type OAuthFlow,
 } from '@/lib/signupConsent'
 
@@ -97,17 +100,23 @@ class AuthService {
     }
   }
 
-  async signInWithGoogle(flow: OAuthFlow = 'login'): Promise<void> {
+  async signInWithGoogle(
+    flow: OAuthFlow = 'login',
+    signupOptions?: { termsAccepted?: boolean; marketingConsent?: boolean }
+  ): Promise<void> {
     try {
       if (flow === 'login') {
         clearSignupConsentFromStorage()
+        setLoginOAuthIntent()
+      } else {
+        storeSignupConsentForOAuth(signupOptions?.marketingConsent ?? false)
       }
       setOAuthFlow(flow)
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: buildOAuthCallbackUrl(flow, signupOptions?.termsAccepted ?? false),
           queryParams: {
             prompt: 'select_account',
           },

@@ -69,6 +69,38 @@ class ProfileService {
     return data
   }
 
+  /**
+   * Set marketing prefs for accounts auto-created via Google login.
+   * Retries while the profile row is being created by the DB trigger.
+   */
+  async ensureLoginOAuthMarketingDefaults(userId: string): Promise<Profile | null> {
+    const retryDelaysMs = [0, 400, 800, 1500, 2500]
+
+    for (const delayMs of retryDelaysMs) {
+      if (delayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+      }
+
+      const profile = await this.getProfile(userId)
+      if (!profile) continue
+
+      if (profile.marketing_email && profile.marketing_sms) {
+        return profile
+      }
+
+      try {
+        return await this.updateProfile(userId, {
+          marketing_email: true,
+          marketing_sms: true,
+        })
+      } catch (error) {
+        console.warn('Retrying login OAuth marketing preference update:', error)
+      }
+    }
+
+    return null
+  }
+
   async updateProfile(userId: string, updates: UpdateProfileInput): Promise<Profile> {
     const { data, error } = await supabase
       .from('profiles')
