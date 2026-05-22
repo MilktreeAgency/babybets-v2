@@ -14,6 +14,7 @@ async function revealTicketInternal(
       revealed_at: new Date().toISOString(),
     })
     .eq('id', ticketId)
+    .eq('sold_to_user_id', userId)
     .select('id, prize_id')
     .single()
 
@@ -195,36 +196,19 @@ export function useTickets() {
   })
 
   const revealAllTicketsMutation = useMutation({
-    mutationFn: async (ticketIds: string[]): Promise<TicketRevealResult[]> => {
+    mutationFn: async (): Promise<{ revealed_count: number; prizes_allocated: number }> => {
       if (!user?.id) throw new Error('User not authenticated')
-      const results: TicketRevealResult[] = []
-      for (const ticketId of ticketIds) {
-        results.push(await revealTicketInternal(ticketId, user.id))
-      }
-      return results
-    },
-    onMutate: async (ticketIds: string[]) => {
-      await queryClient.cancelQueries({ queryKey: ticketsQueryKey })
-      const previousTickets = queryClient.getQueryData<TicketWithDetails[]>(ticketsQueryKey)
-      const revealedAt = new Date().toISOString()
-      const idSet = new Set(ticketIds)
 
-      if (previousTickets) {
-        queryClient.setQueryData<TicketWithDetails[]>(
-          ticketsQueryKey,
-          previousTickets.map((ticket) =>
-            idSet.has(ticket.id)
-              ? { ...ticket, is_revealed: true, revealed_at: revealedAt }
-              : ticket
-          )
-        )
-      }
+      const { data, error } = await supabase.rpc('reveal_all_instant_win_tickets', {
+        p_user_id: user.id,
+      })
 
-      return { previousTickets }
-    },
-    onError: (_error, _ticketIds, context) => {
-      if (context?.previousTickets) {
-        queryClient.setQueryData(ticketsQueryKey, context.previousTickets)
+      if (error) throw error
+
+      const result = data as { revealed_count?: number; prizes_allocated?: number } | null
+      return {
+        revealed_count: result?.revealed_count ?? 0,
+        prizes_allocated: result?.prizes_allocated ?? 0,
       }
     },
     onSuccess: async () => {

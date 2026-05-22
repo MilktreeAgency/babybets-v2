@@ -246,9 +246,9 @@ function Account() {
     if (unrevealedTickets.length === 0) return
 
     try {
-      await revealAllTickets(unrevealedTickets.map((ticket) => ticket.id))
+      const { revealed_count } = await revealAllTickets()
       showSuccessToast(
-        `Successfully revealed ${unrevealedTickets.length} ticket${unrevealedTickets.length > 1 ? 's' : ''}!`
+        `Successfully revealed ${revealed_count} ticket${revealed_count !== 1 ? 's' : ''}!`
       )
     } catch (error) {
       console.error('Failed to reveal tickets:', error)
