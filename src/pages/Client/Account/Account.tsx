@@ -24,10 +24,24 @@ function Account() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { isAuthenticated, user, isLoading, isInitialized } = useAuthStore()
-  const { tickets, revealAllTickets, isRevealing, unrevealedCount } = useTickets()
-  const { profile, updateAddress, isUpdatingAddress, updateProfile, isUpdating } = useProfile()
+  const { tickets, revealAllTickets, isRevealing, unrevealedCount, isLoading: isLoadingTickets } = useTickets()
+  const {
+    profile,
+    updateAddress,
+    isUpdatingAddress,
+    updateProfile,
+    isUpdating,
+    isLoading: isLoadingProfile,
+  } = useProfile()
   const { credits, transactions, summary, isLoading: isLoadingWallet } = useWallet()
-  const { fulfillments, pendingFulfillments, activeFulfillments, completedFulfillments, expiringSoon } = usePrizeFulfillments()
+  const {
+    fulfillments,
+    pendingFulfillments,
+    activeFulfillments,
+    completedFulfillments,
+    expiringSoon,
+    isLoading: isLoadingPrizes,
+  } = usePrizeFulfillments()
 
   // Initialize activeSection from URL or default to 'dashboard'
   const tabParam = searchParams.get('tab') as Section | null
@@ -405,14 +419,23 @@ function Account() {
                         </h3>
                       </div>
                       <div className="space-y-1.5 sm:space-y-2">
-                        <div className="flex items-center justify-between text-sm sm:text-base">
-                          <span style={{ color: '#666' }}>Total</span>
-                          <span className="font-bold" style={{ color: '#1a1a1a' }}>{tickets.length}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm sm:text-base">
-                          <span style={{ color: '#666' }}>Unrevealed</span>
-                          <span className="font-bold text-orange-600">{unrevealedCount}</span>
-                        </div>
+                        {isLoadingTickets ? (
+                          <div className="animate-pulse space-y-2">
+                            <div className="h-4 bg-gray-200 rounded" />
+                            <div className="h-4 bg-gray-200 rounded w-2/3" />
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-between text-sm sm:text-base">
+                              <span style={{ color: '#666' }}>Total</span>
+                              <span className="font-bold" style={{ color: '#1a1a1a' }}>{tickets.length}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm sm:text-base">
+                              <span style={{ color: '#666' }}>Unrevealed</span>
+                              <span className="font-bold text-orange-600">{unrevealedCount}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </button>
 
@@ -433,14 +456,23 @@ function Account() {
                         </h3>
                       </div>
                       <div className="space-y-1.5 sm:space-y-2">
-                        <div className="flex items-center justify-between text-sm sm:text-base">
-                          <span style={{ color: '#666' }}>Pending</span>
-                          <span className="font-bold text-orange-600">{pendingFulfillments.length}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm sm:text-base">
-                          <span style={{ color: '#666' }}>Completed</span>
-                          <span className="font-bold text-green-600">{completedFulfillments.length}</span>
-                        </div>
+                        {isLoadingPrizes ? (
+                          <div className="animate-pulse space-y-2">
+                            <div className="h-4 bg-gray-200 rounded" />
+                            <div className="h-4 bg-gray-200 rounded w-2/3" />
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-between text-sm sm:text-base">
+                              <span style={{ color: '#666' }}>Pending</span>
+                              <span className="font-bold text-orange-600">{pendingFulfillments.length}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm sm:text-base">
+                              <span style={{ color: '#666' }}>Completed</span>
+                              <span className="font-bold text-green-600">{completedFulfillments.length}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </button>
 
@@ -461,16 +493,25 @@ function Account() {
                         </h3>
                       </div>
                       <div className="space-y-1.5 sm:space-y-2">
-                        <div className="flex items-center justify-between text-sm sm:text-base">
-                          <span style={{ color: '#666' }}>Balance</span>
-                          <span className="font-bold" style={{ color: '#1a1a1a' }}>
-                            £{(summary.availableBalance / 100).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm sm:text-base">
-                          <span style={{ color: '#666' }}>Active Credits</span>
-                          <span className="font-bold" style={{ color: '#1a1a1a' }}>{credits.length}</span>
-                        </div>
+                        {isLoadingWallet ? (
+                          <div className="animate-pulse space-y-2">
+                            <div className="h-4 bg-gray-200 rounded" />
+                            <div className="h-4 bg-gray-200 rounded w-2/3" />
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center justify-between text-sm sm:text-base">
+                              <span style={{ color: '#666' }}>Balance</span>
+                              <span className="font-bold" style={{ color: '#1a1a1a' }}>
+                                £{(summary.availableBalance / 100).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm sm:text-base">
+                              <span style={{ color: '#666' }}>Active Credits</span>
+                              <span className="font-bold" style={{ color: '#1a1a1a' }}>{credits.length}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </button>
                   </div>
@@ -479,6 +520,26 @@ function Account() {
 
               {activeSection === 'tickets' && (
                 <div className="space-y-3 sm:space-y-4">
+                  {isLoadingTickets ? (
+                    <div className="animate-pulse space-y-3">
+                      {[1, 2].map((i) => (
+                        <div
+                          key={i}
+                          className="bg-white rounded-lg border p-3 sm:p-4"
+                          style={{ borderColor: '#e5e7eb' }}
+                        >
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-gray-200 shrink-0" />
+                            <div className="flex-1 space-y-2">
+                              <div className="h-4 bg-gray-200 rounded w-2/3" />
+                              <div className="h-3 bg-gray-200 rounded w-1/3" />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
                   {/* Reveal All Section - Only show if there are unrevealed instant win tickets */}
                   {unrevealedCount > 0 && (
                     <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-3 sm:p-4 border-2" style={{ borderColor: '#fb923c' }}>
@@ -634,11 +695,31 @@ function Account() {
                       </p>
                     </div>
                   )}
+                    </>
+                  )}
                 </div>
               )}
 
               {activeSection === 'prizes' && (
                 <div className="space-y-6">
+                  {isLoadingPrizes ? (
+                    <div className="animate-pulse space-y-6">
+                      <div className="bg-white rounded-xl p-4 sm:p-5 md:p-6">
+                        <div className="h-6 bg-gray-200 rounded w-1/4 mb-6" />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="h-20 bg-gray-200 rounded-lg" />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-xl p-6 space-y-3">
+                        <div className="h-5 bg-gray-200 rounded w-1/3" />
+                        <div className="h-24 bg-gray-200 rounded-lg" />
+                        <div className="h-24 bg-gray-200 rounded-lg" />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
                   {/* Prizes Header */}
                   <div className="bg-white rounded-xl p-4 sm:p-5 md:p-6">
                     <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
@@ -889,11 +970,31 @@ function Account() {
                       </div>
                     </div>
                   )}
+                    </>
+                  )}
                 </div>
               )}
 
               {activeSection === 'wallet' && (
                 <div className="space-y-6">
+                  {isLoadingWallet ? (
+                    <div className="animate-pulse space-y-6">
+                      <div className="bg-white rounded-xl p-6">
+                        <div className="h-6 bg-gray-200 rounded w-1/4 mb-6" />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="h-20 bg-gray-200 rounded-lg" />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-xl p-6 space-y-3">
+                        <div className="h-5 bg-gray-200 rounded w-1/3" />
+                        <div className="h-24 bg-gray-200 rounded-lg" />
+                        <div className="h-24 bg-gray-200 rounded-lg" />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
                   {/* Wallet Summary */}
                   <div className="bg-white rounded-xl p-4 sm:p-5 md:p-6">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
@@ -916,12 +1017,6 @@ function Account() {
                       )}
                     </div>
 
-                    {isLoadingWallet ? (
-                      <div className="animate-pulse space-y-4">
-                        <div className="h-20 bg-gray-200 rounded-lg" />
-                        <div className="h-20 bg-gray-200 rounded-lg" />
-                      </div>
-                    ) : (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="p-4 border rounded-lg" style={{ borderColor: '#e5e7eb' }}>
                           <div className="flex items-center gap-2 mb-2">
@@ -966,7 +1061,6 @@ function Account() {
                           </p>
                         </div>
                       </div>
-                    )}
                   </div>
 
                   {/* Credit Details */}
@@ -1232,6 +1326,8 @@ function Account() {
                       </div>
                     )}
                   </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -1244,7 +1340,7 @@ function Account() {
                         Addresses
                       </h2>
                     </div>
-                    {hasAddress && !isEditingAddress && (
+                    {!isLoadingProfile && hasAddress && !isEditingAddress && (
                       <button
                         onClick={() => setIsEditingAddress(true)}
                         className="w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg font-semibold text-sm sm:text-base text-white transition-all duration-300 hover:opacity-90 cursor-pointer"
@@ -1254,6 +1350,18 @@ function Account() {
                       </button>
                     )}
                   </div>
+                  {isLoadingProfile ? (
+                    <div className="animate-pulse space-y-4">
+                      <div className="h-4 bg-gray-200 rounded w-1/2" />
+                      <div className="h-12 bg-gray-200 rounded-lg" />
+                      <div className="h-12 bg-gray-200 rounded-lg" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="h-12 bg-gray-200 rounded-lg" />
+                        <div className="h-12 bg-gray-200 rounded-lg" />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
                   <p className="text-sm mb-6" style={{ color: '#666' }}>
                     {hasAddress ? 'Your saved address information.' : 'Add your address for prize delivery.'}
                   </p>
@@ -1423,6 +1531,8 @@ function Account() {
                       </div>
                     </div>
                   )}
+                    </>
+                  )}
                 </div>
               )}
 
@@ -1435,7 +1545,7 @@ function Account() {
                         Account Details
                       </h2>
                     </div>
-                    {!isEditingAccount && (
+                    {!isLoadingProfile && !isEditingAccount && (
                       <button
                         onClick={() => setIsEditingAccount(true)}
                         className="w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg font-semibold text-sm sm:text-base text-white transition-all duration-300 hover:opacity-90 cursor-pointer"
@@ -1446,7 +1556,16 @@ function Account() {
                     )}
                   </div>
 
-                  {isEditingAccount ? (
+                  {isLoadingProfile ? (
+                    <div className="animate-pulse space-y-4">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i}>
+                          <div className="h-3 bg-gray-200 rounded w-1/4 mb-2" />
+                          <div className="h-5 bg-gray-200 rounded w-1/2" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : isEditingAccount ? (
                     <form onSubmit={handleAccountSubmit} className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -1596,6 +1715,14 @@ function Account() {
                       Communication Preferences
                     </h2>
                   </div>
+                  {isLoadingProfile ? (
+                    <div className="animate-pulse space-y-4">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-6" />
+                      <div className="h-20 bg-gray-200 rounded-lg" />
+                      <div className="h-20 bg-gray-200 rounded-lg" />
+                    </div>
+                  ) : (
+                    <>
                   <p className="text-sm mb-6" style={{ color: '#666' }}>
                     Manage how you receive updates and notifications. Changes are saved automatically.
                   </p>
@@ -1648,6 +1775,8 @@ function Account() {
                       </p>
                     </div>
                   </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
