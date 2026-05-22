@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LogOut, MapPin, User, Bell, LayoutDashboard, X, Save, Wallet, Clock, TrendingUp, Gift, Ticket, Trophy, ChevronDown, ChevronUp, UserCheck, ArrowDownToLine, CheckCircle, XCircle, AlertCircle as AlertCircleIcon } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
 import Header from '@/components/common/Header'
 import { useAuthStore } from '@/store/authStore'
 import { useTickets } from '@/hooks/useTickets'
@@ -24,9 +23,8 @@ type WithdrawalRequest = Database['public']['Tables']['withdrawal_requests']['Ro
 function Account() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const queryClient = useQueryClient()
   const { isAuthenticated, user, isLoading, isInitialized } = useAuthStore()
-  const { tickets, revealTicket, isRevealing, unrevealedCount } = useTickets()
+  const { tickets, revealAllTickets, isRevealing, unrevealedCount } = useTickets()
   const { profile, updateAddress, isUpdatingAddress, updateProfile, isUpdating } = useProfile()
   const { credits, transactions, summary, isLoading: isLoadingWallet } = useWallet()
   const { fulfillments, pendingFulfillments, activeFulfillments, completedFulfillments, expiringSoon } = usePrizeFulfillments()
@@ -227,31 +225,17 @@ function Account() {
 
   const hasAddress = profile && profile.address_line1 && profile.city && profile.postcode
 
-  // Navigate to scratch reveal page
-  const handleRevealAll = () => {
-    const unrevealedTickets = tickets.filter(t => !t.is_revealed && t.competition?.competition_type === 'instant_win')
-    if (unrevealedTickets.length === 0) return
-
-    navigate('/scratch-reveal')
-  }
-
-  // Reveal all tickets without animation
-  const handleScratchAllWithoutAnimation = async () => {
-    const unrevealedTickets = tickets.filter(t => !t.is_revealed && t.competition?.competition_type === 'instant_win')
+  const handleRevealAll = async () => {
+    const unrevealedTickets = tickets.filter(
+      (t) => !t.is_revealed && t.competition?.competition_type === 'instant_win'
+    )
     if (unrevealedTickets.length === 0) return
 
     try {
-      // Reveal all unrevealed tickets in parallel
-      await Promise.all(
-        unrevealedTickets.map(ticket => revealTicket(ticket.id))
+      await revealAllTickets(unrevealedTickets.map((ticket) => ticket.id))
+      showSuccessToast(
+        `Successfully revealed ${unrevealedTickets.length} ticket${unrevealedTickets.length > 1 ? 's' : ''}!`
       )
-
-      // Manually invalidate queries to ensure UI updates
-      await queryClient.invalidateQueries({ queryKey: ['tickets'] })
-      await queryClient.invalidateQueries({ queryKey: ['wallet-credits'] })
-      await queryClient.invalidateQueries({ queryKey: ['prize-fulfillments'] })
-
-      showSuccessToast(`Successfully revealed ${unrevealedTickets.length} ticket${unrevealedTickets.length > 1 ? 's' : ''}!`)
     } catch (error) {
       console.error('Failed to reveal tickets:', error)
       showErrorToast('Failed to reveal some tickets. Please try again.')
@@ -504,27 +488,17 @@ function Account() {
                             Unrevealed Tickets
                           </h3>
                           <p className="text-xs" style={{ color: '#78716c' }}>
-                            You have {unrevealedCount} ticket{unrevealedCount > 1 ? 's' : ''} ready to scratch
+                            You have {unrevealedCount} ticket{unrevealedCount > 1 ? 's' : ''} ready to reveal
                           </p>
                         </div>
-                        <div className="flex gap-2 w-full sm:w-auto">
-                          <button
-                            onClick={handleScratchAllWithoutAnimation}
-                            disabled={isRevealing}
-                            className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm text-white transition-all duration-300 hover:opacity-90 cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{ backgroundColor: '#496B71' }}
-                          >
-                            {isRevealing ? 'Revealing...' : 'Reveal All'}
-                          </button>
-                          <button
-                            onClick={handleRevealAll}
-                            disabled={isRevealing}
-                            className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm text-white transition-all duration-300 hover:opacity-90 cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{ backgroundColor: '#f97316' }}
-                          >
-                            Scratch All
-                          </button>
-                        </div>
+                        <button
+                          onClick={handleRevealAll}
+                          disabled={isRevealing}
+                          className="w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm text-white transition-all duration-300 hover:opacity-90 cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{ backgroundColor: '#496B71' }}
+                        >
+                          {isRevealing ? 'Revealing...' : 'Reveal All'}
+                        </button>
                       </div>
                     </div>
                   )}

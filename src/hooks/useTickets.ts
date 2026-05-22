@@ -3,13 +3,93 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import type { TicketWithDetails, TicketRevealResult } from '@/types'
 
+async function revealTicketInternal(
+  ticketId: string,
+  userId: string
+): Promise<TicketRevealResult> {
+  const { data, error } = await supabase
+    .from('ticket_allocations')
+    .update({
+      is_revealed: true,
+      revealed_at: new Date().toISOString(),
+    })
+    .eq('id', ticketId)
+    .select('id, prize_id')
+    .single()
+
+  if (error) throw error
+
+  let prizeData = undefined
+  let allocationResult: TicketRevealResult['allocationResult'] = undefined
+
+  if (data.prize_id) {
+    const { data: rpcData, error: rpcError } = await supabase.rpc(
+      'allocate_instant_win_prize' as any,
+      {
+        p_ticket_id: ticketId,
+        p_user_id: userId,
+      }
+    ) as { data: any; error: any }
+
+    if (rpcError) {
+      console.error('Error allocating prize:', rpcError)
+    } else if (rpcData) {
+      allocationResult = {
+        success: rpcData.success,
+        fulfillment_id: rpcData.fulfillment_id,
+        wallet_credit_id: rpcData.wallet_credit_id,
+        winner_id: rpcData.winner_id,
+        message: rpcData.message,
+        prize: rpcData.prize,
+      }
+      prizeData = rpcData.prize
+    }
+
+    if (!prizeData) {
+      const { data: compPrizeData } = await (supabase as any)
+        .from('competition_instant_win_prizes')
+        .select('prize_template_id')
+        .eq('id', data.prize_id)
+        .single()
+
+      if (compPrizeData?.prize_template_id) {
+        const { data: templateData } = await (supabase as any)
+          .from('prize_templates')
+          .select('*')
+          .eq('id', compPrizeData.prize_template_id)
+          .single()
+
+        prizeData = templateData
+      }
+    }
+  }
+
+  return {
+    ticketId: data.id,
+    hasPrize: !!data.prize_id,
+    prize: prizeData,
+    allocationResult,
+  }
+}
+
+function invalidateTicketQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  userId: string | undefined
+) {
+  queryClient.invalidateQueries({ queryKey: ['tickets', userId] })
+  queryClient.invalidateQueries({ queryKey: ['wallet-credits'] })
+  queryClient.invalidateQueries({ queryKey: ['prize-fulfillments'] })
+  queryClient.invalidateQueries({ queryKey: ['winners'] })
+}
+
 export function useTickets() {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
+  const ticketsQueryKey = ['tickets', user?.id] as const
 
   // Fetch user's tickets
   const { data: tickets = [], isLoading, error } = useQuery({
-    queryKey: ['tickets', user?.id],
+    queryKey: ticketsQueryKey,
     queryFn: async () => {
       if (!user?.id) return []
 
@@ -106,82 +186,50 @@ export function useTickets() {
   const revealTicketMutation = useMutation({
     mutationFn: async (ticketId: string): Promise<TicketRevealResult> => {
       if (!user?.id) throw new Error('User not authenticated')
+      return revealTicketInternal(ticketId, user.id)
+    },
+    onSuccess: async () => {
+      invalidateTicketQueries(queryClient, user?.id)
+      await queryClient.refetchQueries({ queryKey: ticketsQueryKey })
+    },
+  })
 
-      // Step 1: Mark ticket as revealed
-      const { data, error } = await supabase
-        .from('ticket_allocations')
-        .update({
-          is_revealed: true,
-          revealed_at: new Date().toISOString(),
-        })
-        .eq('id', ticketId)
-        .select('id, prize_id')
-        .single()
+  const revealAllTicketsMutation = useMutation({
+    mutationFn: async (ticketIds: string[]): Promise<TicketRevealResult[]> => {
+      if (!user?.id) throw new Error('User not authenticated')
+      const results: TicketRevealResult[] = []
+      for (const ticketId of ticketIds) {
+        results.push(await revealTicketInternal(ticketId, user.id))
+      }
+      return results
+    },
+    onMutate: async (ticketIds: string[]) => {
+      await queryClient.cancelQueries({ queryKey: ticketsQueryKey })
+      const previousTickets = queryClient.getQueryData<TicketWithDetails[]>(ticketsQueryKey)
+      const revealedAt = new Date().toISOString()
+      const idSet = new Set(ticketIds)
 
-      if (error) throw error
-
-      let prizeData = undefined
-      let allocationResult: TicketRevealResult['allocationResult'] = undefined
-
-      // Step 2: If ticket has a prize, allocate it
-      if (data.prize_id) {
-        // Call the RPC function to handle prize allocation
-        const { data: rpcData, error: rpcError } = await supabase.rpc(
-          'allocate_instant_win_prize' as any,
-          {
-            p_ticket_id: ticketId,
-            p_user_id: user.id,
-          }
-        ) as { data: any; error: any }
-
-        if (rpcError) {
-          console.error('Error allocating prize:', rpcError)
-          // Don't throw - still fetch prize details to show user what they won
-        } else if (rpcData) {
-          allocationResult = {
-            success: rpcData.success,
-            fulfillment_id: rpcData.fulfillment_id,
-            wallet_credit_id: rpcData.wallet_credit_id,
-            winner_id: rpcData.winner_id,
-            message: rpcData.message,
-            prize: rpcData.prize
-          }
-          prizeData = rpcData.prize
-        }
-
-        // Fallback: Fetch prize details if not returned from RPC
-        if (!prizeData) {
-          const { data: compPrizeData } = await (supabase as any)
-            .from('competition_instant_win_prizes')
-            .select('prize_template_id')
-            .eq('id', data.prize_id)
-            .single()
-
-          if (compPrizeData?.prize_template_id) {
-            const { data: templateData } = await (supabase as any)
-              .from('prize_templates')
-              .select('*')
-              .eq('id', compPrizeData.prize_template_id)
-              .single()
-
-            prizeData = templateData
-          }
-        }
+      if (previousTickets) {
+        queryClient.setQueryData<TicketWithDetails[]>(
+          ticketsQueryKey,
+          previousTickets.map((ticket) =>
+            idSet.has(ticket.id)
+              ? { ...ticket, is_revealed: true, revealed_at: revealedAt }
+              : ticket
+          )
+        )
       }
 
-      return {
-        ticketId: data.id,
-        hasPrize: !!data.prize_id,
-        prize: prizeData,
-        allocationResult,
+      return { previousTickets }
+    },
+    onError: (_error, _ticketIds, context) => {
+      if (context?.previousTickets) {
+        queryClient.setQueryData(ticketsQueryKey, context.previousTickets)
       }
     },
-    onSuccess: () => {
-      // Invalidate and refetch tickets, wallet credits, and winners
-      queryClient.invalidateQueries({ queryKey: ['tickets'] })
-      queryClient.invalidateQueries({ queryKey: ['wallet-credits'] })
-      queryClient.invalidateQueries({ queryKey: ['prize-fulfillments'] })
-      queryClient.invalidateQueries({ queryKey: ['winners'] })
+    onSuccess: async () => {
+      invalidateTicketQueries(queryClient, user?.id)
+      await queryClient.refetchQueries({ queryKey: ticketsQueryKey })
     },
   })
 
@@ -198,6 +246,7 @@ export function useTickets() {
     unrevealedCount,
     winningTickets,
     revealTicket: revealTicketMutation.mutateAsync,
-    isRevealing: revealTicketMutation.isPending,
+    revealAllTickets: revealAllTicketsMutation.mutateAsync,
+    isRevealing: revealTicketMutation.isPending || revealAllTicketsMutation.isPending,
   }
 }

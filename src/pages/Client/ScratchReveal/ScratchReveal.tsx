@@ -31,7 +31,6 @@ export default function ScratchReveal() {
   const [autoScratching, setAutoScratching] = useState(false)
   const [lockedTicket, setLockedTicket] = useState<TicketWithDetails | null>(null)
   const [canvasReady, setCanvasReady] = useState(true) // Start as true for initial card
-  const [isScratchingAll, setIsScratchingAll] = useState(false)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationFrameRef = useRef<number | null>(null)
@@ -301,26 +300,6 @@ export default function ScratchReveal() {
     }
   }
 
-  const handleScratchAll = async () => {
-    if (isScratchingAll || isRevealing) return
-
-    setIsScratchingAll(true)
-
-    // Reveal all unrevealed tickets
-    for (const ticket of unrevealedTickets) {
-      try {
-        await revealTicket(ticket.id)
-      } catch (error) {
-        console.error('Failed to reveal ticket:', ticket.ticket_number, error)
-      }
-    }
-
-    setIsScratchingAll(false)
-
-    // Navigate to account page after revealing all
-    navigate('/account?tab=tickets')
-  }
-
   const handleNext = () => {
     // Cancel any ongoing animation
     if (animationFrameRef.current) {
@@ -373,26 +352,6 @@ export default function ScratchReveal() {
         aria-label="Close"
       >
         <X size={20} className="text-gray-600" />
-      </button>
-
-      {/* Scratch All Button */}
-      <button
-        onClick={handleScratchAll}
-        disabled={isScratchingAll || isRevealing}
-        className="absolute top-4 left-4 z-20 px-4 py-2 rounded-full bg-white shadow-lg flex items-center gap-2 hover:bg-gray-50 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-        style={{ borderWidth: '1px', borderColor: '#d1d5db' }}
-      >
-        {isScratchingAll ? (
-          <>
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2" style={{ borderColor: '#496B71' }}></div>
-            <span className="text-sm font-semibold" style={{ color: '#496B71' }}>Revealing...</span>
-          </>
-        ) : (
-          <>
-            <Zap size={16} style={{ color: '#496B71' }} />
-            <span className="text-sm font-semibold" style={{ color: '#496B71' }}>Scratch All</span>
-          </>
-        )}
       </button>
 
       <div className="relative z-10 max-w-md w-full px-4">
