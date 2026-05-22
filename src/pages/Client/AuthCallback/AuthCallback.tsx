@@ -2,7 +2,12 @@ import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { authService } from '@/services/auth.service'
+import { profileService } from '@/services/profile.service'
 import { useAuthStore } from '@/store/authStore'
+import {
+  clearSignupConsentFromStorage,
+  getPendingSignupMarketingConsent,
+} from '@/lib/signupConsent'
 
 export default function AuthCallback() {
   const navigate = useNavigate()
@@ -26,10 +31,25 @@ export default function AuthCallback() {
         // Refresh authentication status
         await authService.refreshAuth()
 
-        // Welcome email will be sent automatically by database trigger on profiles INSERT
-
         // Get the updated user from the store
         const { user } = useAuthStore.getState()
+
+        // Apply marketing consent captured on the sign-up page before Google OAuth
+        const pendingMarketingConsent = getPendingSignupMarketingConsent()
+        if (user?.id && pendingMarketingConsent !== null) {
+          try {
+            await profileService.updateProfile(user.id, {
+              marketing_email: pendingMarketingConsent,
+              marketing_sms: pendingMarketingConsent,
+            })
+          } catch (consentError) {
+            console.error('Failed to save signup marketing preferences:', consentError)
+          } finally {
+            clearSignupConsentFromStorage()
+          }
+        }
+
+        // Welcome email will be sent automatically by database trigger on profiles INSERT
 
         // Redirect based on user role
         if (user?.isAdmin) {

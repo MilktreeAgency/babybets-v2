@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
+import { profileService } from '@/services/profile.service'
 
 class AuthService {
   private isChecking = false
@@ -137,9 +138,13 @@ class AuthService {
     email: string,
     password: string,
     firstName?: string,
-    lastName?: string
+    lastName?: string,
+    options?: { marketingConsent?: boolean; termsAcceptedAt?: string }
   ): Promise<{ requiresEmailConfirmation: boolean }> {
     try {
+      const marketingConsent = options?.marketingConsent ?? false
+      const termsAcceptedAt = options?.termsAcceptedAt ?? new Date().toISOString()
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -148,6 +153,9 @@ class AuthService {
             first_name: firstName,
             last_name: lastName,
             full_name: firstName && lastName ? `${firstName} ${lastName}` : firstName || email.split('@')[0],
+            marketing_email: marketingConsent,
+            marketing_sms: marketingConsent,
+            terms_accepted_at: termsAcceptedAt,
           },
           emailRedirectTo: `${window.location.origin}/auth/verify-email`,
         },
@@ -165,6 +173,13 @@ class AuthService {
 
       if (data.session?.user) {
         await this.refreshAuth()
+
+        if (marketingConsent) {
+          await profileService.updateProfile(data.session.user.id, {
+            marketing_email: true,
+            marketing_sms: true,
+          })
+        }
 
         // Welcome email will be sent automatically by database trigger on profiles INSERT
       }

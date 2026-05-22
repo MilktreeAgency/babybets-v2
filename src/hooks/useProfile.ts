@@ -22,8 +22,11 @@ export function useProfile() {
       if (!user?.id) throw new Error('User not authenticated')
       return profileService.updateProfile(user.id, updates)
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile'] })
+    onSuccess: (updatedProfile) => {
+      if (user?.id) {
+        queryClient.setQueryData(['profile', user.id], updatedProfile)
+      }
+      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] })
     },
   })
 

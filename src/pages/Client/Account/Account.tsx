@@ -96,7 +96,7 @@ function Account() {
     }
   }, [searchParams])
 
-  // Load address data when profile is available
+  // Load address and account form data when profile is available
   useEffect(() => {
     if (profile) {
       setAddressForm({
@@ -112,12 +112,18 @@ function Account() {
         last_name: profile.last_name || '',
         phone: profile.phone || '',
       })
-      setCommunicationPrefs({
-        marketing_email: profile.marketing_email || false,
-        marketing_sms: profile.marketing_sms || false,
-      })
     }
   }, [profile])
+
+  // Sync communication prefs only when marketing fields change (avoids reset during other profile edits)
+  useEffect(() => {
+    if (profile) {
+      setCommunicationPrefs({
+        marketing_email: profile.marketing_email ?? false,
+        marketing_sms: profile.marketing_sms ?? false,
+      })
+    }
+  }, [profile?.id, profile?.marketing_email, profile?.marketing_sms])
 
   const handleLogout = async () => {
     await authService.logout()
@@ -168,13 +174,16 @@ function Account() {
 
   const handleCommunicationToggle = async (field: keyof typeof communicationPrefs) => {
     const newValue = !communicationPrefs[field]
-    setCommunicationPrefs(prev => ({ ...prev, [field]: newValue }))
     try {
-      await updateProfile({ [field]: newValue })
+      const updated = await updateProfile({ [field]: newValue })
+      setCommunicationPrefs({
+        marketing_email: updated.marketing_email ?? false,
+        marketing_sms: updated.marketing_sms ?? false,
+      })
+      showSuccessToast('Communication preferences saved')
     } catch (error) {
       console.error('Error updating communication preferences:', error)
-      // Revert on error
-      setCommunicationPrefs(prev => ({ ...prev, [field]: !newValue }))
+      showErrorToast('Could not save your preferences. Please try again.')
     }
   }
 
@@ -1621,10 +1630,11 @@ function Account() {
                       <label className="flex items-start gap-3 cursor-pointer">
                         <input
                           type="checkbox"
-                          className="w-5 h-5 rounded mt-0.5 cursor-pointer"
+                          className="w-5 h-5 rounded mt-0.5 cursor-pointer disabled:opacity-50"
                           style={{ accentColor: '#335761' }}
                           checked={communicationPrefs.marketing_email}
                           onChange={() => handleCommunicationToggle('marketing_email')}
+                          disabled={isUpdating}
                         />
                         <div>
                           <span className="font-semibold block" style={{ color: '#1a1a1a' }}>
@@ -1641,10 +1651,11 @@ function Account() {
                       <label className="flex items-start gap-3 cursor-pointer">
                         <input
                           type="checkbox"
-                          className="w-5 h-5 rounded mt-0.5 cursor-pointer"
+                          className="w-5 h-5 rounded mt-0.5 cursor-pointer disabled:opacity-50"
                           style={{ accentColor: '#335761' }}
                           checked={communicationPrefs.marketing_sms}
                           onChange={() => handleCommunicationToggle('marketing_sms')}
+                          disabled={isUpdating}
                         />
                         <div>
                           <span className="font-semibold block" style={{ color: '#1a1a1a' }}>

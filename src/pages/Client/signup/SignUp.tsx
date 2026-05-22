@@ -4,6 +4,7 @@ import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { authService } from '@/services/auth.service'
 import { useAuthStore } from '@/store/authStore'
 import { showErrorToast } from '@/lib/toast'
+import { storeSignupConsentForOAuth } from '@/lib/signupConsent'
 
 export default function SignUp() {
   const navigate = useNavigate()
@@ -17,9 +18,19 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [emailConfirmationRequired, setEmailConfirmationRequired] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [marketingConsent, setMarketingConsent] = useState(false)
+
+  const canCreateAccount = Boolean(email && password && confirmPassword && agreedToTerms)
 
   const handleGoogleSignIn = async () => {
+    if (!agreedToTerms) {
+      showErrorToast('Please agree to the Terms & Conditions and Privacy Policy')
+      return
+    }
+
     try {
+      storeSignupConsentForOAuth(marketingConsent)
       await authService.signInWithGoogle()
     } catch (error) {
       console.error('Sign-in failed:', error)
@@ -45,9 +56,17 @@ export default function SignUp() {
       return
     }
 
+    if (!agreedToTerms) {
+      showErrorToast('Please agree to the Terms & Conditions and Privacy Policy')
+      return
+    }
+
     try {
       setLoading(true)
-      const { requiresEmailConfirmation } = await authService.signUpWithEmail(email, password, firstName, lastName)
+      const { requiresEmailConfirmation } = await authService.signUpWithEmail(email, password, firstName, lastName, {
+        marketingConsent,
+        termsAcceptedAt: new Date().toISOString(),
+      })
 
       if (requiresEmailConfirmation) {
         // Show email confirmation screen
@@ -252,7 +271,7 @@ export default function SignUp() {
                 backgroundColor: 'transparent',
                 color: '#151e20',
                 borderWidth: '2px',
-                borderColor: '#e7e5e4'
+                borderColor: '#e7e5e4',
               }}
               onClick={handleGoogleSignIn}
               disabled={loading}
@@ -473,26 +492,78 @@ export default function SignUp() {
                 </div>
               </div>
 
+              {/* Consent checkboxes — above Create account */}
+              <div className="space-y-3 pt-1">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 rounded mt-0.5 shrink-0 cursor-pointer"
+                    style={{ accentColor: '#496B71' }}
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    disabled={loading}
+                    required
+                  />
+                  <span className="text-xs sm:text-sm leading-relaxed" style={{ color: '#151e20' }}>
+                    I agree to the BabyBets{' '}
+                    <Link
+                      to="/legal/terms"
+                      className="font-bold underline"
+                      style={{ color: '#496B71' }}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Terms &amp; Conditions
+                    </Link>{' '}
+                    and{' '}
+                    <Link
+                      to="/legal/privacy"
+                      className="font-bold underline"
+                      style={{ color: '#496B71' }}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Privacy Policy
+                    </Link>
+                    . <span style={{ color: '#ef4444' }}>*</span>
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 rounded mt-0.5 shrink-0 cursor-pointer"
+                    style={{ accentColor: '#496B71' }}
+                    checked={marketingConsent}
+                    onChange={(e) => setMarketingConsent(e.target.checked)}
+                    disabled={loading}
+                  />
+                  <span className="text-xs sm:text-sm leading-relaxed" style={{ color: '#78716c' }}>
+                    I&apos;d like to receive updates, offers, promotions and competition news from BabyBets by email, phone and text.
+                  </span>
+                </label>
+              </div>
+
               <button
                 type="submit"
                 className="w-full px-6 py-3 sm:py-4 rounded-xl font-bold text-sm sm:text-base transition-all cursor-pointer flex items-center justify-center gap-2"
                 style={{
-                  backgroundColor: !email || !password || !confirmPassword ? '#d1d5db' : '#496B71',
+                  backgroundColor: !canCreateAccount ? '#d1d5db' : '#496B71',
                   color: 'white',
-                  cursor: !email || !password || !confirmPassword || loading ? 'not-allowed' : 'pointer',
-                  opacity: !email || !password || !confirmPassword ? 0.6 : 1
+                  cursor: !canCreateAccount || loading ? 'not-allowed' : 'pointer',
+                  opacity: !canCreateAccount ? 0.6 : 1
                 }}
                 onMouseEnter={(e) => {
-                  if (email && password && confirmPassword && !loading) {
+                  if (canCreateAccount && !loading) {
                     e.currentTarget.style.backgroundColor = '#3a565a'
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (email && password && confirmPassword) {
+                  if (canCreateAccount) {
                     e.currentTarget.style.backgroundColor = '#496B71'
                   }
                 }}
-                disabled={loading || !email || !password || !confirmPassword}
+                disabled={loading || !canCreateAccount}
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 {loading ? 'Creating account...' : 'Create account'}
@@ -511,27 +582,6 @@ export default function SignUp() {
                 </Link>
               </div>
             </form>
-
-            {/* Terms and Privacy */}
-            <p className="text-[10px] sm:text-xs text-center mt-5 sm:mt-6 leading-relaxed" style={{ color: '#78716c' }}>
-              By creating an account, you agree to our{' '}
-              <Link
-                to="/legal/terms"
-                className="font-bold underline cursor-pointer"
-                style={{ color: '#496B71' }}
-              >
-                Terms of Service
-              </Link>{' '}
-              and{' '}
-              <Link
-                to="/legal/privacy"
-                className="font-bold underline cursor-pointer"
-                style={{ color: '#496B71' }}
-              >
-                Privacy Policy
-              </Link>
-              .
-            </p>
           </div>
         </div>
       </div>
