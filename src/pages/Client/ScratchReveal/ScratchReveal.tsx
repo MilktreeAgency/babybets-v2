@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Trophy, Frown, ArrowRight, Zap, CheckCircle, Wallet, Banknote, X } from 'lucide-react'
+import { Trophy, Frown, ArrowRight, Zap, CheckCircle, Wallet, X } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { useTickets } from '@/hooks/useTickets'
 import type { TicketWithDetails, TicketRevealResult } from '@/types'
@@ -24,6 +24,10 @@ function fireWinConfetti() {
 function prizeIconColor(type?: string) {
   if (type === 'Cash' || type === 'Voucher') return '#f25100'
   return '#496B71'
+}
+
+function isAutoWalletPrize(type?: string) {
+  return type === 'SiteCredit' || type === 'Cash'
 }
 
 export default function ScratchReveal() {
@@ -241,10 +245,8 @@ export default function ScratchReveal() {
                     className="w-20 h-20 rounded-full flex items-center justify-center mb-5 shadow-lg"
                     style={{ backgroundColor: `${prizeIconColor(revealResult.prize!.type)}15` }}
                   >
-                    {revealResult.prize!.type === 'SiteCredit' ? (
+                    {isAutoWalletPrize(revealResult.prize!.type) ? (
                       <Wallet size={40} style={{ color: prizeIconColor(revealResult.prize!.type) }} />
-                    ) : revealResult.prize!.type === 'Cash' ? (
-                      <Banknote size={40} style={{ color: prizeIconColor(revealResult.prize!.type) }} />
                     ) : (
                       <Trophy size={40} style={{ color: prizeIconColor(revealResult.prize!.type) }} />
                     )}
@@ -260,7 +262,11 @@ export default function ScratchReveal() {
                       {revealResult.prize!.short_name || revealResult.prize!.name}
                     </p>
                     {revealResult.prize!.value_gbp && (
-                      <p className="text-sm text-stone-500 mt-1">Worth £{revealResult.prize!.value_gbp}</p>
+                      <p className="text-sm text-stone-500 mt-1">
+                        {isAutoWalletPrize(revealResult.prize!.type)
+                          ? `£${revealResult.prize!.value_gbp} added to your wallet`
+                          : `Worth £${revealResult.prize!.value_gbp}`}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -307,7 +313,7 @@ export default function ScratchReveal() {
         {phase === 'done' && revealResult && (
           <div className="mt-6 space-y-3 animate-[fadeIn_0.3s_ease-out]">
             {isWin &&
-              revealResult.prize!.type !== 'SiteCredit' &&
+              !isAutoWalletPrize(revealResult.prize!.type) &&
               claimFulfillmentId && (
                 <button
                   type="button"

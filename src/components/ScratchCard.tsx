@@ -144,9 +144,13 @@ export function ScratchCard({ ticket, onReveal, disabled }: ScratchCardProps) {
           })
         }, 250)
 
-        // Show claim modal for non-SiteCredit prizes that need claiming
-        // SiteCredit is auto-completed, so no need to show modal
-        if (result.prize && result.prize.type !== 'SiteCredit') {
+        // Show claim modal for physical/voucher prizes that need claiming
+        // SiteCredit and Cash are auto-credited to wallet
+        if (
+          result.prize &&
+          result.prize.type !== 'SiteCredit' &&
+          result.prize.type !== 'Cash'
+        ) {
           // Wait a moment for confetti to show, then show modal
           setTimeout(() => {
             setShowClaimModal(true)
