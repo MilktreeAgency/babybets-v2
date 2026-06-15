@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import Header from '@/components/common/Header'
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/store/authStore'
+import { invalidateTicketQueries } from '@/lib/ticketQueries'
 import { CheckCircle, Trophy, ArrowRight, Ticket, Wallet } from 'lucide-react'
 
 interface OrderDetails {
@@ -20,10 +23,18 @@ interface OrderDetails {
 
 function PaymentSuccess() {
   const [searchParams] = useSearchParams()
+  const queryClient = useQueryClient()
+  const { user } = useAuthStore()
   const orderId = searchParams.get('orderId')
   const [order, setOrder] = useState<OrderDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (orderId && user?.id) {
+      invalidateTicketQueries(queryClient, user.id)
+    }
+  }, [orderId, queryClient, user?.id])
 
   useEffect(() => {
     const loadOrderDetails = async () => {
@@ -107,7 +118,7 @@ function PaymentSuccess() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <Link
-                to="/account?tab=tickets"
+                to="/account?tab=tickets&purchase=success"
                 className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-bold rounded-lg hover:opacity-90 transition-opacity cursor-pointer text-white"
                 style={{ backgroundColor: '#496B71' }}
               >
@@ -206,7 +217,7 @@ function PaymentSuccess() {
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <Link
-              to="/account?tab=tickets"
+              to="/account?tab=tickets&purchase=success"
               className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-bold rounded-lg hover:opacity-90 transition-opacity cursor-pointer text-white"
               style={{ backgroundColor: '#496B71' }}
             >

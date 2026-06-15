@@ -55,7 +55,7 @@ const PaymentReturn = () => {
           if (pollAttempts >= maxPollAttempts) {
             setStatus('failed')
             setMessage('Unable to verify payment status. Please check your account.')
-            setTimeout(() => navigate('/account?tab=tickets'), 5000)
+            setTimeout(() => navigate('/account?tab=tickets&purchase=success'), 5000)
           }
           return
         }
@@ -95,7 +95,7 @@ const PaymentReturn = () => {
         console.error('[PaymentReturn] Error checking order status:', error)
         setStatus('failed')
         setMessage('An error occurred. Please check your account.')
-        setTimeout(() => navigate('/account?tab=tickets'), 5000)
+        setTimeout(() => navigate('/account?tab=tickets&purchase=success'), 5000)
       }
     }
 

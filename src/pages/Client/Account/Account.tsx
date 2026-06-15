@@ -24,7 +24,7 @@ function Account() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { isAuthenticated, user, isLoading, isInitialized } = useAuthStore()
-  const { tickets, revealAllTickets, isRevealing, unrevealedCount, isLoading: isLoadingTickets } = useTickets()
+  const { tickets, revealAllTickets, isRevealing, unrevealedCount, isLoading: isLoadingTickets, isFetching: isFetchingTickets, refreshTickets } = useTickets()
   const {
     profile,
     updateAddress,
@@ -78,12 +78,35 @@ function Account() {
   const [showWinModal, setShowWinModal] = useState(false)
   const [wonPrize] = useState<PrizeTemplate | null>(null)
   const purchaseToastShown = useRef(false)
-
   useEffect(() => {
     if (!isLoading && isInitialized && !isAuthenticated) {
       navigate('/login?redirect=/account')
     }
   }, [isAuthenticated, isLoading, isInitialized, navigate])
+
+  // Always fetch fresh tickets when opening the tickets tab (e.g. after checkout)
+  useEffect(() => {
+    if (activeSection !== 'tickets' || !user?.id) return
+    void refreshTickets()
+  }, [activeSection, user?.id, refreshTickets])
+
+  // Poll briefly while payment is still being allocated server-side
+  useEffect(() => {
+    if (activeSection !== 'tickets' || searchParams.get('payment') !== 'processing' || !user?.id) {
+      return
+    }
+
+    let attempts = 0
+    const interval = window.setInterval(() => {
+      attempts += 1
+      void refreshTickets()
+      if (attempts >= 15) {
+        window.clearInterval(interval)
+      }
+    }, 2000)
+
+    return () => window.clearInterval(interval)
+  }, [activeSection, searchParams, user?.id, refreshTickets])
 
   // Handle purchase success toast
   useEffect(() => {
@@ -520,7 +543,7 @@ function Account() {
 
               {activeSection === 'tickets' && (
                 <div className="space-y-3 sm:space-y-4">
-                  {isLoadingTickets ? (
+                  {isLoadingTickets || (isFetchingTickets && tickets.length === 0) ? (
                     <div className="animate-pulse space-y-3">
                       {[1, 2].map((i) => (
                         <div

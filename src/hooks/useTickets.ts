@@ -1,6 +1,8 @@
+import { useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
+import { invalidateTicketQueries, ticketsQueryKey } from '@/lib/ticketQueries'
 import type { TicketWithDetails, TicketRevealResult } from '@/types'
 
 async function revealTicketInternal(
@@ -73,118 +75,91 @@ async function revealTicketInternal(
   }
 }
 
-function invalidateTicketQueries(
-  queryClient: ReturnType<typeof useQueryClient>,
-  userId: string | undefined
-) {
-  queryClient.invalidateQueries({ queryKey: ['tickets', userId] })
-  queryClient.invalidateQueries({ queryKey: ['wallet-credits'] })
-  queryClient.invalidateQueries({ queryKey: ['prize-fulfillments'] })
-  queryClient.invalidateQueries({ queryKey: ['winners'] })
+function unwrapRelation<T>(value: T | T[] | null | undefined): T | undefined {
+  if (!value) return undefined
+  return Array.isArray(value) ? value[0] : value
+}
+
+async function fetchUserTickets(userId: string): Promise<TicketWithDetails[]> {
+  const { data, error } = await supabase
+    .from('ticket_allocations')
+    .select(`
+      *,
+      competition:competitions!inner(id, title, slug, image_url, images, competition_type),
+      competition_instant_win_prizes(
+        id,
+        prize_templates(id, name, short_name, type, value_gbp, cash_alternative_gbp, image_url)
+      )
+    `)
+    .eq('sold_to_user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  const { data: endPrizeWinners } = await supabase
+    .from('winners')
+    .select('ticket_id, prize_name, prize_value_gbp')
+    .eq('user_id', userId)
+    .eq('win_type', 'end_prize')
+
+  const endPrizeByTicketId = (endPrizeWinners ?? []).reduce<Record<string, { name: string; value_gbp: number | null; type: string }>>(
+    (acc, winner) => {
+      if (winner.ticket_id) {
+        acc[winner.ticket_id] = {
+          name: winner.prize_name,
+          value_gbp: winner.prize_value_gbp,
+          type: 'physical',
+        }
+      }
+      return acc
+    },
+    {}
+  )
+
+  return (data ?? []).map((ticket: any) => {
+    const competition = unwrapRelation(ticket.competition)
+    const instantWinPrize = unwrapRelation(ticket.competition_instant_win_prizes)
+    const prizeTemplate = unwrapRelation(instantWinPrize?.prize_templates)
+    const endPrize = endPrizeByTicketId[ticket.id]
+
+    const { competition_instant_win_prizes: _ciwp, ...ticketFields } = ticket
+
+    if (endPrize) {
+      return {
+        ...ticketFields,
+        competition,
+        prize_id: 'end_prize',
+        prize: endPrize,
+        is_end_prize_winner: true,
+      } as TicketWithDetails
+    }
+
+    return {
+      ...ticketFields,
+      competition,
+      prize: prizeTemplate ?? undefined,
+    } as TicketWithDetails
+  })
 }
 
 export function useTickets() {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
-  const ticketsQueryKey = ['tickets', user?.id] as const
+  const queryKey = ticketsQueryKey(user?.id)
 
-  // Fetch user's tickets
-  const { data: tickets = [], isLoading, error } = useQuery({
-    queryKey: ticketsQueryKey,
-    queryFn: async () => {
-      if (!user?.id) return []
-
-      const { data, error } = await supabase
-        .from('ticket_allocations')
-        .select(`
-          *,
-          competition:competitions!inner(id, title, slug, image_url, images, competition_type)
-        `)
-        .eq('sold_to_user_id', user.id)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      // Transform the data to ensure competition is not an array
-      const transformedData = (data || []).map((ticket: any) => ({
-        ...ticket,
-        competition: Array.isArray(ticket.competition) ? ticket.competition[0] : ticket.competition
-      }))
-
-      // Check for end prize winners (main draw winners)
-      const ticketIds = transformedData.map((t: any) => t.id)
-      let endPrizeWinners: Record<string, any> = {}
-
-      if (ticketIds.length > 0) {
-        const { data: winnersData } = await supabase
-          .from('winners')
-          .select('ticket_id, prize_name, prize_value_gbp')
-          .in('ticket_id', ticketIds)
-          .eq('win_type', 'end_prize')
-
-        if (winnersData) {
-          endPrizeWinners = winnersData.reduce((acc: any, winner: any) => ({
-            ...acc,
-            [winner.ticket_id]: {
-              name: winner.prize_name,
-              value_gbp: winner.prize_value_gbp,
-              type: 'physical',
-            }
-          }), {})
-        }
-      }
-
-      // Manually fetch prize details for tickets with prizes
-      const ticketsWithPrizes = await Promise.all(
-        transformedData.map(async (ticket: any) => {
-          // Check if this ticket is an end prize winner first
-          if (endPrizeWinners[ticket.id]) {
-            return {
-              ...ticket,
-              prize_id: 'end_prize', // Mark as having a prize
-              prize: endPrizeWinners[ticket.id],
-              is_end_prize_winner: true
-            }
-          }
-
-          // Check for instant win prizes
-          if (!ticket.prize_id) {
-            return { ...ticket, prize: undefined }
-          }
-
-          // Fetch competition prize and its template
-          const { data: compPrizeData } = await (supabase as any)
-            .from('competition_instant_win_prizes')
-            .select('id, prize_template_id')
-            .eq('id', ticket.prize_id)
-            .single()
-
-          if (compPrizeData && (compPrizeData as any).prize_template_id) {
-            const { data: templateData } = await (supabase as any)
-              .from('prize_templates')
-              .select('id, name, short_name, type, value_gbp, cash_alternative_gbp, image_url')
-              .eq('id', (compPrizeData as any).prize_template_id)
-              .single()
-
-            if (templateData) {
-              return {
-                ...ticket,
-                prize: templateData
-              }
-            }
-          }
-
-          return { ...ticket, prize: undefined }
-        })
-      )
-
-      return ticketsWithPrizes as TicketWithDetails[]
-    },
+  const { data: tickets = [], isLoading, error, isFetching } = useQuery({
+    queryKey,
+    queryFn: () => fetchUserTickets(user!.id),
     enabled: !!user?.id,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
-  // Reveal a ticket (scratch card action) — no optimistic cache update;
-  // ScratchReveal manages its own session queue and refreshes when done.
+  const refreshTickets = useCallback(async () => {
+    invalidateTicketQueries(queryClient, user?.id)
+    await queryClient.refetchQueries({ queryKey: ticketsQueryKey(user?.id) })
+  }, [queryClient, user?.id])
+
   const revealTicketMutation = useMutation({
     mutationFn: async (ticketId: string): Promise<TicketRevealResult> => {
       if (!user?.id) throw new Error('User not authenticated')
@@ -209,29 +184,26 @@ export function useTickets() {
       }
     },
     onSuccess: async () => {
-      invalidateTicketQueries(queryClient, user?.id)
-      await queryClient.refetchQueries({ queryKey: ticketsQueryKey })
+      await refreshTickets()
     },
   })
 
-  // Get unrevealed tickets count (instant win only)
-  const unrevealedCount = tickets.filter((t) => !t.is_revealed && t.competition?.competition_type === 'instant_win').length
+  const unrevealedCount = tickets.filter(
+    (t) => !t.is_revealed && t.competition?.competition_type === 'instant_win'
+  ).length
 
-  // Get tickets with prizes
   const winningTickets = tickets.filter((t) => t.is_revealed && t.prize_id)
 
   return {
     tickets,
     isLoading,
+    isFetching,
     error,
     unrevealedCount,
     winningTickets,
     revealTicket: revealTicketMutation.mutateAsync,
     revealAllTickets: revealAllTicketsMutation.mutateAsync,
-    refreshTickets: async () => {
-      invalidateTicketQueries(queryClient, user?.id)
-      await queryClient.refetchQueries({ queryKey: ticketsQueryKey })
-    },
+    refreshTickets,
     isRevealing: revealTicketMutation.isPending || revealAllTicketsMutation.isPending,
   }
 }
