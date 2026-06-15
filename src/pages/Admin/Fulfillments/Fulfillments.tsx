@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { showSuccessToast, showErrorToast } from '@/lib/toast'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import { useSidebarCounts } from '@/contexts/SidebarCountsContext'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
@@ -307,7 +308,7 @@ export default function Fulfillments() {
       setDetailsOpen(false)
     } catch (error) {
       console.error('Error approving cash alternative:', error)
-      showErrorToast('Failed to approve cash alternative. Please try again.')
+      showErrorToast(getSupabaseErrorMessage(error, 'Failed to approve cash alternative. Please try again.'))
     } finally {
       setProcessingId(null)
     }
@@ -369,7 +370,7 @@ export default function Fulfillments() {
       }
     } catch (error) {
       console.error('Error updating fulfillment status:', error)
-      showErrorToast('Failed to update fulfillment status')
+      showErrorToast(getSupabaseErrorMessage(error, 'Failed to update fulfillment status'))
     } finally {
       setProcessingId(null)
     }
@@ -404,7 +405,7 @@ export default function Fulfillments() {
       showSuccessToast('Voucher code provided successfully')
     } catch (error) {
       console.error('Error providing voucher code:', error)
-      showErrorToast('Failed to provide voucher code')
+      showErrorToast(getSupabaseErrorMessage(error, 'Failed to provide voucher code'))
     } finally {
       setProcessingId(null)
     }

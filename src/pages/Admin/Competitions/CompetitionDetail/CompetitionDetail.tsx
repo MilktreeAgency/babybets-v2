@@ -13,6 +13,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import type { Database } from '@/types/database.types'
 import { DrawExecutionPanel } from '@/components/admin/DrawExecutionPanel'
 import { TicketPoolPanel } from '@/components/admin/TicketPoolPanel'
@@ -173,7 +174,7 @@ export default function CompetitionDetail() {
       setCompetition({ ...competition, status: newStatus as Database['public']['Enums']['competition_status'] })
     } catch (error) {
       console.error('Error updating status:', error)
-      const errorMsg = error instanceof Error ? error.message : 'An unexpected error occurred'
+      const errorMsg = getSupabaseErrorMessage(error, 'An unexpected error occurred')
       setErrorMessage(errorMsg)
       setErrorDialogOpen(true)
     }
@@ -212,7 +213,7 @@ export default function CompetitionDetail() {
       navigate('/admin/dashboard/competitions')
     } catch (error) {
       console.error('Error deleting competition:', error)
-      const errorMsg = error instanceof Error ? error.message : 'An unexpected error occurred'
+      const errorMsg = getSupabaseErrorMessage(error, 'An unexpected error occurred')
       setErrorMessage(errorMsg)
       setErrorDialogOpen(true)
       setDeleteDialogOpen(false)

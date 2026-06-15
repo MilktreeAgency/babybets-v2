@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Upload, X, Loader2, FolderOpen } from 'lucide-react'
 import { uploadImage } from '@/lib/supabase'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { ImageLibrary } from './ImageLibrary'
 
@@ -52,7 +53,7 @@ export function ImageUpload({
       }
     } catch (err) {
       console.error('Error uploading image:', err)
-      setError('Failed to upload image')
+      setError(getSupabaseErrorMessage(err, 'Failed to upload image'))
     } finally {
       setUploading(false)
       // Reset input

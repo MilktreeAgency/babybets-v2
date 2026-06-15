@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import {
   Plus,
   Pencil,
@@ -96,7 +97,7 @@ export default function Testimonials() {
       setTestimonials(data || [])
     } catch (error) {
       console.error('Error loading testimonials:', error)
-      toast.error('Failed to load testimonials')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to load testimonials'))
     } finally {
       setLoading(false)
     }
@@ -122,7 +123,7 @@ export default function Testimonials() {
       }
     } catch (error) {
       console.error('Error loading section settings:', error)
-      toast.error('Failed to load section settings')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to load section settings'))
     }
   }
 
@@ -151,7 +152,7 @@ export default function Testimonials() {
       toast.success('Section settings updated successfully')
     } catch (error) {
       console.error('Error saving section settings:', error)
-      toast.error('Failed to save section settings')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to save section settings'))
     } finally {
       setSavingSectionSettings(false)
     }
@@ -183,7 +184,7 @@ export default function Testimonials() {
       return data.publicUrl
     } catch (error) {
       console.error('Error uploading video:', error)
-      toast.error('Failed to upload video')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to upload video'))
       return null
     } finally {
       setUploadingVideo(false)
@@ -278,7 +279,7 @@ export default function Testimonials() {
       loadTestimonials()
     } catch (error) {
       console.error('Error saving testimonial:', error)
-      toast.error('Failed to save testimonial')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to save testimonial'))
     } finally {
       setSaving(false)
     }
@@ -304,7 +305,7 @@ export default function Testimonials() {
       loadTestimonials()
     } catch (error) {
       console.error('Error deleting testimonial:', error)
-      toast.error('Failed to delete testimonial')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to delete testimonial'))
     } finally {
       setDeleting(false)
     }
@@ -327,7 +328,7 @@ export default function Testimonials() {
       loadTestimonials()
     } catch (error) {
       console.error('Error toggling testimonial:', error)
-      toast.error('Failed to update testimonial')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to update testimonial'))
     }
   }
 

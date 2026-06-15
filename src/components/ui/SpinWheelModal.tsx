@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Gift, Trophy, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import confetti from 'canvas-confetti'
+import { getEdgeFunctionErrorMessage } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
 
 interface SpinWheelModalProps {
@@ -99,14 +100,17 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({ isOpen, onClose 
         return
       }
 
+      if (error) {
+        setErrorMessage(await getEdgeFunctionErrorMessage(error, 'Failed to claim prize. Please try again.'))
+        return
+      }
+
       setErrorMessage(
-        (data as { message?: string } | null)?.message ||
-          error?.message ||
-          'Failed to claim prize. Please try again.'
+        (data as { message?: string } | null)?.message || 'Failed to claim prize. Please try again.'
       )
     } catch (error) {
       console.error('Error claiming prize:', error)
-      setErrorMessage('An error occurred. Please try again.')
+      setErrorMessage(await getEdgeFunctionErrorMessage(error, 'An error occurred. Please try again.'))
     } finally {
       setIsSubmitting(false)
     }

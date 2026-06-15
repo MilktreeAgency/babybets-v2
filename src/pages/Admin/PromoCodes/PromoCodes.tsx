@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { DashboardHeader } from '../components'
 import { Plus, Search, Edit, ToggleLeft, ToggleRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import type { Database } from '@/types/database.types'
 import {
   Select,
@@ -91,7 +92,7 @@ export default function PromoCodes() {
       refresh()
     } catch (error) {
       console.error('Error toggling promo code:', error)
-      alert('Failed to update promo code status')
+      alert(getSupabaseErrorMessage(error, 'Failed to update promo code status'))
     }
   }
 

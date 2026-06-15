@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Gift, DollarSign, Check } from 'lucide-react'
 import type { InstantWinPrize, PrizeChoice } from '@/types'
 import { supabase } from '@/lib/supabase'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 
 interface PrizeClaimModalProps {
   isOpen: boolean
@@ -69,7 +70,7 @@ export function PrizeClaimModal({ isOpen, onClose, prize, ticketId, onClaimed }:
       }, 2000)
     } catch (error) {
       console.error('Failed to claim prize:', error)
-      alert('Failed to claim prize. Please try again.')
+      alert(getSupabaseErrorMessage(error, 'Failed to claim prize. Please try again.'))
     } finally {
       setIsSubmitting(false)
     }

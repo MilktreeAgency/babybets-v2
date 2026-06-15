@@ -17,6 +17,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import { getReferral, clearReferral, setReferral } from '@/lib/referralTracking'
 import { showErrorToast, showWarningToast } from '@/lib/toast'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import {
   OrderSummary,
   PromoCodeSection,
@@ -247,7 +248,7 @@ function Checkout() {
       setInfluencerCode('')
     } catch (err) {
       console.error('Error validating influencer code:', err)
-      showErrorToast('Failed to validate code')
+      showErrorToast(getSupabaseErrorMessage(err, 'Failed to validate code'))
     }
   }
 
@@ -329,7 +330,7 @@ function Checkout() {
       }
     } catch (err) {
       console.error('Error validating promo code:', err)
-      showErrorToast('Failed to validate promo code')
+      showErrorToast(getSupabaseErrorMessage(err, 'Failed to validate promo code'))
     }
   }
 
@@ -494,7 +495,7 @@ function Checkout() {
       navigate(`/payment/success?orderId=${order.id}`)
     } catch (err) {
       console.error('Error processing payment:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to process payment'
+      const errorMessage = getSupabaseErrorMessage(err, 'Failed to process payment')
       setPaymentError(errorMessage)
       showErrorToast(errorMessage)
     } finally {
@@ -627,8 +628,9 @@ function Checkout() {
       } catch (err: any) {
         console.error('[ApplePay] Payment failed:', err)
         completeAppleSession(ApplePaySessionClass.STATUS_FAILURE)
-        setPaymentError(err.message || 'Apple Pay payment failed')
-        showErrorToast(err.message || 'Apple Pay payment failed')
+        const errorMessage = getSupabaseErrorMessage(err, 'Apple Pay payment failed')
+        setPaymentError(errorMessage)
+        showErrorToast(errorMessage)
       } finally {
         setLoading(false)
       }
@@ -755,7 +757,7 @@ function Checkout() {
         return
       }
       console.error('[GooglePay] Payment failed:', err)
-      const errorMessage = err.message || 'Google Pay payment failed'
+      const errorMessage = getSupabaseErrorMessage(err, 'Google Pay payment failed')
       setPaymentError(errorMessage)
       showErrorToast(errorMessage)
     } finally {

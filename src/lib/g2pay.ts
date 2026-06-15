@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { getEdgeFunctionErrorMessage } from './errors'
 import { supabase } from './supabase'
 
 // G2Pay Payment Gateway Configuration
@@ -116,7 +117,7 @@ export const createValidatedOrder = async (
 
   if (error) {
     console.error('[G2Pay] Validated order creation error:', error)
-    throw new Error(error.message || 'Failed to create order')
+    throw new Error(await getEdgeFunctionErrorMessage(error, 'Failed to create order'))
   }
 
   if (data && !data.success) {
@@ -144,24 +145,7 @@ export const createHostedPaymentSession = async (
 
   if (error) {
     console.error('[G2Pay] Edge function error:', error)
-
-    if (error.message?.includes('JWT') || error.message?.includes('401')) {
-      throw new Error('Session expired. Please refresh the page and log in again.')
-    }
-
-    if (error.context && typeof error.context === 'object') {
-      const errorData = error.context as { error?: string }
-      if (errorData.error) throw new Error(errorData.error)
-    }
-
-    try {
-      const errorJson = JSON.parse(error.message)
-      if (errorJson.error) throw new Error(errorJson.error)
-    } catch {
-      // Not JSON
-    }
-
-    throw new Error(error.message || 'Failed to create payment session')
+    throw new Error(await getEdgeFunctionErrorMessage(error, 'Failed to create payment session'))
   }
 
   if (data && !data.success) {
@@ -187,7 +171,7 @@ export const continue3DS = async (
 
   if (error) {
     console.error('[G2Pay] continue-3ds error:', error)
-    throw new Error(error.message || 'Failed to continue 3DS authentication')
+    throw new Error(await getEdgeFunctionErrorMessage(error, 'Failed to continue 3DS authentication'))
   }
 
   return data
@@ -205,7 +189,7 @@ export const completeOrder = async (orderId: string): Promise<{ success: boolean
 
   if (error) {
     console.error('[G2Pay] complete-order error:', error)
-    throw new Error(error.message || 'Failed to complete order')
+    throw new Error(await getEdgeFunctionErrorMessage(error, 'Failed to complete order'))
   }
 
   return data
@@ -226,7 +210,7 @@ export const validateAppleMerchant = async (
 
   if (error) {
     console.error('[ApplePay] validate-merchant error:', error)
-    throw new Error(error.message || 'Merchant validation failed')
+    throw new Error(await getEdgeFunctionErrorMessage(error, 'Merchant validation failed'))
   }
 
   if (!data?.success || !data?.merchantSession) {
@@ -253,7 +237,7 @@ export const processApplePayPayment = async (
 
   if (error) {
     console.error('[ApplePay] process-payment error:', error)
-    throw new Error(error.message || 'Apple Pay payment failed')
+    throw new Error(await getEdgeFunctionErrorMessage(error, 'Apple Pay payment failed'))
   }
 
   return data
@@ -276,7 +260,7 @@ export const processGooglePayPayment = async (
 
   if (error) {
     console.error('[GooglePay] process-payment error:', error)
-    throw new Error(error.message || 'Google Pay payment failed')
+    throw new Error(await getEdgeFunctionErrorMessage(error, 'Google Pay payment failed'))
   }
 
   return data

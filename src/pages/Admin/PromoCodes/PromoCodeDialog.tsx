@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { supabase } from '@/lib/supabase'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import type { Database } from '@/types/database.types'
 
 type PromoCode = Database['public']['Tables']['promo_codes']['Row']
@@ -127,7 +128,7 @@ export function PromoCodeDialog({
       onOpenChange(false)
     } catch (error) {
       console.error('Error saving promo code:', error)
-      alert('Failed to save promo code')
+      alert(getSupabaseErrorMessage(error, 'Failed to save promo code'))
     } finally {
       setSaving(false)
     }

@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { DashboardHeader } from '../components'
 import { CheckCircle, XCircle, ExternalLink, Mail, Instagram, Youtube, UserCheck, Loader, Facebook } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { getFetchErrorMessage, getSupabaseErrorMessage } from '@/lib/errors'
 import {
   Select,
   SelectContent,
@@ -109,8 +110,7 @@ export default function Influencers() {
         })
 
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to approve application')
+          throw new Error(await getFetchErrorMessage(response, 'Failed to approve application'))
         }
 
         const result = await response.json()
@@ -158,7 +158,7 @@ export default function Influencers() {
       await refreshCounts()
     } catch (error) {
       console.error('Error updating influencer status:', error)
-      alert(`Failed to update status: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      alert(getSupabaseErrorMessage(error, 'Failed to update status'))
     } finally {
       setLoadingAction(null)
     }
@@ -187,7 +187,7 @@ export default function Influencers() {
       await refreshCounts()
     } catch (error) {
       console.error('Error rejecting influencer:', error)
-      alert('Failed to reject application')
+      alert(getSupabaseErrorMessage(error, 'Failed to reject application'))
     } finally {
       setLoadingAction(null)
     }
@@ -223,7 +223,7 @@ export default function Influencers() {
       refresh()
     } catch (error) {
       console.error('Error toggling ambassador status:', error)
-      alert('Failed to update ambassador status')
+      alert(getSupabaseErrorMessage(error, 'Failed to update ambassador status'))
     } finally {
       setLoadingAction(null)
     }

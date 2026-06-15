@@ -23,6 +23,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import {
   Upload,
   Trash2,
@@ -80,7 +81,7 @@ export default function Assets() {
       setFiles(actualFiles)
     } catch (error) {
       console.error('Error loading files:', error)
-      toast.error('Failed to load files')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to load files'))
     } finally {
       setLoading(false)
     }
@@ -117,7 +118,7 @@ export default function Assets() {
       loadFiles()
     } catch (error) {
       console.error('Error uploading files:', error)
-      toast.error('Failed to upload files')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to upload files'))
     } finally {
       setUploading(false)
     }
@@ -167,7 +168,7 @@ export default function Assets() {
       setSelectedFile(null)
     } catch (error) {
       console.error('Error deleting file:', error)
-      toast.error('Failed to delete file')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to delete file'))
     } finally {
       setDeleting(false)
     }

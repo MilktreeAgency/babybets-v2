@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import { Construction, Radio, Landmark, Sparkles, Users, Mail } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
@@ -118,7 +119,7 @@ export default function SystemSettings() {
       toast.success(`Maintenance mode ${enabled ? 'enabled' : 'disabled'}`)
     } catch (error) {
       console.error('Error updating maintenance mode:', error)
-      toast.error('Failed to update maintenance mode')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to update maintenance mode'))
       setMaintenanceEnabled(!enabled) // Revert on error
     }
   }
@@ -133,7 +134,7 @@ export default function SystemSettings() {
       toast.success('Maintenance message updated')
     } catch (error) {
       console.error('Error updating maintenance message:', error)
-      toast.error('Failed to update maintenance message')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to update maintenance message'))
     } finally {
       setSaving(false)
     }
@@ -150,7 +151,7 @@ export default function SystemSettings() {
       toast.success(`Live ticker ${enabled ? 'enabled' : 'disabled'}`)
     } catch (error) {
       console.error('Error updating live ticker:', error)
-      toast.error('Failed to update live ticker')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to update live ticker'))
       setLiveTickerEnabled(!enabled) // Revert on error
     }
   }
@@ -166,7 +167,7 @@ export default function SystemSettings() {
       toast.success('Live ticker settings updated')
     } catch (error) {
       console.error('Error updating live ticker:', error)
-      toast.error('Failed to update live ticker settings')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to update live ticker settings'))
     } finally {
       setSaving(false)
     }
@@ -201,7 +202,7 @@ export default function SystemSettings() {
       toast.success('Withdrawal limits updated')
     } catch (error) {
       console.error('Error updating withdrawal limits:', error)
-      toast.error('Failed to update withdrawal limits')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to update withdrawal limits'))
     } finally {
       setSaving(false)
     }
@@ -228,7 +229,7 @@ export default function SystemSettings() {
       toast.success('Hero content updated')
     } catch (error) {
       console.error('Error updating hero content:', error)
-      toast.error('Failed to update hero content')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to update hero content'))
     } finally {
       setSaving(false)
     }
@@ -245,7 +246,7 @@ export default function SystemSettings() {
       toast.success(`Featured partner ${enabled ? 'enabled' : 'disabled'}`)
     } catch (error) {
       console.error('Error updating featured partner:', error)
-      toast.error('Failed to update featured partner')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to update featured partner'))
       setFeaturedPartnerEnabled(!enabled)
     }
   }
@@ -267,7 +268,7 @@ export default function SystemSettings() {
       toast.success('Featured partner settings updated')
     } catch (error) {
       console.error('Error updating featured partner settings:', error)
-      toast.error('Failed to update featured partner settings')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to update featured partner settings'))
     } finally {
       setSaving(false)
     }
@@ -282,7 +283,7 @@ export default function SystemSettings() {
       toast.success('Email logo updated successfully')
     } catch (error) {
       console.error('Error updating email logo:', error)
-      toast.error('Failed to update email logo')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to update email logo'))
     } finally {
       setSaving(false)
     }

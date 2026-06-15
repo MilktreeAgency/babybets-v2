@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import Header from '@/components/common/Header'
 import { supabase } from '@/lib/supabase'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import { useAuthStore } from '@/store/authStore'
 import { invalidateTicketQueries } from '@/lib/ticketQueries'
 import { CheckCircle, Trophy, ArrowRight, Ticket, Wallet } from 'lucide-react'
@@ -80,7 +81,7 @@ function PaymentSuccess() {
         // Email is sent automatically by the backend Edge Function (complete-g2pay-order or g2pay-webhook)
       } catch (err) {
         console.error('Error loading order:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load order details')
+        setError(getSupabaseErrorMessage(err, 'Failed to load order details'))
       } finally {
         setLoading(false)
       }

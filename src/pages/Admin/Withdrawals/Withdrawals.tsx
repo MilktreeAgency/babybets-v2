@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/contexts/ConfirmDialogContext'
 import { useSidebarCounts } from '@/contexts/SidebarCountsContext'
 import { toast } from 'sonner'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import { RejectWithdrawalModal } from '@/components/RejectWithdrawalModal'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 
@@ -180,7 +181,7 @@ export default function Withdrawals() {
       await fetchStatusCounts()
     } catch (error) {
       console.error('Error approving withdrawal:', error)
-      toast.error('Failed to approve withdrawal request')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to approve withdrawal request'))
     } finally {
       setProcessingId(null)
     }
@@ -221,7 +222,7 @@ export default function Withdrawals() {
     } catch (error) {
       console.error('Error marking withdrawal as paid:', error)
       toast.error(
-        `Failed to process withdrawal: ${error instanceof Error ? error.message : 'Unknown error'}`
+        getSupabaseErrorMessage(error, 'Failed to process withdrawal')
       )
     } finally {
       setProcessingId(null)
@@ -263,7 +264,7 @@ export default function Withdrawals() {
       await fetchStatusCounts()
     } catch (error) {
       console.error('Error rejecting withdrawal:', error)
-      toast.error('Failed to reject withdrawal request')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to reject withdrawal request'))
     } finally {
       setProcessingId(null)
     }

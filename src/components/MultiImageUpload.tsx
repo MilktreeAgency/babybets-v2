@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Upload, X, Loader2, FolderOpen } from 'lucide-react'
 import { uploadImage } from '@/lib/supabase'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { ImageLibrary } from './ImageLibrary'
 
@@ -96,7 +97,7 @@ export function MultiImageUpload({
       }
     } catch (err) {
       console.error('Error during upload:', err)
-      setError('Failed to upload images')
+      setError(getSupabaseErrorMessage(err, 'Failed to upload images'))
     } finally {
       setUploading(false)
       setUploadProgress('')
@@ -152,7 +153,7 @@ export function MultiImageUpload({
       }
     } catch (err) {
       console.error('Error uploading pasted images:', err)
-      setError('Failed to upload pasted images')
+      setError(getSupabaseErrorMessage(err, 'Failed to upload pasted images'))
     } finally {
       setUploading(false)
       setUploadProgress('')

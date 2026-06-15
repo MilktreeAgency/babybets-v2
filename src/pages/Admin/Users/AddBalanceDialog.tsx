@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types/index'
 import { showErrorToast, showSuccessToast } from '@/lib/toast'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 
 interface AddBalanceDialogProps {
   user: Profile | null
@@ -80,7 +81,7 @@ export function AddBalanceDialog({
       onOpenChange(false)
     } catch (error) {
       console.error('Error adding wallet balance:', error)
-      showErrorToast('Failed to add balance. Please try again.')
+      showErrorToast(getSupabaseErrorMessage(error, 'Failed to add balance. Please try again.'))
     } finally {
       setSaving(false)
     }

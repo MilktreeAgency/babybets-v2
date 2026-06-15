@@ -4,6 +4,7 @@ import KPICard from '@/components/admin/KPICard'
 import ActivityFeed from '@/components/admin/ActivityFeed'
 import PendingTasksWidget from '@/components/admin/PendingTasksWidget'
 import { supabase } from '@/lib/supabase'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 
 interface DashboardStats {
   revenue: { current: number; previous: number }
@@ -131,7 +132,7 @@ export default function Dashboard() {
       setPendingTasks(tasksResult.data as unknown as PendingTasks)
     } catch (err) {
       console.error('Error loading dashboard data:', err)
-      setError('Failed to load dashboard data. Please try again.')
+      setError(getSupabaseErrorMessage(err, 'Failed to load dashboard data. Please try again.'))
     } finally {
       setLoading(false)
     }

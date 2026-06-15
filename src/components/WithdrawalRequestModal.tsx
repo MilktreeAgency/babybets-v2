@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, AlertCircle, Landmark } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
 
@@ -205,7 +206,7 @@ export function WithdrawalRequestModal({
       onClose()
     } catch (error) {
       console.error('Error submitting withdrawal request:', error)
-      toast.error('Failed to submit withdrawal request. Please try again.')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to submit withdrawal request. Please try again.'))
     } finally {
       setIsSubmitting(false)
     }

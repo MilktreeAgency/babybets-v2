@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import Header from '@/components/common/Header'
 import Footer from '@/components/common/Footer'
 import { Save, ArrowLeft, Upload, X } from 'lucide-react'
@@ -97,7 +98,7 @@ export default function ProfileEdit() {
       setFormData(prev => ({ ...prev, profile_image_url: publicUrl }))
     } catch (error) {
       console.error('Error uploading image:', error)
-      setError('Failed to upload image')
+      setError(getSupabaseErrorMessage(error, 'Failed to upload image'))
     } finally {
       setUploadingProfile(false)
     }
@@ -148,7 +149,7 @@ export default function ProfileEdit() {
       }, 1500)
     } catch (error) {
       console.error('Error updating profile:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update profile. Please try again.'
+      const errorMessage = getSupabaseErrorMessage(error, 'Failed to update profile. Please try again.')
       setError(errorMessage)
     } finally {
       setSaving(false)

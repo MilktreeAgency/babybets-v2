@@ -4,6 +4,7 @@ import { X, Gift, DollarSign, Check } from 'lucide-react'
 import type { PrizeChoice, PrizeTemplate } from '@/types'
 import { usePrizeFulfillments } from '@/hooks/usePrizeFulfillments'
 import { showErrorToast } from '@/lib/toast'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 
 interface DeliveryAddress extends Record<string, string | undefined> {
   fullName: string
@@ -76,7 +77,7 @@ export function UserPrizeClaimModal({
       }, 2000)
     } catch (error) {
       console.error('Failed to claim prize:', error)
-      showErrorToast('Failed to claim prize. Please try again.')
+      showErrorToast(getSupabaseErrorMessage(error, 'Failed to claim prize. Please try again.'))
     }
   }
 

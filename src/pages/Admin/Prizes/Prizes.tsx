@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { DashboardHeader } from '../components'
 import { Plus, Search, Edit, Trash2, ToggleLeft, ToggleRight, Package } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import type { Database } from '@/types/database.types'
 import {
   Select,
@@ -91,7 +92,7 @@ export default function Prizes() {
       refresh()
     } catch (error) {
       console.error('Error toggling prize status:', error)
-      alert('Failed to update prize status')
+      alert(getSupabaseErrorMessage(error, 'Failed to update prize status'))
     }
   }
 
@@ -122,7 +123,7 @@ export default function Prizes() {
       refresh()
     } catch (error) {
       console.error('Error deleting prize:', error)
-      alert('Failed to delete prize')
+      alert(getSupabaseErrorMessage(error, 'Failed to delete prize'))
     }
   }
 

@@ -10,6 +10,7 @@ import { MultiImageUpload } from '@/components/MultiImageUpload'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { RichTextEditor } from '@/components/ui/RichTextEditor'
 import { showErrorToast, showSuccessToast } from '@/lib/toast'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 
 interface TieredPrice {
   minQty: number
@@ -188,7 +189,7 @@ export default function CompetitionForm() {
       }
     } catch (err) {
       console.error('Error loading competition:', err)
-      showErrorToast(err instanceof Error ? err.message : 'Failed to load competition')
+      showErrorToast(getSupabaseErrorMessage(err, 'Failed to load competition'))
     } finally {
       setLoadingData(false)
     }
@@ -439,7 +440,7 @@ export default function CompetitionForm() {
       }
     } catch (err) {
       console.error(`Error ${isEditMode ? 'updating' : 'creating'} competition:`, err)
-      const errorMessage = err instanceof Error ? err.message : `Failed to ${isEditMode ? 'update' : 'create'} competition`
+      const errorMessage = getSupabaseErrorMessage(err, `Failed to ${isEditMode ? 'update' : 'create'} competition`)
       showErrorToast(errorMessage)
     } finally {
       setLoading(false)

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Ticket, Lock, Unlock, RefreshCw, CheckCircle, XCircle, AlertTriangle, Loader, BarChart3, Gift } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import type { Competition } from '@/types'
 import {
   AlertDialog,
@@ -139,16 +140,14 @@ export function TicketPoolPanel({ competition, onPoolGenerated }: TicketPoolPane
       }
 
       // Final error handling
-      let errorMessage = 'Failed to generate ticket pool'
+      const errorMessage = getSupabaseErrorMessage(err, 'Failed to generate ticket pool')
       if (isTimeout) {
-        errorMessage = `Generation timed out after ${MAX_RETRIES + 1} attempts. This may indicate a very large ticket pool. Please try again or contact support.`
-      } else if (err instanceof Error) {
-        errorMessage = err.message
-      } else if (error.message) {
-        errorMessage = error.message
+        setError(
+          `Generation timed out after ${MAX_RETRIES + 1} attempts. This may indicate a very large ticket pool. Please try again or contact support.`
+        )
+      } else {
+        setError(errorMessage)
       }
-
-      setError(errorMessage)
       setShowGenerationAnimation(false)
       setGenerationProgress(0)
       console.error('Error generating ticket pool:', err)

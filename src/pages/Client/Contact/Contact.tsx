@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Mail, Clock, Instagram, Facebook, Send, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { getEdgeFunctionErrorMessage } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
 import Header from '@/components/common/Header'
 import Footer from '@/components/common/Footer'
@@ -27,7 +28,9 @@ export default function Contact() {
         body: { name: formData.name, email: formData.email, subject: formData.subject, message: formData.message }
       })
 
-      if (error) throw error
+      if (error) {
+        throw new Error(await getEdgeFunctionErrorMessage(error, 'Failed to send message'))
+      }
 
       if (data?.success) {
         toast.success("Message sent! We'll get back to you as soon as possible.")
@@ -37,7 +40,11 @@ export default function Contact() {
       }
     } catch (error) {
       console.error('Contact form error:', error)
-      toast.error('Something went wrong. Please try emailing us directly at hello@babybets.co.uk')
+      const message =
+        error instanceof Error
+          ? error.message
+          : await getEdgeFunctionErrorMessage(error, 'Something went wrong. Please try emailing us directly at hello@babybets.co.uk')
+      toast.error(message)
     } finally {
       setIsSubmitting(false)
     }

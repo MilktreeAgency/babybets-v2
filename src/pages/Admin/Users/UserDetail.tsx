@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { supabase } from '@/lib/supabase'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import type { Database } from '@/types/database.types'
 import { Mail, Phone, MapPin, Calendar, CreditCard, ShoppingBag, Gift, UserCheck, ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { AddBalanceDialog } from './AddBalanceDialog'
@@ -184,7 +185,7 @@ export default function UserDetail() {
       alert('User role updated successfully')
     } catch (error) {
       console.error('Error updating role:', error)
-      alert('Failed to update user role')
+      alert(getSupabaseErrorMessage(error, 'Failed to update user role'))
     } finally {
       setUpdating(false)
     }

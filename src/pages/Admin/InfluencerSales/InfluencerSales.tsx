@@ -3,6 +3,7 @@ import { DashboardHeader } from '../components'
 import { DollarSign, CheckCircle, Clock, TrendingUp, ArrowDownToLine, AlertCircle, Wallet } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import {
   Select,
   SelectContent,
@@ -192,7 +193,7 @@ export default function InfluencerSales() {
       }
     } catch (error) {
       console.error('Error paying out commission:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to payout commission')
+      toast.error(getSupabaseErrorMessage(error, 'Failed to payout commission'))
     } finally {
       setPayingOut(prev => ({ ...prev, [selectedInfluencer.id]: false }))
     }

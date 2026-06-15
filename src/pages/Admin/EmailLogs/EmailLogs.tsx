@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useConfirm } from '@/contexts/ConfirmDialogContext'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import type { Database } from '@/types/database.types'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 
 type EmailNotificationRow = Database['public']['Tables']['email_notifications']['Row']
 
@@ -173,7 +174,7 @@ export default function EmailLogs() {
       alert('Email has been queued for retry')
     } catch (error) {
       console.error('Error retrying email:', error)
-      alert('Failed to retry email')
+      alert(getSupabaseErrorMessage(error, 'Failed to retry email'))
     } finally {
       setRetrying(false)
     }

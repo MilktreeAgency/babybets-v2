@@ -17,6 +17,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { supabase } from '@/lib/supabase'
+import { getEdgeFunctionErrorMessage, getSupabaseErrorMessage } from '@/lib/errors'
 import type { Database } from '@/types/database.types'
 import { useAuthStore } from '@/store/authStore'
 import {
@@ -209,7 +210,7 @@ export default function WinnerDetail() {
       loadWinner()
     } catch (error) {
       console.error('Error updating fulfillment:', error)
-      alert('Failed to update fulfillment')
+      alert(getSupabaseErrorMessage(error, 'Failed to update fulfillment'))
     } finally {
       setUpdating(false)
     }
@@ -239,7 +240,7 @@ export default function WinnerDetail() {
       await loadWinner()
     } catch (error) {
       console.error('Error approving cash alternative:', error)
-      alert('Failed to approve cash alternative. Please try again.')
+      alert(getSupabaseErrorMessage(error, 'Failed to approve cash alternative. Please try again.'))
     } finally {
       setApprovingCash(false)
     }
@@ -257,7 +258,7 @@ export default function WinnerDetail() {
       navigate('/admin/dashboard/winners')
     } catch (error) {
       console.error('Error deleting winner:', error)
-      alert('Failed to delete winner')
+      alert(getSupabaseErrorMessage(error, 'Failed to delete winner'))
       setDeleting(false)
     }
   }
@@ -283,7 +284,7 @@ export default function WinnerDetail() {
       loadWinner()
     } catch (error) {
       console.error(`Error updating ${field}:`, error)
-      alert(`Failed to update ${field}`)
+      alert(getSupabaseErrorMessage(error, `Failed to update ${field}`))
     }
   }
 
@@ -335,7 +336,7 @@ export default function WinnerDetail() {
       loadWinner()
     } catch (error) {
       console.error('Error uploading photo:', error)
-      alert('Failed to upload photo')
+      alert(getSupabaseErrorMessage(error, 'Failed to upload photo'))
     } finally {
       setUploadingPhoto(false)
     }
@@ -358,7 +359,7 @@ export default function WinnerDetail() {
       loadWinner()
     } catch (error) {
       console.error('Error updating testimonial:', error)
-      alert('Failed to update testimonial')
+      alert(getSupabaseErrorMessage(error, 'Failed to update testimonial'))
     } finally {
       setUpdating(false)
     }
@@ -380,7 +381,9 @@ export default function WinnerDetail() {
         },
       })
 
-      if (error) throw error
+      if (error) {
+        throw new Error(await getEdgeFunctionErrorMessage(error, 'Failed to send request'))
+      }
 
       if (data?.success) {
         alert(`Request sent to ${winner.user.email}`)
@@ -389,7 +392,7 @@ export default function WinnerDetail() {
       }
     } catch (error) {
       console.error('Error sending request:', error)
-      alert('Failed to send request. Please try again.')
+      alert(getSupabaseErrorMessage(error, 'Failed to send request. Please try again.'))
     } finally {
       setSendingRequest(false)
     }

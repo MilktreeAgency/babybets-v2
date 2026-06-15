@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { ImageUpload } from '@/components/ImageUpload'
 import { supabase } from '@/lib/supabase'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import type { Database } from '@/types/database.types'
 
 type PrizeTemplate = Database['public']['Tables']['prize_templates']['Row']
@@ -118,7 +119,7 @@ export function PrizeDialog({
       onOpenChange(false)
     } catch (error) {
       console.error('Error saving prize:', error)
-      alert('Failed to save prize')
+      alert(getSupabaseErrorMessage(error, 'Failed to save prize'))
     } finally {
       setSaving(false)
     }

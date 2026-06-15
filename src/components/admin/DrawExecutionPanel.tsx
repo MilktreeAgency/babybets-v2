@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy, AlertTriangle, CheckCircle, XCircle, Loader, Shield, Hash, User, Ticket, Sparkles } from 'lucide-react'
 import { useDraws } from '@/hooks/useDraws'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import type { Competition, Draw, DrawExecutionResult } from '@/types'
 import {
   Dialog,
@@ -88,7 +89,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
       // Don't call onDrawExecuted or reload draw details here
       // They will be called when the user closes the modal
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to execute draw'
+      const errorMessage = getSupabaseErrorMessage(err, 'Failed to execute draw')
       setError(errorMessage)
       setShowDrawAnimation(false)
       console.error('Error executing draw:', err)
@@ -116,7 +117,7 @@ export function DrawExecutionPanel({ competition, onDrawExecuted }: DrawExecutio
       setShowVerificationModal(true)
     } catch (err) {
       console.error('Error verifying draw:', err)
-      setError('Failed to verify draw')
+      setError(getSupabaseErrorMessage(err, 'Failed to verify draw'))
     }
   }
 

@@ -13,6 +13,7 @@ import { WinCelebrationModal } from '@/components/WinCelebrationModal'
 import { authService } from '@/services/auth.service'
 import type { PrizeTemplate } from '@/types'
 import { showErrorToast, showSuccessToast } from '@/lib/toast'
+import { getSupabaseErrorMessage } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database.types'
 
@@ -218,7 +219,7 @@ function Account() {
       showSuccessToast('Communication preferences saved')
     } catch (error) {
       console.error('Error updating communication preferences:', error)
-      showErrorToast('Could not save your preferences. Please try again.')
+      showErrorToast(getSupabaseErrorMessage(error, 'Could not save your preferences. Please try again.'))
     }
   }
 
@@ -275,7 +276,7 @@ function Account() {
       )
     } catch (error) {
       console.error('Failed to reveal tickets:', error)
-      showErrorToast('Failed to reveal some tickets. Please try again.')
+      showErrorToast(getSupabaseErrorMessage(error, 'Failed to reveal some tickets. Please try again.'))
     }
   }
 
