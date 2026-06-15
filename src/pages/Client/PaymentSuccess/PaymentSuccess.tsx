@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Header from '@/components/common/Header'
 import { supabase } from '@/lib/supabase'
-import { CheckCircle, Trophy, ArrowRight } from 'lucide-react'
+import { CheckCircle, Trophy, ArrowRight, Ticket, Wallet } from 'lucide-react'
 
 interface OrderDetails {
   id: string
@@ -105,7 +105,16 @@ function PaymentSuccess() {
             <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-7 md:mb-8">
               {error || 'Order details could not be found.'}
             </p>
-            <div className="flex justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+              <Link
+                to="/account?tab=tickets"
+                className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-bold rounded-lg hover:opacity-90 transition-opacity cursor-pointer text-white"
+                style={{ backgroundColor: '#496B71' }}
+              >
+                <Ticket className="size-3.5 sm:size-4" />
+                My Tickets & Wallet
+                <ArrowRight className="size-3.5 sm:size-4" />
+              </Link>
               <Link
                 to="/"
                 className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base bg-linear-to-r from-orange-500 to-orange-600 text-white font-bold rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
@@ -189,21 +198,35 @@ function PaymentSuccess() {
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 sm:p-6 mb-6 sm:mb-7 md:mb-8">
             <h3 className="text-sm sm:text-base font-bold mb-1.5 sm:mb-2">What's Next?</h3>
             <p className="text-xs sm:text-sm text-gray-700">
-              You'll receive a confirmation email shortly. Your tickets are now entered into the
-              draw. Good luck!
+              You'll receive a confirmation email shortly. View your tickets and wallet balance in
+              your account, or browse more competitions to enter again. Good luck!
             </p>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+            <Link
+              to="/account?tab=tickets"
+              className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-bold rounded-lg hover:opacity-90 transition-opacity cursor-pointer text-white"
+              style={{ backgroundColor: '#496B71' }}
+            >
+              <Ticket className="size-4 shrink-0" />
+              My Tickets & Wallet
+              <ArrowRight className="size-4 shrink-0" />
+            </Link>
             <Link
               to="/"
-              className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base bg-linear-to-r from-orange-500 to-orange-600 text-white font-bold rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-bold rounded-lg hover:opacity-90 transition-opacity cursor-pointer text-white bg-linear-to-r from-orange-500 to-orange-600"
             >
               Browse More Competitions
-              <ArrowRight className="size-3.5 sm:size-4" />
+              <ArrowRight className="size-4 shrink-0" />
             </Link>
           </div>
+
+          <p className="mt-5 text-xs sm:text-sm text-gray-500 flex items-center justify-center gap-1.5">
+            <Wallet className="size-3.5 shrink-0" />
+            Tickets and wallet balance are in My Account
+          </p>
         </div>
       </div>
     </div>
