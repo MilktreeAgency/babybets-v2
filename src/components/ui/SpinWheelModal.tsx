@@ -84,52 +84,26 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({ isOpen, onClose 
     setErrorMessage('')
 
     try {
-      // Get Supabase URL and anon key from environment
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Missing Supabase environment variables')
-      }
-
-      // Get the current user's auth token if they're logged in
-      const { data: { session } } = await supabase.auth.getSession()
-
-      // Call edge function directly using fetch (same pattern as email service)
-      const url = `${supabaseUrl}/functions/v1/claim-wheel-prize`
-
-      // Build headers - use user JWT if available, otherwise anon key
-      const authToken = session?.access_token || supabaseAnonKey
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'apikey': supabaseAnonKey,
-        'Authorization': `Bearer ${authToken}`,
-      }
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          email: email.toLowerCase(),
+      const { data, error } = await supabase.functions.invoke('claim-wheel-prize', {
+        body: {
+          email: email.toLowerCase().trim(),
           prizeLabel: result.label,
           prizeValue: result.value,
           prizeType: result.type,
           prizeAmount: result.amount,
-        }),
+        },
       })
 
-      const data = await response.json()
-
-      if (!response.ok || !data.success) {
-        console.error('Edge function error response:', data)
-        setErrorMessage(data.message || 'Failed to claim prize. Please try again.')
+      if (data?.success) {
+        setSubmitSuccess(true)
         return
       }
 
-      if (data.success) {
-        setSubmitSuccess(true)
-      }
+      setErrorMessage(
+        (data as { message?: string } | null)?.message ||
+          error?.message ||
+          'Failed to claim prize. Please try again.'
+      )
     } catch (error) {
       console.error('Error claiming prize:', error)
       setErrorMessage('An error occurred. Please try again.')

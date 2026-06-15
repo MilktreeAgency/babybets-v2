@@ -7,31 +7,48 @@ interface ClaimWheelPrizeRequest {
   prizeLabel: string
   prizeValue: string
   prizeType: 'credit' | 'discount' | 'free_entry'
-  prizeAmount?: number // For credits: amount in GBP, For discounts: percentage value
+  prizeAmount?: number
 }
 
-// SECURITY: Define allowed wheel prize configurations
-// Prevents users from claiming arbitrary amounts
 const ALLOWED_WHEEL_PRIZES = {
-  credit: [1, 2, 5, 10, 20], // Allowed credit amounts in GBP
-  discount: [5, 10, 15, 20, 25, 50], // Allowed discount percentages
-  free_entry: [1] // Always 1 free entry
+  credit: [0.5, 1, 2, 5, 10, 20],
+  discount: [5, 10, 15, 20, 25, 50],
+  free_entry: [1],
 }
 
-interface ClaimWheelPrizeResponse {
-  success: boolean
-  message: string
-  alreadyClaimed?: boolean
+const DISCOUNT_EXPIRY_HOURS = 48
+const PROMO_EXPIRY_DAYS = 30
+
+function jsonResponse(
+  body: Record<string, unknown>,
+  status: number,
+  corsHeaders: Record<string, string>
+) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
+
+function createPromoExpiry(days: number) {
+  const expiresAt = new Date()
+  expiresAt.setDate(expiresAt.getDate() + days)
+  return expiresAt
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
+  const requestOrigin = req.headers.get('Origin') || undefined
+  const corsHeaders = getCorsHeaders(false, requestOrigin)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  if (req.method !== 'POST') {
+    return jsonResponse({ success: false, message: 'Method not allowed' }, 405, corsHeaders)
+  }
+
   try {
-    // Create service role client for admin operations
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -43,205 +60,159 @@ serve(async (req) => {
       }
     )
 
-    // Get webhook config from database for email sending
     const { data: webhookConfig } = await supabaseAdmin
       .from('webhook_config')
       .select('webhook_secret, supabase_url')
       .limit(1)
       .single()
 
-    const { email, prizeLabel, prizeValue, prizeType, prizeAmount }: ClaimWheelPrizeRequest = await req.json()
+    const { email, prizeLabel, prizeValue, prizeType, prizeAmount }: ClaimWheelPrizeRequest =
+      await req.json()
 
-    // Validate input
-    if (!email || !prizeLabel || !prizeValue || !prizeType) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: 'Missing required fields'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
-        }
-      )
+    const normalizedEmail = email?.toLowerCase().trim()
+
+    if (!normalizedEmail || !prizeLabel || !prizeValue || !prizeType) {
+      return jsonResponse({ success: false, message: 'Missing required fields' }, 400, corsHeaders)
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: 'Invalid email format'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
-        }
-      )
+    if (!emailRegex.test(normalizedEmail)) {
+      return jsonResponse({ success: false, message: 'Invalid email format' }, 400, corsHeaders)
     }
 
-    // SECURITY FIX: Validate prizeAmount against allowed configuration
-    if (prizeType === 'credit' && prizeAmount) {
+    if (prizeType === 'credit' && prizeAmount != null) {
       if (!ALLOWED_WHEEL_PRIZES.credit.includes(prizeAmount)) {
-        console.error(`[Security] Invalid credit amount attempted: ${prizeAmount}`)
-        return new Response(
-          JSON.stringify({
-            success: false,
-            message: 'Invalid prize amount'
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400
-          }
-        )
+        return jsonResponse({ success: false, message: 'Invalid prize amount' }, 400, corsHeaders)
       }
-    } else if (prizeType === 'discount' && prizeAmount) {
+    } else if (prizeType === 'discount' && prizeAmount != null) {
       if (!ALLOWED_WHEEL_PRIZES.discount.includes(prizeAmount)) {
-        console.error(`[Security] Invalid discount percentage attempted: ${prizeAmount}`)
-        return new Response(
-          JSON.stringify({
-            success: false,
-            message: 'Invalid prize amount'
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400
-          }
-        )
+        return jsonResponse({ success: false, message: 'Invalid prize amount' }, 400, corsHeaders)
       }
-    } else if (prizeType === 'free_entry' && prizeAmount && prizeAmount !== 1) {
-      console.error(`[Security] Invalid free entry amount attempted: ${prizeAmount}`)
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: 'Invalid prize amount'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
-        }
-      )
+    } else if (prizeType === 'free_entry' && prizeAmount != null && prizeAmount !== 1) {
+      return jsonResponse({ success: false, message: 'Invalid prize amount' }, 400, corsHeaders)
     }
 
-    // Check if email has already claimed (use admin client)
     const { data: existingClaim, error: checkError } = await supabaseAdmin
       .from('wheel_claims')
-      .select('id, claimed_at')
-      .eq('email', email.toLowerCase())
+      .select('id')
+      .eq('email', normalizedEmail)
       .maybeSingle()
 
     if (checkError) {
       console.error('Error checking existing claim:', checkError)
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: 'Error checking claim eligibility'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500
-        }
-      )
+      return jsonResponse({ success: false, message: 'Error checking claim eligibility' }, 500, corsHeaders)
     }
 
     if (existingClaim) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: 'Looks like this email has already claimed a spin prize. This offer is for new customers only.',
-          alreadyClaimed: true
-        }),
+      return jsonResponse(
         {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 409
-        }
+          success: false,
+          message:
+            'Looks like this email has already claimed a spin prize. This offer is for new customers only.',
+          alreadyClaimed: true,
+        },
+        409,
+        corsHeaders
       )
     }
 
-    // Get user ID if logged in (from auth header)
-    let userId: string | null = null
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .ilike('email', normalizedEmail)
+      .maybeSingle()
+
+    if (existingProfile?.id) {
+      const { data: existingOrders } = await supabaseAdmin
+        .from('orders')
+        .select('id')
+        .eq('user_id', existingProfile.id)
+        .limit(1)
+
+      if (existingOrders && existingOrders.length > 0) {
+        return jsonResponse(
+          {
+            success: false,
+            message: 'This offer is for new customers only.',
+            alreadyClaimed: false,
+          },
+          409,
+          corsHeaders
+        )
+      }
+    }
+
+    let userId: string | null = existingProfile?.id ?? null
     const authHeader = req.headers.get('Authorization')
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader?.startsWith('Bearer ')) {
       try {
-        // Try to get the user from the JWT token
-        // For anonymous users (using anon key), this will return no user, which is fine
         const token = authHeader.replace('Bearer ', '')
-
-        // Create client with the provided token to check for authenticated user
         const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-
         if (!authError && user) {
           userId = user.id
-          console.log(`Authenticated user: ${user.id}`)
-        } else {
-          console.log('Anonymous request (no user session)')
         }
-      } catch (error) {
-        // Ignore auth errors for anonymous users
+      } catch {
         console.log('No valid user session, proceeding as anonymous')
       }
     }
 
-    // Create promo code for discounts or process credits/free entry
     let promoCodeId: string | null = null
     let generatedPromoCode: string | null = null
+    let creditAppliedToWallet = false
+    const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase()
 
-    if (prizeType === 'discount') {
-      // Create a unique promo code with random suffix
-      const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase()
-      const promoCode = `${prizeValue.toUpperCase()}-${randomSuffix}`
-      generatedPromoCode = promoCode
-      const expiresAt = new Date()
-      expiresAt.setMinutes(expiresAt.getMinutes() + 60) // 60 minutes expiry
-
+    async function insertPromoCode(
+      code: string,
+      type: 'percentage' | 'fixed_value' | 'free_tickets',
+      value: number,
+      validUntil: Date
+    ) {
       const { data: promoData, error: promoError } = await supabaseAdmin
         .from('promo_codes')
         .insert({
-          code: promoCode,
-          type: 'percentage',
-          value: prizeAmount || 0,
+          code,
+          type,
+          value,
           max_uses: 1,
           current_uses: 0,
           max_uses_per_user: 1,
           min_order_pence: 0,
           valid_from: new Date().toISOString(),
-          valid_until: expiresAt.toISOString(),
+          valid_until: validUntil.toISOString(),
           is_active: true,
           competition_ids: [],
-          new_customers_only: false,
+          new_customers_only: true,
         })
         .select('id')
         .single()
 
       if (promoError) {
         console.error('Error creating promo code:', promoError)
-        return new Response(
-          JSON.stringify({
-            success: false,
-            message: 'Error creating promo code'
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 500
-          }
-        )
+        throw new Error('Error creating promo code')
       }
 
       promoCodeId = promoData.id
-    } else if (prizeType === 'credit' && userId) {
-      // Apply credit to user's wallet
+      generatedPromoCode = code
+    }
+
+    if (prizeType === 'discount') {
+      const promoCode = `${prizeValue.toUpperCase()}-${randomSuffix}`
+      const expiresAt = new Date()
+      expiresAt.setHours(expiresAt.getHours() + DISCOUNT_EXPIRY_HOURS)
+
+      await insertPromoCode(promoCode, 'percentage', prizeAmount || 0, expiresAt)
+    } else if (prizeType === 'free_entry') {
+      const promoCode = `FREE-${randomSuffix}`
+      await insertPromoCode(promoCode, 'free_tickets', 1, createPromoExpiry(PROMO_EXPIRY_DAYS))
+    } else if (prizeType === 'credit') {
       const amountPence = Math.round((prizeAmount || 0) * 100)
 
-      // Set expiry to 1 year from now
-      const expiryDate = new Date()
-      expiryDate.setFullYear(expiryDate.getFullYear() + 1)
+      if (userId) {
+        const expiryDate = new Date()
+        expiryDate.setFullYear(expiryDate.getFullYear() + 1)
 
-      // Create wallet credit
-      const { error: creditError } = await supabaseAdmin
-        .from('wallet_credits')
-        .insert({
+        const { error: creditError } = await supabaseAdmin.from('wallet_credits').insert({
           user_id: userId,
           amount_pence: amountPence,
           remaining_pence: amountPence,
@@ -251,121 +222,116 @@ serve(async (req) => {
           status: 'active',
         })
 
-      if (creditError) {
-        console.error('Error creating wallet credit:', creditError)
-        // Continue anyway, will send email with instructions
+        if (!creditError) {
+          creditAppliedToWallet = true
+        } else {
+          console.error('Error creating wallet credit:', creditError)
+        }
+      }
+
+      if (!creditAppliedToWallet) {
+        const promoCode = `CREDIT-${randomSuffix}`
+        await insertPromoCode(promoCode, 'fixed_value', amountPence, createPromoExpiry(PROMO_EXPIRY_DAYS))
       }
     }
 
-    // Record the claim
-    const { error: claimError } = await supabaseAdmin
-      .from('wheel_claims')
-      .insert({
-        email: email.toLowerCase(),
-        prize_type: prizeType,
-        prize_label: prizeLabel,
-        prize_value: prizeValue,
-        prize_amount: prizeAmount,
-        user_id: userId,
-        promo_code_id: promoCodeId,
-        email_sent: false,
-      })
+    const { error: claimError } = await supabaseAdmin.from('wheel_claims').insert({
+      email: normalizedEmail,
+      prize_type: prizeType,
+      prize_label: prizeLabel,
+      prize_value: prizeValue,
+      prize_amount: prizeAmount,
+      user_id: userId,
+      promo_code_id: promoCodeId,
+      email_sent: false,
+    })
 
     if (claimError) {
       console.error('Error recording claim:', claimError)
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: 'Error recording claim'
-        }),
+      return jsonResponse({ success: false, message: 'Error recording claim' }, 500, corsHeaders)
+    }
+
+    const emailData: Record<string, unknown> = {
+      prizeLabel,
+      prizeValue,
+      prizeType,
+      prizeAmount,
+      creditAppliedToWallet,
+    }
+
+    if (generatedPromoCode) {
+      emailData.promoCode = generatedPromoCode
+      emailData.expiryMinutes =
+        prizeType === 'discount' ? DISCOUNT_EXPIRY_HOURS * 60 : PROMO_EXPIRY_DAYS * 24 * 60
+    }
+
+    let emailSent = false
+
+    if (webhookConfig?.webhook_secret) {
+      const emailResponse = await fetch(
+        `${webhookConfig.supabase_url}/functions/v1/send-email`,
         {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Webhook-Secret': webhookConfig.webhook_secret,
+          },
+          body: JSON.stringify({
+            type: 'wheel_prize',
+            recipientEmail: normalizedEmail,
+            recipientName: userId ? undefined : 'there',
+            data: emailData,
+          }),
         }
+      )
+
+      if (!emailResponse.ok) {
+        const errorText = await emailResponse.text()
+        console.error('Error sending email:', errorText)
+      } else {
+        emailSent = true
+        await supabaseAdmin
+          .from('wheel_claims')
+          .update({
+            email_sent: true,
+            email_sent_at: new Date().toISOString(),
+          })
+          .eq('email', normalizedEmail)
+          .eq('prize_value', prizeValue)
+      }
+    } else {
+      console.error('Webhook config not available - cannot send email')
+    }
+
+    if (!emailSent) {
+      return jsonResponse(
+        {
+          success: false,
+          message: 'Prize was recorded but we could not send your email. Please contact support.',
+        },
+        500,
+        corsHeaders
       )
     }
 
-    // Send email notification
-    try {
-      const emailData: Record<string, unknown> = {
-        prizeLabel,
-        prizeValue,
-        prizeType,
-        prizeAmount,
-      }
-
-      if (prizeType === 'discount' && generatedPromoCode) {
-        emailData.promoCode = generatedPromoCode
-        emailData.expiryMinutes = 60
-      }
-
-      // Call email function using webhook secret authentication
-      if (webhookConfig?.webhook_secret) {
-        const emailResponse = await fetch(
-          `${webhookConfig.supabase_url}/functions/v1/send-email`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Webhook-Secret': webhookConfig.webhook_secret,
-            },
-            body: JSON.stringify({
-              type: 'wheel_prize',
-              recipientEmail: email,
-              recipientName: userId ? undefined : 'there',
-              data: emailData,
-            }),
-          }
-        )
-
-        if (!emailResponse.ok) {
-          const errorText = await emailResponse.text()
-          console.error('Error sending email:', errorText)
-        } else {
-          console.log('Email sent successfully')
-
-          // Update email sent status
-          await supabaseAdmin
-            .from('wheel_claims')
-            .update({
-              email_sent: true,
-              email_sent_at: new Date().toISOString()
-            })
-            .eq('email', email.toLowerCase())
-            .eq('prize_value', prizeValue)
-        }
-      } else {
-        console.error('Webhook config not available - cannot send email')
-      }
-
-    } catch (emailError) {
-      console.error('Error sending email:', emailError)
-      // Don't fail the request if email fails
-    }
-
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(
+      {
         success: true,
         message: 'Prize claimed successfully! Check your inbox (and junk folder).',
-        alreadyClaimed: false
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
-      }
+        alreadyClaimed: false,
+      },
+      200,
+      corsHeaders
     )
-
   } catch (error) {
     console.error('Error in claim-wheel-prize function:', error)
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: 'Internal server error'
-      }),
+    return jsonResponse(
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
-      }
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      },
+      500,
+      corsHeaders
     )
   }
 })
