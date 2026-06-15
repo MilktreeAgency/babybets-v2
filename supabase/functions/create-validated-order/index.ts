@@ -263,16 +263,31 @@ serve(async (req) => {
     let creditAppliedPence = 0
 
     if (use_wallet_credit) {
-      // SERVER-SIDE: Fetch actual available balance
-      const { data: walletData } = await supabaseAdmin
+      // SERVER-SIDE: Fetch actual available balance (non-expired credits only)
+      const now = new Date().toISOString()
+      const { data: walletData, error: walletError } = await supabaseAdmin
         .from('wallet_credits')
         .select('remaining_pence')
         .eq('user_id', user.id)
         .eq('status', 'active')
         .gt('remaining_pence', 0)
-        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+        .gt('expires_at', now)
+
+      if (walletError) {
+        console.error('Wallet balance lookup failed:', walletError)
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to check wallet balance' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
 
       const availableBalance = (walletData || []).reduce((sum, credit) => sum + credit.remaining_pence, 0)
+
+      console.log(`Wallet credit check for user ${user.id}:`, {
+        availableBalance,
+        priceAfterDiscount,
+        creditsFound: walletData?.length ?? 0,
+      })
 
       // Apply up to the available balance, not exceeding order total
       creditAppliedPence = Math.min(availableBalance, priceAfterDiscount)

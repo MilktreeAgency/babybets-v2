@@ -1,0 +1,4 @@
+# Disable JWT verification at infrastructure level
+# Authentication is handled manually in the function
+[function.create-validated-order]
+verify_jwt = false

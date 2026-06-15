@@ -412,6 +412,12 @@ function Checkout() {
 
       const finalTotalPence = validatedOrder.total_pence
 
+      if (useWalletCredit && validatedOrder.credit_applied_pence === 0 && finalTotalPence > 0) {
+        throw new Error(
+          'Unable to apply wallet credit. Your credits may have expired or already been used. Please refresh the page and try again.'
+        )
+      }
+
       // If fully paid with wallet credit
       if (finalTotalPence === 0) {
         // Use Edge Function to complete order (handles email sending)

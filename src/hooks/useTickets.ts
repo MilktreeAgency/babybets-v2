@@ -189,9 +189,28 @@ export function useTickets() {
       if (!user?.id) throw new Error('User not authenticated')
       return revealTicketInternal(ticketId, user.id)
     },
-    onSuccess: async () => {
-      invalidateTicketQueries(queryClient, user?.id)
-      await queryClient.refetchQueries({ queryKey: ticketsQueryKey })
+    onMutate: async (ticketId) => {
+      await queryClient.cancelQueries({ queryKey: ticketsQueryKey })
+      const previous = queryClient.getQueryData<TicketWithDetails[]>(ticketsQueryKey)
+      queryClient.setQueryData<TicketWithDetails[]>(ticketsQueryKey, (old) =>
+        (old ?? []).map((ticket) =>
+          ticket.id === ticketId
+            ? { ...ticket, is_revealed: true, revealed_at: new Date().toISOString() }
+            : ticket
+        )
+      )
+      return { previous }
+    },
+    onError: (_error, _ticketId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(ticketsQueryKey, context.previous)
+      }
+    },
+    onSuccess: () => {
+      // Mark related queries stale without refetching mid-animation
+      queryClient.invalidateQueries({ queryKey: ['wallet-credits'] })
+      queryClient.invalidateQueries({ queryKey: ['prize-fulfillments'] })
+      queryClient.invalidateQueries({ queryKey: ['winners'] })
     },
   })
 
@@ -231,6 +250,7 @@ export function useTickets() {
     winningTickets,
     revealTicket: revealTicketMutation.mutateAsync,
     revealAllTickets: revealAllTicketsMutation.mutateAsync,
+    refreshTickets: () => queryClient.refetchQueries({ queryKey: ticketsQueryKey }),
     isRevealing: revealTicketMutation.isPending || revealAllTicketsMutation.isPending,
   }
 }
