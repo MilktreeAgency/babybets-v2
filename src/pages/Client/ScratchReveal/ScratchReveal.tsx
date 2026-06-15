@@ -13,7 +13,7 @@ type RevealPhase = 'ready' | 'scratching' | 'revealing' | 'result'
 function drawScratchSurface(
   canvas: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
-  ticketNumber: number
+  ticketNumber: string
 ) {
   const dpr = window.devicePixelRatio || 1
   const width = canvas.offsetWidth
