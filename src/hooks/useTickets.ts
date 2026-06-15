@@ -207,10 +207,12 @@ export function useTickets() {
       }
     },
     onSuccess: () => {
-      // Mark related queries stale without refetching mid-animation
-      queryClient.invalidateQueries({ queryKey: ['wallet-credits'] })
-      queryClient.invalidateQueries({ queryKey: ['prize-fulfillments'] })
-      queryClient.invalidateQueries({ queryKey: ['winners'] })
+      // Defer side-effect refetches so reveal animations stay smooth
+      window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['wallet-credits'] })
+        queryClient.invalidateQueries({ queryKey: ['prize-fulfillments'] })
+        queryClient.invalidateQueries({ queryKey: ['winners'] })
+      }, 1500)
     },
   })
 

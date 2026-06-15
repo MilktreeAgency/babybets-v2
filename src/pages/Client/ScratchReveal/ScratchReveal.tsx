@@ -57,33 +57,14 @@ function drawScratchSurface(
 }
 
 function fireWinConfetti() {
-  const duration = 2000
-  const animationEnd = Date.now() + duration
-  const defaults = { startVelocity: 28, spread: 360, ticks: 60, zIndex: 50 }
-
-  const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min
-
-  const interval = setInterval(() => {
-    const timeLeft = animationEnd - Date.now()
-    if (timeLeft <= 0) {
-      clearInterval(interval)
-      return
-    }
-
-    const particleCount = 40 * (timeLeft / duration)
-    confetti({
-      ...defaults,
-      particleCount,
-      origin: { x: randomInRange(0.15, 0.35), y: Math.random() - 0.2 },
-      colors: ['#f25100', '#FED0B9', '#496B71', '#FFD700', '#FF6347'],
-    })
-    confetti({
-      ...defaults,
-      particleCount,
-      origin: { x: randomInRange(0.65, 0.85), y: Math.random() - 0.2 },
-      colors: ['#f25100', '#FED0B9', '#496B71', '#FFD700', '#FF6347'],
-    })
-  }, 200)
+  confetti({
+    particleCount: 100,
+    spread: 80,
+    startVelocity: 35,
+    origin: { y: 0.55 },
+    colors: ['#f25100', '#FED0B9', '#496B71', '#FFD700'],
+    disableForReducedMotion: true,
+  })
 }
 
 export default function ScratchReveal() {
@@ -110,10 +91,15 @@ export default function ScratchReveal() {
   const lastProgressRef = useRef(0)
 
   const displayTicket = activeTicket ?? unrevealedTickets[0] ?? null
+  const isInActiveSession =
+    activeTicket !== null ||
+    phase === 'scratching' ||
+    phase === 'revealing' ||
+    phase === 'result'
 
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current
-    if (!canvas || !displayTicket || phase === 'result') return
+    if (!canvas || !displayTicket || phase !== 'ready') return
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
@@ -125,7 +111,7 @@ export default function ScratchReveal() {
   }, [displayTicket, phase])
 
   useLayoutEffect(() => {
-    if (phase === 'ready' || phase === 'scratching') {
+    if (phase === 'ready') {
       initCanvas()
     }
   }, [initCanvas, phase, sessionKey])
@@ -139,11 +125,11 @@ export default function ScratchReveal() {
   }, [])
 
   useEffect(() => {
-    if (!isLoading && !displayTicket && tickets.length > 0) {
+    if (!isLoading && !displayTicket && !isInActiveSession && tickets.length > 0) {
       const timer = setTimeout(() => navigate('/account?tab=tickets'), 800)
       return () => clearTimeout(timer)
     }
-  }, [isLoading, displayTicket, tickets.length, navigate])
+  }, [isLoading, displayTicket, isInActiveSession, tickets.length, navigate])
 
   const cancelScratchAnimation = () => {
     if (animationFrameRef.current) {
@@ -161,42 +147,39 @@ export default function ScratchReveal() {
   }
 
   const finishReveal = async (ticket: TicketWithDetails) => {
+    cancelScratchAnimation()
     setPhase('revealing')
+    setOverlayOpacity(0)
 
     try {
       const result = revealPromiseRef.current
         ? await revealPromiseRef.current
         : await revealTicket(ticket.id)
 
+      revealPromiseRef.current = null
       setRevealResult(result)
 
       if (result.allocationResult?.fulfillment_id) {
         setClaimFulfillmentId(result.allocationResult.fulfillment_id)
       }
 
-      // Smooth fade-out of scratch overlay
-      setOverlayOpacity(0)
-      await new Promise((resolve) => setTimeout(resolve, 280))
-
+      await new Promise((resolve) => setTimeout(resolve, 220))
       setPhase('result')
 
       if (result.hasPrize && result.prize) {
         if ('vibrate' in navigator) {
-          navigator.vibrate([40, 20, 80, 20, 120])
+          navigator.vibrate([40, 20, 80])
         }
-        fireWinConfetti()
-
-        if (result.prize.type !== 'SiteCredit' && result.allocationResult?.fulfillment_id) {
-          setTimeout(() => setShowClaimModal(true), 1200)
-        }
+        requestAnimationFrame(() => fireWinConfetti())
       }
     } catch (error) {
       console.error('Failed to reveal ticket:', error)
-      cancelScratchAnimation()
+      revealPromiseRef.current = null
       setPhase('ready')
       setActiveTicket(null)
       setOverlayOpacity(1)
-      revealPromiseRef.current = null
+      setRevealResult(null)
+      setClaimFulfillmentId(null)
     }
   }
 
@@ -290,7 +273,11 @@ export default function ScratchReveal() {
     )
   }
 
-  if (unrevealedTickets.length === 0 && tickets.some((t) => t.competition?.competition_type === 'instant_win')) {
+  if (
+    unrevealedTickets.length === 0 &&
+    !isInActiveSession &&
+    tickets.some((t) => t.competition?.competition_type === 'instant_win')
+  ) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{ backgroundColor: '#fffbf7' }}>
         <div className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl" style={{ backgroundColor: 'rgba(73, 107, 113, 0.08)' }} />
@@ -321,7 +308,7 @@ export default function ScratchReveal() {
     )
   }
 
-  if (!displayTicket && !isLoading) {
+  if (!displayTicket && !isLoading && !isInActiveSession) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#fffbf7' }}>
         <p className="text-stone-500">Redirecting...</p>
@@ -462,6 +449,17 @@ export default function ScratchReveal() {
                       )}
                     </div>
                   </div>
+
+                  {revealResult.prize.type !== 'SiteCredit' && fulfillmentId && (
+                    <button
+                      type="button"
+                      onClick={() => setShowClaimModal(true)}
+                      className="w-full mb-3 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all hover:opacity-90 cursor-pointer"
+                      style={{ backgroundColor: '#f25100', color: 'white' }}
+                    >
+                      Claim Your Prize
+                    </button>
+                  )}
                 </>
               ) : (
                 <>
