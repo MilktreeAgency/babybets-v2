@@ -173,7 +173,27 @@ serve(async (req) => {
     const publicSiteUrl = Deno.env.get('PUBLIC_SITE_URL') || 'https://www.babybets.co.uk'
     const accountUrl = `${publicSiteUrl}/account`
 
-    const html = getWinnerPhotoRequestHTML(displayName, prizeName, accountUrl)
+    let emailLogoUrl: string | undefined
+    try {
+      const { data: settingsData } = await supabaseAdmin
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'email_logo')
+        .single()
+
+      if (
+        settingsData?.setting_value &&
+        typeof settingsData.setting_value === 'object' &&
+        !Array.isArray(settingsData.setting_value)
+      ) {
+        const emailLogoSettings = settingsData.setting_value as { url?: string | null }
+        emailLogoUrl = emailLogoSettings.url || undefined
+      }
+    } catch (error) {
+      console.warn('Failed to fetch email logo from settings, using default:', error)
+    }
+
+    const html = getWinnerPhotoRequestHTML(displayName, prizeName, accountUrl, emailLogoUrl)
     const text = getWinnerPhotoRequestText(displayName, prizeName, accountUrl)
 
     const emailResponse = await fetch(

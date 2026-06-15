@@ -4,7 +4,7 @@
  */
 export function getEmailLayout(title: string, content: string, logoUrl?: string): string {
   // Default logo URL if none provided
-  const defaultLogoUrl = 'https://eooebphyjhrgzmfroaaq.supabase.co/storage/v1/object/public/babybets-assets/email-logo.png'
+  const defaultLogoUrl = 'https://jyhxiheknwwikyfzbgaz.supabase.co/storage/v1/object/public/babybets-assets/email-logo.png'
   const emailLogoUrl = logoUrl || defaultLogoUrl
   return `
 <!DOCTYPE html>
