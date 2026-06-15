@@ -183,36 +183,12 @@ export function useTickets() {
     enabled: !!user?.id,
   })
 
-  // Reveal a ticket (scratch card action)
+  // Reveal a ticket (scratch card action) — no optimistic cache update;
+  // ScratchReveal manages its own session queue and refreshes when done.
   const revealTicketMutation = useMutation({
     mutationFn: async (ticketId: string): Promise<TicketRevealResult> => {
       if (!user?.id) throw new Error('User not authenticated')
       return revealTicketInternal(ticketId, user.id)
-    },
-    onMutate: async (ticketId) => {
-      await queryClient.cancelQueries({ queryKey: ticketsQueryKey })
-      const previous = queryClient.getQueryData<TicketWithDetails[]>(ticketsQueryKey)
-      queryClient.setQueryData<TicketWithDetails[]>(ticketsQueryKey, (old) =>
-        (old ?? []).map((ticket) =>
-          ticket.id === ticketId
-            ? { ...ticket, is_revealed: true, revealed_at: new Date().toISOString() }
-            : ticket
-        )
-      )
-      return { previous }
-    },
-    onError: (_error, _ticketId, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(ticketsQueryKey, context.previous)
-      }
-    },
-    onSuccess: () => {
-      // Defer side-effect refetches so reveal animations stay smooth
-      window.setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['wallet-credits'] })
-        queryClient.invalidateQueries({ queryKey: ['prize-fulfillments'] })
-        queryClient.invalidateQueries({ queryKey: ['winners'] })
-      }, 1500)
     },
   })
 
@@ -252,7 +228,10 @@ export function useTickets() {
     winningTickets,
     revealTicket: revealTicketMutation.mutateAsync,
     revealAllTickets: revealAllTicketsMutation.mutateAsync,
-    refreshTickets: () => queryClient.refetchQueries({ queryKey: ticketsQueryKey }),
+    refreshTickets: async () => {
+      invalidateTicketQueries(queryClient, user?.id)
+      await queryClient.refetchQueries({ queryKey: ticketsQueryKey })
+    },
     isRevealing: revealTicketMutation.isPending || revealAllTicketsMutation.isPending,
   }
 }
