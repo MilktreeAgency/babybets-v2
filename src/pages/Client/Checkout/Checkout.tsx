@@ -25,6 +25,7 @@ import {
   ContactInformation,
   TermsCheckboxes,
   CardPayment,
+  validateCardDetails,
 } from './components'
 
 // Google Pay client stored outside React state to avoid DataCloneError with postMessage
@@ -423,7 +424,17 @@ function Checkout() {
       }
 
       // Continue with card payment for remaining balance
-      const [expiryMonth, expiryYear] = expiryDate.split('/')
+      if (!validateCardDetails(cardNumber, expiryDate, cvv, cardholderName)) {
+        const remainingGBP = (finalTotalPence / 100).toFixed(2)
+        if (finalPrice === 0) {
+          throw new Error(
+            `Your wallet credit no longer covers this order. Please refresh the page — £${remainingGBP} is still due.`
+          )
+        }
+        throw new Error('Please enter valid card details to complete your purchase.')
+      }
+
+      const [expiryMonth, expiryYear = ''] = expiryDate.split('/')
 
       const paymentResult = await createHostedPaymentSession(
         order.id,
@@ -1021,6 +1032,20 @@ function Checkout() {
                     isMobileValid={isMobileValid}
                     mobileNumber={mobileNumber}
                   />
+
+                  {paymentError && (
+                    <div className="mb-6 p-4 rounded-lg border" style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca' }}>
+                      <div className="flex items-start">
+                        <svg className="w-5 h-5 mr-2 shrink-0" style={{ color: '#dc2626' }} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-medium" style={{ color: '#991b1b' }}>Order Failed</p>
+                          <p className="text-sm mt-1" style={{ color: '#dc2626' }}>{paymentError}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <button
                     onClick={handlePayment}

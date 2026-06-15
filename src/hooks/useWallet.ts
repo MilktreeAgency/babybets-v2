@@ -23,6 +23,7 @@ export function useWallet() {
         .eq('user_id', user.id)
         .eq('status', 'active')
         .gt('remaining_pence', 0)
+        .gt('expires_at', new Date().toISOString())
         .order('expires_at', { ascending: true })
 
       if (error) throw error
