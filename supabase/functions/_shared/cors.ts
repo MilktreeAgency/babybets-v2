@@ -28,6 +28,8 @@ export function getCorsHeaders(allowWildcard: boolean = false, requestOrigin?: s
   const publicSiteUrl = Deno.env.get('PUBLIC_SITE_URL') || 'https://babybets.co.uk'
   const allowedOrigins = [
     publicSiteUrl,
+    'https://babybets.co.uk',
+    'https://www.babybets.co.uk',
     'http://localhost:7001', // Development
     'http://localhost:5173', // Vite dev server
   ]

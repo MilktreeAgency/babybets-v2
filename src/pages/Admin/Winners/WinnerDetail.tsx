@@ -371,32 +371,25 @@ export default function WinnerDetail() {
     try {
       setSendingRequest(true)
 
-      // In a real implementation, this would call an edge function to send an email
-      // For now, we'll just simulate it
-      const response = await fetch('/api/send-winner-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('send-winner-request', {
+        body: {
           winnerId: winner.id,
           email: winner.user.email,
           displayName: winner.display_name,
           prizeName: winner.prize_name,
-        }),
+        },
       })
 
-      if (!response.ok) {
-        // If the API doesn't exist yet, just show a message
-        alert(
-          `Request would be sent to ${winner.user.email}.\n\nNote: Email functionality requires backend setup.`
-        )
+      if (error) throw error
+
+      if (data?.success) {
+        alert(`Request sent to ${winner.user.email}`)
       } else {
-        alert('Request sent successfully!')
+        throw new Error(data?.error || 'Failed to send request')
       }
     } catch (error) {
       console.error('Error sending request:', error)
-      alert(
-        `Request prepared for ${winner.user?.email}.\n\nNote: Email functionality requires backend setup.`
-      )
+      alert('Failed to send request. Please try again.')
     } finally {
       setSendingRequest(false)
     }
