@@ -109,6 +109,20 @@ export default function ScratchReveal() {
     }
   }, [isLoading, unrevealedFromServer])
 
+  // Disable pull-to-refresh / overscroll bounce while scratching on mobile.
+  useEffect(() => {
+    const html = document.documentElement
+    const body = document.body
+    const prevHtml = html.style.overscrollBehaviorY
+    const prevBody = body.style.overscrollBehaviorY
+    html.style.overscrollBehaviorY = 'none'
+    body.style.overscrollBehaviorY = 'none'
+    return () => {
+      html.style.overscrollBehaviorY = prevHtml
+      body.style.overscrollBehaviorY = prevBody
+    }
+  }, [])
+
   // Fire the reveal API the moment the user first touches the foil, so the
   // result is loaded and waiting beneath the card by the time they scratch through.
   const handleScratchStart = useCallback(() => {
@@ -270,18 +284,18 @@ export default function ScratchReveal() {
       </button>
 
       <div className="relative z-10 max-w-md w-full px-4">
-        <div className="text-center mb-5">
+        <div className="text-center mb-3 sm:mb-5">
           <div
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full font-bold uppercase tracking-wider text-sm mb-3 shadow-lg"
+            className="inline-flex items-center gap-1.5 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full font-bold uppercase tracking-wider text-[11px] sm:text-sm mb-2 sm:mb-3 shadow-lg"
             style={{ backgroundColor: '#496B71', color: 'white' }}
           >
-            <Zap size={16} fill="currentColor" /> Instant Win
+            <Zap size={13} fill="currentColor" className="sm:w-4 sm:h-4" /> Instant Win
           </div>
-          <h1 className="text-3xl font-bold mb-1" style={{ color: '#2D251E' }}>
+          <h1 className="text-xl sm:text-3xl font-bold mb-0.5 sm:mb-1" style={{ color: '#2D251E' }}>
             {phase === 'done' ? 'Result' : 'Scratch to Reveal'}
           </h1>
-          <p className="text-stone-500 font-medium">Ticket #{currentTicket.ticket_number}</p>
-          <p className="text-sm text-stone-400 mt-1">{currentTicket.competition?.title}</p>
+          <p className="text-sm sm:text-base text-stone-500 font-medium">Ticket #{currentTicket.ticket_number}</p>
+          <p className="text-xs sm:text-sm text-stone-400 mt-0.5 sm:mt-1">{currentTicket.competition?.title}</p>
         </div>
 
         {/* Single card — no mount/unmount between scratch and result */}
@@ -300,7 +314,7 @@ export default function ScratchReveal() {
             style={{ backgroundColor: '#FBEFDF', borderColor: '#d1d5db' }}
           >
             {/* Result layer (always present) */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-4 sm:p-8 text-center">
               {!showResult ? (
                 <>
                   <div className="font-bold text-6xl mb-3" style={{ color: '#496B7144' }}>?</div>
@@ -328,7 +342,7 @@ export default function ScratchReveal() {
                     className="relative z-10 flex flex-col items-center w-full animate-[popIn_0.5s_cubic-bezier(0.34,1.56,0.64,1)]"
                     style={{ animationFillMode: 'both' }}
                   >
-                    <div className="relative mb-4 flex items-center justify-center">
+                    <div className="relative mb-2.5 sm:mb-4 flex items-center justify-center">
                       {/* Coin burst — one-shot explosion from the medallion */}
                       {Array.from({ length: 14 }).map((_, i) => {
                         const ang = (Math.PI * 2 * i) / 14
@@ -354,19 +368,19 @@ export default function ScratchReveal() {
                         style={{ animation: 'glowPulse 1.6s ease-in-out infinite' }}
                       />
                       <div
-                        className="relative w-20 h-20 rounded-full flex items-center justify-center shadow-xl"
+                        className="relative w-14 h-14 sm:w-20 sm:h-20 rounded-full flex items-center justify-center shadow-xl"
                         style={{ background: 'linear-gradient(135deg, #FBE08A 0%, #E9A23B 100%)' }}
                       >
                         {isAutoWalletPrize(revealResult.prize!.type) ? (
-                          <Wallet size={38} className="text-white drop-shadow" strokeWidth={2.2} />
+                          <Wallet className="text-white drop-shadow w-7 h-7 sm:w-9 sm:h-9" strokeWidth={2.2} />
                         ) : (
-                          <Trophy size={38} className="text-white drop-shadow" strokeWidth={2.2} />
+                          <Trophy className="text-white drop-shadow w-7 h-7 sm:w-9 sm:h-9" strokeWidth={2.2} />
                         )}
                       </div>
                     </div>
 
                     <h2
-                      className="text-4xl font-extrabold tracking-tight mb-0.5"
+                      className="text-2xl sm:text-4xl font-extrabold tracking-tight mb-0.5"
                       style={{
                         backgroundImage: 'linear-gradient(180deg, #F4A93B 0%, #D8740F 100%)',
                         WebkitBackgroundClip: 'text',
@@ -377,24 +391,24 @@ export default function ScratchReveal() {
                     >
                       YOU WON!
                     </h2>
-                    <p className="text-sm font-semibold mb-4" style={{ color: '#A86A1B' }}>
+                    <p className="text-xs sm:text-sm font-semibold mb-2.5 sm:mb-4" style={{ color: '#A86A1B' }}>
                       Congratulations 🎉
                     </p>
 
                     <div
-                      className="w-full rounded-2xl px-5 py-4 shadow-lg"
+                      className="w-full rounded-2xl px-4 py-3 sm:px-5 sm:py-4 shadow-lg"
                       style={{ backgroundColor: 'white', border: '1px solid #F2C879' }}
                     >
-                      <p className="text-[11px] uppercase tracking-wider font-bold mb-1" style={{ color: '#E0902F' }}>
+                      <p className="text-[10px] sm:text-[11px] uppercase tracking-wider font-bold mb-0.5 sm:mb-1" style={{ color: '#E0902F' }}>
                         Your Prize
                       </p>
-                      <p className="text-lg font-extrabold leading-tight" style={{ color: '#2D251E' }}>
+                      <p className="text-base sm:text-lg font-extrabold leading-tight" style={{ color: '#2D251E' }}>
                         {revealResult.prize!.short_name || revealResult.prize!.name}
                       </p>
                       {revealResult.prize!.value_gbp && (
                         <>
                           <p
-                            className="mt-2 text-4xl font-black tabular-nums leading-none"
+                            className="mt-1 sm:mt-2 text-2xl sm:text-4xl font-black tabular-nums leading-none"
                             style={{
                               backgroundImage: 'linear-gradient(180deg, #F4A93B 0%, #D8740F 100%)',
                               WebkitBackgroundClip: 'text',
@@ -404,10 +418,10 @@ export default function ScratchReveal() {
                           >
                             £<CountUp value={revealResult.prize!.value_gbp} />
                           </p>
-                          <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold" style={{ color: '#B26B12' }}>
+                          <p className="mt-1 sm:mt-1.5 inline-flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold" style={{ color: '#B26B12' }}>
                             {isAutoWalletPrize(revealResult.prize!.type) ? (
                               <>
-                                <Wallet size={13} /> Added straight to your wallet
+                                <Wallet size={12} /> Added to your wallet
                               </>
                             ) : (
                               <>Ready to claim</>
@@ -423,12 +437,12 @@ export default function ScratchReveal() {
                   className="flex flex-col items-center animate-[fadeIn_0.35s_ease-out]"
                   style={{ animationFillMode: 'both' }}
                 >
-                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-5">
-                    <Frown size={40} className="text-gray-400" />
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mb-3 sm:mb-5">
+                    <Frown className="text-gray-400 w-8 h-8 sm:w-10 sm:h-10" />
                   </div>
-                  <h2 className="text-2xl font-bold mb-1" style={{ color: '#2D251E' }}>Not This Time!</h2>
-                  <p className="text-stone-500 text-sm">Better luck on the next one.</p>
-                  <p className="text-xs text-stone-400 mt-3">You're still in the main draw!</p>
+                  <h2 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#2D251E' }}>Not This Time!</h2>
+                  <p className="text-stone-500 text-xs sm:text-sm">Better luck on the next one.</p>
+                  <p className="text-[11px] sm:text-xs text-stone-400 mt-2 sm:mt-3">You're still in the main draw!</p>
                 </div>
               )}
             </div>
@@ -452,14 +466,14 @@ export default function ScratchReveal() {
         )}
 
         {phase === 'done' && revealResult && (
-          <div className="mt-6 space-y-3 animate-[fadeIn_0.3s_ease-out]">
+          <div className="mt-4 sm:mt-6 space-y-2.5 sm:space-y-3 animate-[fadeIn_0.3s_ease-out]">
             {isWin &&
               !isAutoWalletPrize(revealResult.prize!.type) &&
               claimFulfillmentId && (
                 <button
                   type="button"
                   onClick={() => setShowClaimModal(true)}
-                  className="w-full py-3 rounded-xl font-bold text-white cursor-pointer"
+                  className="w-full py-2.5 sm:py-3 text-sm sm:text-base rounded-xl font-bold text-white cursor-pointer"
                   style={{ backgroundColor: '#f25100' }}
                 >
                   Claim Your Prize
@@ -468,7 +482,7 @@ export default function ScratchReveal() {
             <button
               type="button"
               onClick={handleNext}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 sm:py-3 text-sm sm:text-base rounded-xl font-bold text-white cursor-pointer"
               style={{ backgroundColor: '#496B71' }}
             >
               {remaining > 0 ? (
@@ -482,7 +496,7 @@ export default function ScratchReveal() {
           </div>
         )}
 
-        <p className="mt-6 text-center text-stone-400 text-sm">
+        <p className="mt-4 sm:mt-6 text-center text-stone-400 text-xs sm:text-sm">
           {queue.length} card{queue.length !== 1 ? 's' : ''} remaining
         </p>
       </div>

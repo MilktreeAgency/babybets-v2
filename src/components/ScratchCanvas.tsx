@@ -441,6 +441,23 @@ export function ScratchCanvas({
     }
   }, [])
 
+  // Block the page from scrolling/pull-to-refresh while a scratch is in progress.
+  // `touch-action: none` handles most browsers, but a non-passive listener is the
+  // reliable cross-browser guarantee (esp. iOS Safari).
+  useEffect(() => {
+    const canvas = scratchRef.current
+    if (!canvas) return
+    const prevent = (e: TouchEvent) => {
+      if (drawingRef.current) e.preventDefault()
+    }
+    canvas.addEventListener('touchstart', prevent, { passive: false })
+    canvas.addEventListener('touchmove', prevent, { passive: false })
+    return () => {
+      canvas.removeEventListener('touchstart', prevent)
+      canvas.removeEventListener('touchmove', prevent)
+    }
+  }, [])
+
   const pct = Math.min(100, Math.round((progress / threshold) * 100))
 
   return (
@@ -448,7 +465,14 @@ export function ScratchCanvas({
       <canvas
         ref={scratchRef}
         className="absolute inset-0 h-full w-full touch-none"
-        style={{ cursor: forceReveal ? 'default' : 'grab' }}
+        style={{
+          cursor: forceReveal ? 'default' : 'grab',
+          touchAction: 'none',
+          overscrollBehavior: 'none',
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
+          WebkitTouchCallout: 'none',
+        }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={endScratch}
