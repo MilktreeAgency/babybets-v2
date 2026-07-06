@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 
 interface ScratchCanvasProps {
-  /** Fires once when the user first starts scratching (good moment to call the reveal API). */
+  /** Fires once when the user taps to scratch (good moment to call the reveal API). */
   onStart?: () => void
-  /** Fires once when the scratched area passes the reveal threshold. */
+  /** Fires once the scratch animation finishes and the foil clears. */
   onComplete?: () => void
   /** Reports scratch progress 0..1 (throttled). */
   onProgress?: (progress: number) => void
   /** When true, the remaining foil auto-clears with a fade (e.g. after the result is locked in). */
   forceReveal?: boolean
-  /** Disables scratching (e.g. while an error is being handled). */
+  /** When false, the final foil clear waits until this becomes true (e.g. API result loaded). */
+  resultReady?: boolean
+  /** Disables tapping (e.g. while an error is being handled). */
   disabled?: boolean
-  /** Fraction of the surface that must be scratched before auto-reveal. */
+  /** Fraction of the surface that must be cleared before auto-reveal (used mid-animation). */
   threshold?: number
   /** First line of the big label shown on the foil. */
   label?: string
@@ -65,20 +67,21 @@ export function ScratchCanvas({
   onComplete,
   onProgress,
   forceReveal = false,
+  resultReady = true,
   disabled = false,
   threshold = DEFAULT_THRESHOLD,
-  label = 'SCRATCH',
-  label2 = '& win',
+  label = 'TAP',
+  label2 = 'to scratch',
   subLabel,
 }: ScratchCanvasProps) {
   const scratchRef = useRef<HTMLCanvasElement>(null)
   const particleRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
 
-  const drawingRef = useRef(false)
   const lastPointRef = useRef<{ x: number; y: number } | null>(null)
   const startedRef = useRef(false)
   const completedRef = useRef(false)
+  const animatingRef = useRef(false)
   const lastProgressCheckRef = useRef(0)
   const lastHapticRef = useRef(0)
   const flakesRef = useRef<Flake[]>([])
@@ -86,6 +89,9 @@ export function ScratchCanvas({
   const dprRef = useRef(1)
 
   const clearRafRef = useRef<number | null>(null)
+  const scratchAnimRafRef = useRef<number | null>(null)
+  const pendingFinishRef = useRef(false)
+  const resultReadyRef = useRef(resultReady)
 
   const [started, setStarted] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -306,6 +312,36 @@ export function ScratchCanvas({
   }, [spawnFlakes])
 
   // ---- Progress measurement ----------------------------------------------
+  const finishReveal = useCallback(() => {
+    if (completedRef.current) return
+    completedRef.current = true
+    pendingFinishRef.current = false
+    animatingRef.current = false
+    if (scratchAnimRafRef.current != null) {
+      cancelAnimationFrame(scratchAnimRafRef.current)
+      scratchAnimRafRef.current = null
+    }
+    if ('vibrate' in navigator) navigator.vibrate([18, 24, 40])
+    autoClear()
+    onComplete?.()
+  }, [autoClear, onComplete])
+
+  const requestFinish = useCallback(() => {
+    if (completedRef.current) return
+    if (resultReadyRef.current) {
+      finishReveal()
+    } else {
+      pendingFinishRef.current = true
+    }
+  }, [finishReveal])
+
+  useEffect(() => {
+    resultReadyRef.current = resultReady
+    if (resultReady && pendingFinishRef.current && !completedRef.current) {
+      finishReveal()
+    }
+  }, [resultReady, finishReveal])
+
   const measureProgress = useCallback(() => {
     const canvas = scratchRef.current
     const ctx = canvas?.getContext('2d')
@@ -331,13 +367,9 @@ export function ScratchCanvas({
     onProgress?.(p)
 
     if (!completedRef.current && p >= threshold) {
-      completedRef.current = true
-      drawingRef.current = false
-      if ('vibrate' in navigator) navigator.vibrate([18, 24, 40])
-      autoClear()
-      onComplete?.()
+      requestFinish()
     }
-  }, [autoClear, onComplete, onProgress, threshold])
+  }, [onProgress, requestFinish, threshold])
 
   // ---- Scratch input ------------------------------------------------------
   const getPoint = (clientX: number, clientY: number) => {
@@ -387,6 +419,75 @@ export function ScratchCanvas({
     [measureProgress, spawnFlakes]
   )
 
+  // ---- Tap-to-scratch animation path --------------------------------------
+  const buildScratchPath = useCallback((w: number, h: number, originX: number, originY: number) => {
+    const points: { x: number; y: number }[] = [{ x: originX, y: originY }]
+    const rows = 9
+    const padX = w * 0.08
+    const padY = h * 0.1
+
+    for (let row = 0; row < rows; row++) {
+      const y = padY + ((h - padY * 2) * row) / (rows - 1)
+      const leftToRight = row % 2 === 0
+      const segments = 14
+      for (let seg = 0; seg <= segments; seg++) {
+        const t = seg / segments
+        const x = leftToRight
+          ? padX + (w - padX * 2) * t
+          : w - padX - (w - padX * 2) * t
+        points.push({
+          x,
+          y: y + Math.sin(t * Math.PI * 3 + row) * h * 0.012,
+        })
+      }
+    }
+
+    return points
+  }, [])
+
+  const runTapScratchAnimation = useCallback(
+    (originX: number, originY: number) => {
+      const canvas = scratchRef.current
+      if (!canvas || animatingRef.current || completedRef.current) return
+
+      animatingRef.current = true
+      lastPointRef.current = null
+
+      const path = buildScratchPath(canvas.width, canvas.height, originX, originY)
+      const duration = 1100
+      const start = performance.now()
+
+      const step = (now: number) => {
+        if (completedRef.current) return
+
+        const t = Math.min(1, (now - start) / duration)
+        const eased = t * t * (3 - 2 * t)
+        const index = eased * (path.length - 1)
+        const i0 = Math.floor(index)
+        const i1 = Math.min(path.length - 1, i0 + 1)
+        const frac = index - i0
+        const p0 = path[i0]
+        const p1 = path[i1]
+        const x = p0.x + (p1.x - p0.x) * frac
+        const y = p0.y + (p1.y - p0.y) * frac
+
+        scratchAt(x, y)
+
+        if (t < 1) {
+          scratchAnimRafRef.current = requestAnimationFrame(step)
+        } else {
+          scratchAnimRafRef.current = null
+          animatingRef.current = false
+          measureProgress()
+          if (!completedRef.current) requestFinish()
+        }
+      }
+
+      scratchAnimRafRef.current = requestAnimationFrame(step)
+    },
+    [buildScratchPath, measureProgress, requestFinish, scratchAt]
+  )
+
   const beginScratch = useCallback(() => {
     if (!startedRef.current) {
       startedRef.current = true
@@ -395,37 +496,13 @@ export function ScratchCanvas({
     }
   }, [onStart])
 
-  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (disabled || completedRef.current || forceReveal) return
+  const handleTap = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (disabled || completedRef.current || forceReveal || animatingRef.current || startedRef.current) return
     e.preventDefault()
-    ;(e.target as HTMLCanvasElement).setPointerCapture?.(e.pointerId)
-    drawingRef.current = true
     beginScratch()
-    lastPointRef.current = null
     const { x, y } = getPoint(e.clientX, e.clientY)
-    scratchAt(x, y)
+    runTapScratchAnimation(x, y)
   }
-
-  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!drawingRef.current || disabled || completedRef.current) return
-    e.preventDefault()
-    // Coalesced events give smoother lines on supported browsers.
-    const events =
-      typeof e.nativeEvent.getCoalescedEvents === 'function'
-        ? e.nativeEvent.getCoalescedEvents()
-        : [e.nativeEvent]
-    for (const ev of events) {
-      const { x, y } = getPoint(ev.clientX, ev.clientY)
-      scratchAt(x, y)
-    }
-  }
-
-  const endScratch = useCallback(() => {
-    if (!drawingRef.current) return
-    drawingRef.current = false
-    lastPointRef.current = null
-    measureProgress()
-  }, [measureProgress])
 
   // ---- Auto-clear on forceReveal ------------------------------------------
   useEffect(() => {
@@ -438,23 +515,7 @@ export function ScratchCanvas({
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
       if (clearRafRef.current != null) cancelAnimationFrame(clearRafRef.current)
-    }
-  }, [])
-
-  // Block the page from scrolling/pull-to-refresh while a scratch is in progress.
-  // `touch-action: none` handles most browsers, but a non-passive listener is the
-  // reliable cross-browser guarantee (esp. iOS Safari).
-  useEffect(() => {
-    const canvas = scratchRef.current
-    if (!canvas) return
-    const prevent = (e: TouchEvent) => {
-      if (drawingRef.current) e.preventDefault()
-    }
-    canvas.addEventListener('touchstart', prevent, { passive: false })
-    canvas.addEventListener('touchmove', prevent, { passive: false })
-    return () => {
-      canvas.removeEventListener('touchstart', prevent)
-      canvas.removeEventListener('touchmove', prevent)
+      if (scratchAnimRafRef.current != null) cancelAnimationFrame(scratchAnimRafRef.current)
     }
   }, [])
 
@@ -466,22 +527,18 @@ export function ScratchCanvas({
         ref={scratchRef}
         className="absolute inset-0 h-full w-full touch-none"
         style={{
-          cursor: forceReveal ? 'default' : 'grab',
-          touchAction: 'none',
+          cursor: forceReveal || started ? 'default' : 'pointer',
+          touchAction: 'manipulation',
           overscrollBehavior: 'none',
           WebkitUserSelect: 'none',
           userSelect: 'none',
           WebkitTouchCallout: 'none',
         }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={endScratch}
-        onPointerCancel={endScratch}
-        onPointerLeave={endScratch}
+        onPointerDown={handleTap}
       />
       <canvas ref={particleRef} className="pointer-events-none absolute inset-0 h-full w-full z-20" />
 
-      {/* Progress chip */}
+      {/* Progress chip — shown while the tap animation runs */}
       {started && !completed && !forceReveal && (
         <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 z-20">
           <div className="flex items-center gap-2 rounded-full bg-black/35 px-3 py-1.5 backdrop-blur-sm">

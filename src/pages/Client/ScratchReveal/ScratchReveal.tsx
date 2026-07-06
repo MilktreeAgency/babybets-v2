@@ -123,8 +123,8 @@ export default function ScratchReveal() {
     }
   }, [])
 
-  // Fire the reveal API the moment the user first touches the foil, so the
-  // result is loaded and waiting beneath the card by the time they scratch through.
+  // Fire the reveal API the moment the user taps the foil, so the
+  // result is loaded and waiting beneath the card by the time the animation finishes.
   const handleScratchStart = useCallback(() => {
     if (!currentTicket || phase !== 'idle' || isRevealingRef.current) return
 
@@ -156,7 +156,7 @@ export default function ScratchReveal() {
       })
   }, [currentTicket, phase, revealTicket])
 
-  // Fires once the user has scratched past the reveal threshold.
+  // Fires once the tap scratch animation finishes and the foil clears.
   const handleScratchComplete = useCallback(async () => {
     const apiPromise = apiPromiseRef.current
     try {
@@ -292,7 +292,7 @@ export default function ScratchReveal() {
             <Zap size={13} fill="currentColor" className="sm:w-4 sm:h-4" /> Instant Win
           </div>
           <h1 className="text-xl sm:text-3xl font-bold mb-0.5 sm:mb-1" style={{ color: '#2D251E' }}>
-            {phase === 'done' ? 'Result' : 'Scratch to Reveal'}
+            {phase === 'done' ? 'Result' : 'Tap to Reveal'}
           </h1>
           <p className="text-sm sm:text-base text-stone-500 font-medium">Ticket #{currentTicket.ticket_number}</p>
           <p className="text-xs sm:text-sm text-stone-400 mt-0.5 sm:mt-1">{currentTicket.competition?.title}</p>
@@ -316,10 +316,20 @@ export default function ScratchReveal() {
             {/* Result layer (always present) */}
             <div className="absolute inset-0 flex flex-col items-center justify-center p-4 sm:p-8 text-center">
               {!showResult ? (
-                <>
-                  <div className="font-bold text-6xl mb-3" style={{ color: '#496B7144' }}>?</div>
-                  <p className="text-stone-400 text-sm">Your result is underneath</p>
-                </>
+                phase === 'revealing' ? (
+                  <div className="flex flex-col items-center">
+                    <div
+                      className="animate-spin rounded-full h-10 w-10 border-b-2 mb-3"
+                      style={{ borderColor: '#496B71' }}
+                    />
+                    <p className="text-stone-400 text-sm">Revealing your result...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="font-bold text-6xl mb-3" style={{ color: '#496B7144' }}>?</div>
+                    <p className="text-stone-400 text-sm">Tap to reveal your prize</p>
+                  </>
+                )
               ) : isWin ? (
                 <>
                   {/* Festive celebration backdrop (full-bleed) */}
@@ -447,15 +457,16 @@ export default function ScratchReveal() {
               )}
             </div>
 
-            {/* Real scratch-off foil — drag to scratch */}
+            {/* Real scratch-off foil — tap to scratch */}
             {phase !== 'done' && (
               <ScratchCanvas
                 key={`${currentTicket.id}-${attempt}`}
                 onStart={handleScratchStart}
                 onComplete={handleScratchComplete}
+                resultReady={revealResult !== null}
                 threshold={0.5}
-                label="SCRATCH"
-                label2="& win"
+                label="TAP"
+                label2="to scratch"
               />
             )}
           </div>
