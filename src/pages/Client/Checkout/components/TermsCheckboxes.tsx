@@ -26,7 +26,7 @@ const TermsCheckboxes = ({
 }: TermsCheckboxesProps) => {
   return (
     <div
-      className="rounded-xl p-6 mb-6 space-y-4"
+      className="rounded-xl p-4 sm:p-5 space-y-4"
       style={{ backgroundColor: '#f5f5f4', borderWidth: '1px', borderColor: '#e7e5e4' }}
     >
       <div className="mb-2">

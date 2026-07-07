@@ -2,15 +2,17 @@ interface ContactInformationProps {
   mobileNumber: string
   setMobileNumber: (number: string) => void
   isMobileValid: boolean
+  embedded?: boolean
 }
 
 const ContactInformation = ({
   mobileNumber,
   setMobileNumber,
   isMobileValid,
+  embedded = false,
 }: ContactInformationProps) => {
   return (
-    <div className="mb-6">
+    <div className={embedded ? '' : 'mb-6'}>
       <h3
         className="text-lg font-bold mb-4"
         style={{ color: '#151e20', fontFamily: "'Fraunces', serif" }}

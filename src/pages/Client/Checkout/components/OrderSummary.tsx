@@ -11,20 +11,14 @@ interface CartItem {
 interface OrderSummaryProps {
   items: CartItem[]
   onRemoveItem: (competitionId: string) => void
+  embedded?: boolean
 }
 
-const OrderSummary = ({ items, onRemoveItem }: OrderSummaryProps) => {
-  return (
-    <div
-      className="p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm"
-      style={{
-        backgroundColor: 'white',
-        borderWidth: '1px',
-        borderColor: '#e7e5e4',
-      }}
-    >
+const OrderSummary = ({ items, onRemoveItem, embedded = false }: OrderSummaryProps) => {
+  const content = (
+    <>
       <h2
-        className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 md:mb-8 flex items-center gap-2"
+        className={`text-lg sm:text-xl font-bold flex items-center gap-2 ${embedded ? 'mb-4 sm:mb-5' : 'mb-4 sm:mb-6 md:mb-8'}`}
         style={{ color: '#151e20', fontFamily: "'Fraunces', serif" }}
       >
         <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -34,9 +28,16 @@ const OrderSummary = ({ items, onRemoveItem }: OrderSummaryProps) => {
         </span>
       </h2>
 
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-3 sm:space-y-4">
         {items.map((item) => (
-          <div key={item.competitionId} className="flex gap-3 sm:gap-4 items-start">
+          <div
+            key={item.competitionId}
+            className="flex gap-3 sm:gap-4 items-start p-3 sm:p-4 rounded-xl sm:rounded-2xl border"
+            style={{
+              background: 'linear-gradient(to bottom right, #FBEFDF, #fffbf7, rgba(225, 234, 236, 0.45))',
+              borderColor: '#e7e5e4',
+            }}
+          >
             <img
               src={item.imageUrl}
               alt={item.competitionTitle}
@@ -74,6 +75,23 @@ const OrderSummary = ({ items, onRemoveItem }: OrderSummaryProps) => {
           </div>
         ))}
       </div>
+    </>
+  )
+
+  if (embedded) {
+    return content
+  }
+
+  return (
+    <div
+      className="p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm"
+      style={{
+        backgroundColor: 'white',
+        borderWidth: '1px',
+        borderColor: '#e7e5e4',
+      }}
+    >
+      {content}
     </div>
   )
 }

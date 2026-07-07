@@ -1,7 +1,6 @@
 import { Tag, X, Users } from 'lucide-react'
 
 interface PromoCodeSectionProps {
-  // Promo code state
   promoCode: string
   setPromoCode: (code: string) => void
   appliedPromoCode: string | null
@@ -9,13 +8,12 @@ interface PromoCodeSectionProps {
   promoCodeValue: number
   onApplyPromoCode: () => void
   onRemovePromoCode: () => void
-
-  // Partner code state
   partnerCode: string
   setPartnerCode: (code: string) => void
   activeReferral: { slug: string; influencerId: string; displayName?: string } | null
   onApplyPartnerCode: () => void
   onRemovePartnerCode: () => void
+  embedded?: boolean
 }
 
 const PromoCodeSection = ({
@@ -31,13 +29,18 @@ const PromoCodeSection = ({
   activeReferral,
   onApplyPartnerCode,
   onRemovePartnerCode,
+  embedded = false,
 }: PromoCodeSectionProps) => {
+  const promoWrapperClass = embedded ? '' : 'mt-6 sm:mt-8 pt-6 sm:pt-8'
+  const partnerWrapperClass = embedded
+    ? '-mx-4 sm:-mx-6 md:-mx-8 mt-6 pt-6 px-4 sm:px-6 md:px-8 border-t'
+    : 'mt-6 sm:mt-8 pt-6 sm:pt-8'
+
   return (
     <>
-      {/* Promotional Code Section */}
       <div
-        className="mt-6 sm:mt-8 pt-6 sm:pt-8"
-        style={{ borderTopWidth: '1px', borderColor: '#e7e5e4' }}
+        className={promoWrapperClass}
+        style={embedded ? undefined : { borderTopWidth: '1px', borderColor: '#e7e5e4' }}
       >
         <label
           className="block text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2"
@@ -66,8 +69,7 @@ const PromoCodeSection = ({
               >
                 {promoCodeType === 'percentage'
                   ? `${promoCodeValue}% OFF`
-                  : `£${(promoCodeValue / 100).toFixed(2)} OFF`
-                }
+                  : `£${(promoCodeValue / 100).toFixed(2)} OFF`}
               </span>
             </div>
             <button
@@ -87,9 +89,7 @@ const PromoCodeSection = ({
               value={promoCode}
               onChange={(e) => setPromoCode(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  onApplyPromoCode()
-                }
+                if (e.key === 'Enter') onApplyPromoCode()
               }}
               placeholder="Enter code"
               className="grow p-2.5 sm:p-3 text-sm sm:text-base rounded-xl focus:ring-2 focus:outline-none uppercase font-medium placeholder:normal-case"
@@ -124,10 +124,9 @@ const PromoCodeSection = ({
         )}
       </div>
 
-      {/* Partner Code Section */}
       <div
-        className="mt-6 sm:mt-8 pt-6 sm:pt-8"
-        style={{ borderTopWidth: '1px', borderColor: '#e7e5e4' }}
+        className={partnerWrapperClass}
+        style={embedded ? { borderColor: '#e7e5e4' } : { borderTopWidth: '1px', borderColor: '#e7e5e4' }}
       >
         <label
           className="block text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2"
@@ -174,9 +173,7 @@ const PromoCodeSection = ({
               value={partnerCode}
               onChange={(e) => setPartnerCode(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  onApplyPartnerCode()
-                }
+                if (e.key === 'Enter') onApplyPartnerCode()
               }}
               placeholder="Enter partner code"
               className="grow p-2.5 sm:p-3 text-sm sm:text-base rounded-xl focus:ring-2 focus:outline-none uppercase font-medium placeholder:normal-case"

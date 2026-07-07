@@ -7,6 +7,7 @@ interface WalletCreditSectionProps {
   appliedCredit: number
   setAppliedCredit: (amount: number) => void
   maxApplicableCredit: number
+  embedded?: boolean
 }
 
 const WalletCreditSection = ({
@@ -16,6 +17,7 @@ const WalletCreditSection = ({
   appliedCredit,
   setAppliedCredit,
   maxApplicableCredit,
+  embedded = false,
 }: WalletCreditSectionProps) => {
   if (availableCreditGBP <= 0) {
     return null
@@ -23,11 +25,11 @@ const WalletCreditSection = ({
 
   return (
     <div
-      className="mt-6 sm:mt-8 pt-6 sm:pt-8"
-      style={{ borderTopWidth: '1px', borderColor: '#e7e5e4' }}
+      className={embedded ? '' : 'mt-6 sm:mt-8 pt-6 sm:pt-8'}
+      style={embedded ? undefined : { borderTopWidth: '1px', borderColor: '#e7e5e4' }}
     >
-      <div className="flex items-center justify-between mb-3">
-        <label className="flex items-center gap-3 cursor-pointer">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <label className="flex items-center gap-3 cursor-pointer min-w-0">
           <div className="relative">
             <input
               type="checkbox"
@@ -59,7 +61,7 @@ const WalletCreditSection = ({
             Use Wallet Credit
           </span>
         </label>
-        <span className="text-sm" style={{ color: '#78716c' }}>
+        <span className="text-sm shrink-0" style={{ color: '#78716c' }}>
           Balance: <span className="font-bold" style={{ color: '#151e20' }}>£{availableCreditGBP.toFixed(2)}</span>
         </span>
       </div>
@@ -67,7 +69,7 @@ const WalletCreditSection = ({
       {useWalletCredit && (
         <>
           <div
-            className="rounded-lg p-4 mb-4"
+            className="rounded-lg p-4 mt-4 mb-4"
             style={{
               backgroundColor: '#e1eaec',
               borderWidth: '1px',
@@ -86,8 +88,8 @@ const WalletCreditSection = ({
             </div>
           </div>
 
-          <div className="space-y-3">
-            <label className="text-sm font-medium" style={{ color: '#78716c' }}>
+          <div className="space-y-3 mt-4">
+            <label className="block text-sm font-medium mb-2" style={{ color: '#78716c' }}>
               Apply Credit Amount
             </label>
             <input

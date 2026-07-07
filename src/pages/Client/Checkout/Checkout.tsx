@@ -32,6 +32,14 @@ import {
 // Google Pay client stored outside React state to avoid DataCloneError with postMessage
 let googlePayClientInstance: any = null
 
+function CheckoutDivider() {
+  return <div className="border-t" style={{ borderColor: '#e7e5e4' }} />
+}
+
+function CheckoutSection({ children }: { children: React.ReactNode }) {
+  return <div className="px-4 sm:px-6 md:px-8 py-6">{children}</div>
+}
+
 function Checkout() {
   const navigate = useNavigate()
   const { items, removeItem, clearCart, getTotalPrice, validateCart } = useCartStore()
@@ -92,6 +100,12 @@ function Checkout() {
     (agreeTerms && isUKResident && isOver18 && isMobileValid && isCardValid)
 
   const canProceedDigitalWallet = agreeTerms && isUKResident && isOver18 && isMobileValid
+
+  const submitLabel = loading
+    ? 'Processing...'
+    : finalPrice === 0
+      ? 'Complete Order'
+      : `Pay £${finalPrice.toFixed(2)}`
 
   useEffect(() => {
     if (!isInitialized) return
@@ -823,7 +837,7 @@ function Checkout() {
         </div>
       )}
 
-      <div className="pt-20 sm:pt-24 pb-12 sm:pb-16 px-4 sm:px-6">
+      <div className="pt-20 sm:pt-24 pb-28 lg:pb-16 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
           <h1
             className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8 md:mb-10"
@@ -832,15 +846,17 @@ function Checkout() {
             Secure Checkout
           </h1>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 md:gap-12">
-            {/* Order Summary - Left Column */}
-            <div className="order-2 lg:order-1 space-y-4 sm:space-y-6">
-              <div
-                className="p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm"
-                style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4' }}
-              >
-                <OrderSummary items={items} onRemoveItem={removeItem} />
-
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 lg:items-start">
+            {/* Order review */}
+            <div
+              className="rounded-xl sm:rounded-2xl shadow-sm overflow-hidden"
+              style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4' }}
+            >
+              <CheckoutSection>
+                <OrderSummary items={items} onRemoveItem={removeItem} embedded />
+              </CheckoutSection>
+              <CheckoutDivider />
+              <CheckoutSection>
                 <PromoCodeSection
                   promoCode={promoCode}
                   setPromoCode={setPromoCode}
@@ -854,221 +870,237 @@ function Checkout() {
                   activeReferral={activeReferral}
                   onApplyPartnerCode={handleApplyInfluencerCode}
                   onRemovePartnerCode={handleRemoveInfluencerCode}
+                  embedded
                 />
-
-                <WalletCreditSection
-                  availableCreditGBP={availableCreditGBP}
-                  useWalletCredit={useWalletCredit}
-                  setUseWalletCredit={handleWalletToggle}
-                  appliedCredit={appliedCredit}
-                  setAppliedCredit={setAppliedCredit}
-                  maxApplicableCredit={maxApplicableCredit}
-                />
-
-                <PriceSummary
-                  totalPrice={totalPrice}
-                  discountAmount={discountAmount}
-                  promoDiscount={promoDiscount}
-                  promoCodeType={promoCodeType}
-                  promoCodeValue={promoCodeValue}
-                  appliedCredit={appliedCredit}
-                  finalPrice={finalPrice}
-                />
-              </div>
+              </CheckoutSection>
             </div>
 
-            {/* Payment Form - Right Column */}
-            <div className="order-1 lg:order-2">
-              {finalPrice > 0 && (
-                <div
-                  className="p-8 rounded-2xl shadow-sm"
-                  style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4' }}
-                >
+            {/* Checkout actions */}
+            <div className="lg:sticky lg:top-24">
+              <div
+                className="rounded-xl sm:rounded-2xl shadow-sm overflow-hidden"
+                style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4' }}
+              >
+                <CheckoutSection>
                   <h2
                     className="text-xl font-bold mb-6"
                     style={{ color: '#151e20', fontFamily: "'Fraunces', serif" }}
                   >
-                    Payment Details
+                    {finalPrice === 0 ? 'Complete Order' : 'Payment Details'}
                   </h2>
-
-                  {/* Contact & Terms — shared for all payment methods */}
                   <ContactInformation
                     mobileNumber={mobileNumber}
                     setMobileNumber={setMobileNumber}
                     isMobileValid={isMobileValid}
+                    embedded
                   />
+                </CheckoutSection>
 
-                  <TermsCheckboxes
-                    agreeTerms={agreeTerms}
-                    setAgreeTerms={setAgreeTerms}
-                    isUKResident={isUKResident}
-                    setIsUKResident={setIsUKResident}
-                    isOver18={isOver18}
-                    setIsOver18={setIsOver18}
-                    canProceed={canProceed}
-                    isMobileValid={isMobileValid}
-                    mobileNumber={mobileNumber}
-                  />
-
-                  {/* Digital Wallet Buttons */}
-                  {(isApplePayAvailable || isGooglePayAvailable) && (
-                    <div className="mb-6">
-                      <div className="flex flex-col gap-3">
-                        {isApplePayAvailable && (
-                          <button
-                            onClick={handleApplePay}
-                            disabled={loading || !canProceedDigitalWallet}
-                            className="w-full h-12 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                            style={{
-                              WebkitAppearance: '-apple-pay-button' as any,
-                              // @ts-ignore
-                              '-apple-pay-button-type': 'pay',
-                              // @ts-ignore
-                              '-apple-pay-button-style': 'black',
-                              backgroundColor: '#000',
-                            }}
-                            aria-label="Pay with Apple Pay"
-                          />
-                        )}
-                        {isGooglePayAvailable && (
-                          <button
-                            onClick={handleGooglePay}
-                            disabled={loading || !canProceedDigitalWallet}
-                            className="w-full h-12 rounded-lg flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-white"
-                            style={{ backgroundColor: '#000' }}
-                          >
-                            <svg viewBox="0 0 41 17" className="h-5" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M19.526 2.635v4.083h2.518c.6 0 1.096-.202 1.488-.605.403-.402.605-.882.605-1.437 0-.544-.202-1.018-.605-1.422-.392-.413-.888-.619-1.488-.619h-2.518zm0 5.52v4.736h-1.504V1.198h3.99c1.013 0 1.873.337 2.582 1.012.72.675 1.08 1.497 1.08 2.466 0 .991-.36 1.819-1.08 2.482-.697.665-1.559.996-2.583.996h-2.485zM27.194 5.56c1.112 0 1.99.297 2.635.893.645.595.967 1.408.967 2.44v4.938H29.35v-1.112h-.065c-.624.914-1.453 1.372-2.486 1.372-.882 0-1.621-.262-2.217-.784-.595-.523-.893-1.176-.893-1.96 0-.828.313-1.486.938-1.976.625-.49 1.46-.735 2.505-.735 1.014 0 1.847.185 2.5.556v-.39c0-.6-.24-1.115-.718-1.545-.477-.43-1.056-.645-1.736-.645-.997 0-1.786.42-2.365 1.26l-1.112-.702c.784-1.12 1.949-1.61 3.493-1.61zm-2.115 6.283c0 .39.166.718.5.98.334.262.727.393 1.18.393.637 0 1.203-.232 1.698-.697.495-.463.742-1.007.742-1.632-.468-.372-1.12-.557-1.958-.557-.607 0-1.115.147-1.523.44-.41.294-.639.655-.639 1.073zM38.041 5.82l-5.011 11.527H31.49l1.86-4.033-3.294-7.494h1.659l2.381 5.749h.033l2.315-5.749z" fill="white"/>
-                              <path d="M13.16 8.467c0-.452-.04-.886-.116-1.3H6.98v2.46h3.476c-.149.806-.6 1.49-1.279 1.949v1.621h2.072c1.213-1.117 1.912-2.76 1.912-4.73z" fill="#4285F4"/>
-                              <path d="M6.979 14.5c1.744 0 3.208-.578 4.277-1.563l-2.072-1.621c-.576.387-1.312.616-2.205.616-1.695 0-3.13-1.145-3.642-2.682H1.2v1.674A6.48 6.48 0 006.979 14.5z" fill="#34A853"/>
-                              <path d="M3.337 9.25a3.887 3.887 0 010-2.494V5.082H1.2a6.48 6.48 0 000 5.842l2.137-1.674z" fill="#FBBC04"/>
-                              <path d="M6.979 4.074c.954 0 1.812.329 2.486.974l1.866-1.866C10.183 2.09 8.72 1.5 6.979 1.5a6.479 6.479 0 00-5.78 3.582l2.137 1.674c.512-1.537 1.947-2.682 3.643-2.682z" fill="#EA4335"/>
-                            </svg>
-                            Pay with Google Pay
-                          </button>
-                        )}
+                {availableCreditGBP > 0 ? (
+                  <>
+                    <CheckoutDivider />
+                    <CheckoutSection>
+                      <WalletCreditSection
+                        availableCreditGBP={availableCreditGBP}
+                        useWalletCredit={useWalletCredit}
+                        setUseWalletCredit={handleWalletToggle}
+                        appliedCredit={appliedCredit}
+                        setAppliedCredit={setAppliedCredit}
+                        maxApplicableCredit={maxApplicableCredit}
+                        embedded
+                      />
+                      <div className="mt-5">
+                        <PriceSummary
+                          totalPrice={totalPrice}
+                          discountAmount={discountAmount}
+                          promoDiscount={promoDiscount}
+                          promoCodeType={promoCodeType}
+                          promoCodeValue={promoCodeValue}
+                          appliedCredit={appliedCredit}
+                          finalPrice={finalPrice}
+                          compact
+                        />
                       </div>
+                      {finalPrice === 0 && (
+                        <div
+                          className="mt-4 p-4 rounded-xl"
+                          style={{ backgroundColor: '#ecfdf5', borderWidth: '1px', borderColor: '#a7f3d0' }}
+                        >
+                          <p className="text-green-800 text-center text-sm font-medium">
+                            Your order will be paid in full using wallet credit
+                          </p>
+                        </div>
+                      )}
+                    </CheckoutSection>
+                  </>
+                ) : (
+                  <>
+                    <CheckoutDivider />
+                    <CheckoutSection>
+                      <PriceSummary
+                        totalPrice={totalPrice}
+                        discountAmount={discountAmount}
+                        promoDiscount={promoDiscount}
+                        promoCodeType={promoCodeType}
+                        promoCodeValue={promoCodeValue}
+                        appliedCredit={appliedCredit}
+                        finalPrice={finalPrice}
+                        compact
+                      />
+                      {finalPrice === 0 && (
+                        <div
+                          className="mt-4 p-4 rounded-xl"
+                          style={{ backgroundColor: '#ecfdf5', borderWidth: '1px', borderColor: '#a7f3d0' }}
+                        >
+                          <p className="text-green-800 text-center text-sm font-medium">
+                            Your order will be paid in full using wallet credit
+                          </p>
+                        </div>
+                      )}
+                    </CheckoutSection>
+                  </>
+                )}
 
-                      <div className="flex items-center gap-3 my-5">
-                        <div className="flex-1 h-px bg-gray-200" />
-                        <span className="text-xs text-gray-400">or pay with card</span>
-                        <div className="flex-1 h-px bg-gray-200" />
+                {finalPrice > 0 && (
+                  <>
+                    <CheckoutDivider />
+                    <CheckoutSection>
+                      <div className="space-y-5">
+                      {(isApplePayAvailable || isGooglePayAvailable) && (
+                        <>
+                          <div className="flex flex-col gap-3">
+                            {isApplePayAvailable && (
+                              <button
+                                onClick={handleApplePay}
+                                disabled={loading || !canProceedDigitalWallet}
+                                className="w-full h-12 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                style={{
+                                  WebkitAppearance: '-apple-pay-button' as any,
+                                  // @ts-ignore
+                                  '-apple-pay-button-type': 'pay',
+                                  // @ts-ignore
+                                  '-apple-pay-button-style': 'black',
+                                  backgroundColor: '#000',
+                                }}
+                                aria-label="Pay with Apple Pay"
+                              />
+                            )}
+                            {isGooglePayAvailable && (
+                              <button
+                                onClick={handleGooglePay}
+                                disabled={loading || !canProceedDigitalWallet}
+                                className="w-full h-12 rounded-lg flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-white"
+                                style={{ backgroundColor: '#000' }}
+                              >
+                                <svg viewBox="0 0 41 17" className="h-5" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M19.526 2.635v4.083h2.518c.6 0 1.096-.202 1.488-.605.403-.402.605-.882.605-1.437 0-.544-.202-1.018-.605-1.422-.392-.413-.888-.619-1.488-.619h-2.518zm0 5.52v4.736h-1.504V1.198h3.99c1.013 0 1.873.337 2.582 1.012.72.675 1.08 1.497 1.08 2.466 0 .991-.36 1.819-1.08 2.482-.697.665-1.559.996-2.583.996h-2.485zM27.194 5.56c1.112 0 1.99.297 2.635.893.645.595.967 1.408.967 2.44v4.938H29.35v-1.112h-.065c-.624.914-1.453 1.372-2.486 1.372-.882 0-1.621-.262-2.217-.784-.595-.523-.893-1.176-.893-1.96 0-.828.313-1.486.938-1.976.625-.49 1.46-.735 2.505-.735 1.014 0 1.847.185 2.5.556v-.39c0-.6-.24-1.115-.718-1.545-.477-.43-1.056-.645-1.736-.645-.997 0-1.786.42-2.365 1.26l-1.112-.702c.784-1.12 1.949-1.61 3.493-1.61zm-2.115 6.283c0 .39.166.718.5.98.334.262.727.393 1.18.393.637 0 1.203-.232 1.698-.697.495-.463.742-1.007.742-1.632-.468-.372-1.12-.557-1.958-.557-.607 0-1.115.147-1.523.44-.41.294-.639.655-.639 1.073zM38.041 5.82l-5.011 11.527H31.49l1.86-4.033-3.294-7.494h1.659l2.381 5.749h.033l2.315-5.749z" fill="white"/>
+                                  <path d="M13.16 8.467c0-.452-.04-.886-.116-1.3H6.98v2.46h3.476c-.149.806-.6 1.49-1.279 1.949v1.621h2.072c1.213-1.117 1.912-2.76 1.912-4.73z" fill="#4285F4"/>
+                                  <path d="M6.979 14.5c1.744 0 3.208-.578 4.277-1.563l-2.072-1.621c-.576.387-1.312.616-2.205.616-1.695 0-3.13-1.145-3.642-2.682H1.2v1.674A6.48 6.48 0 006.979 14.5z" fill="#34A853"/>
+                                  <path d="M3.337 9.25a3.887 3.887 0 010-2.494V5.082H1.2a6.48 6.48 0 000 5.842l2.137-1.674z" fill="#FBBC04"/>
+                                  <path d="M6.979 4.074c.954 0 1.812.329 2.486.974l1.866-1.866C10.183 2.09 8.72 1.5 6.979 1.5a6.479 6.479 0 00-5.78 3.582l2.137 1.674c.512-1.537 1.947-2.682 3.643-2.682z" fill="#EA4335"/>
+                                </svg>
+                                Pay with Google Pay
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 h-px bg-gray-200" />
+                            <span className="text-xs text-gray-400">or pay with card</span>
+                            <div className="flex-1 h-px bg-gray-200" />
+                          </div>
+                        </>
+                      )}
+                      <CardPayment
+                        cardNumber={cardNumber}
+                        setCardNumber={setCardNumber}
+                        expiryDate={expiryDate}
+                        setExpiryDate={setExpiryDate}
+                        cvv={cvv}
+                        setCvv={setCvv}
+                        cardholderName={cardholderName}
+                        setCardholderName={setCardholderName}
+                      />
                       </div>
-                    </div>
-                  )}
+                    </CheckoutSection>
+                  </>
+                )}
 
-                  {/* Card Payment */}
-                  <div className="mb-6">
-                    <CardPayment
-                      cardNumber={cardNumber}
-                      setCardNumber={setCardNumber}
-                      expiryDate={expiryDate}
-                      setExpiryDate={setExpiryDate}
-                      cvv={cvv}
-                      setCvv={setCvv}
-                      cardholderName={cardholderName}
-                      setCardholderName={setCardholderName}
-                    />
-
-                    {paymentError && (
-                      <div className="mt-4 p-4 rounded-lg border" style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca' }}>
+                {paymentError && (
+                  <>
+                    <CheckoutDivider />
+                    <CheckoutSection>
+                      <div className="p-4 rounded-lg border" style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca' }}>
                         <div className="flex items-start">
                           <svg className="w-5 h-5 mr-2 shrink-0" style={{ color: '#dc2626' }} fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                           </svg>
                           <div>
-                            <p className="text-sm font-medium" style={{ color: '#991b1b' }}>Payment Failed</p>
+                            <p className="text-sm font-medium" style={{ color: '#991b1b' }}>
+                              {finalPrice === 0 ? 'Order Failed' : 'Payment Failed'}
+                            </p>
                             <p className="text-sm mt-1" style={{ color: '#dc2626' }}>{paymentError}</p>
                           </div>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </CheckoutSection>
+                  </>
+                )}
 
-                  <button
-                    onClick={handlePayment}
-                    disabled={loading || !canProceed}
-                    className="w-full font-bold py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-white text-lg"
-                    style={{ backgroundColor: '#496B71' }}
-                    onMouseEnter={(e) => { if (!loading && canProceed) e.currentTarget.style.backgroundColor = '#3a565a' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#496B71' }}
-                  >
-                    {loading ? 'Processing...' : `Pay £${finalPrice.toFixed(2)}`}
-                  </button>
+                <CheckoutDivider />
+                <CheckoutSection>
+                  <TermsCheckboxes
+                      agreeTerms={agreeTerms}
+                      setAgreeTerms={setAgreeTerms}
+                      isUKResident={isUKResident}
+                      setIsUKResident={setIsUKResident}
+                      isOver18={isOver18}
+                      setIsOver18={setIsOver18}
+                      canProceed={canProceed}
+                      isMobileValid={isMobileValid}
+                      mobileNumber={mobileNumber}
+                    />
 
-                  <p className="text-xs text-center mt-4" style={{ color: '#78716c' }}>
+                    <button
+                      onClick={handlePayment}
+                      disabled={loading || !canProceed}
+                      className="w-full mt-4 font-bold py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-white text-lg flex items-center justify-center"
+                      style={{ backgroundColor: '#496B71' }}
+                      onMouseEnter={(e) => { if (!loading && canProceed) e.currentTarget.style.backgroundColor = '#3a565a' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#496B71' }}
+                    >
+                      {submitLabel}
+                    </button>
+
+                  <p className="hidden lg:block text-xs text-center mt-3" style={{ color: '#78716c' }}>
                     Your payment is secure and encrypted
                   </p>
-                </div>
-              )}
-
-              {finalPrice === 0 && (
-                <div
-                  className="p-8 rounded-2xl shadow-sm"
-                  style={{ backgroundColor: 'white', borderWidth: '1px', borderColor: '#e7e5e4' }}
-                >
-                  <h2
-                    className="text-xl font-bold mb-6"
-                    style={{ color: '#151e20', fontFamily: "'Fraunces', serif" }}
-                  >
-                    Complete Order
-                  </h2>
-
-                  <div
-                    className="p-6 rounded-xl mb-6"
-                    style={{ backgroundColor: '#ecfdf5', borderWidth: '1px', borderColor: '#a7f3d0' }}
-                  >
-                    <p className="text-green-800 text-center font-medium">
-                      Your order will be paid in full using wallet credit
-                    </p>
-                  </div>
-
-                  <ContactInformation
-                    mobileNumber={mobileNumber}
-                    setMobileNumber={setMobileNumber}
-                    isMobileValid={isMobileValid}
-                  />
-
-                  <TermsCheckboxes
-                    agreeTerms={agreeTerms}
-                    setAgreeTerms={setAgreeTerms}
-                    isUKResident={isUKResident}
-                    setIsUKResident={setIsUKResident}
-                    isOver18={isOver18}
-                    setIsOver18={setIsOver18}
-                    canProceed={canProceed}
-                    isMobileValid={isMobileValid}
-                    mobileNumber={mobileNumber}
-                  />
-
-                  {paymentError && (
-                    <div className="mb-6 p-4 rounded-lg border" style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca' }}>
-                      <div className="flex items-start">
-                        <svg className="w-5 h-5 mr-2 shrink-0" style={{ color: '#dc2626' }} fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                        </svg>
-                        <div>
-                          <p className="text-sm font-medium" style={{ color: '#991b1b' }}>Order Failed</p>
-                          <p className="text-sm mt-1" style={{ color: '#dc2626' }}>{paymentError}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={handlePayment}
-                    disabled={loading || !canProceed}
-                    className="w-full font-bold py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-white text-lg"
-                    style={{ backgroundColor: '#496B71' }}
-                    onMouseEnter={(e) => { if (!loading) e.currentTarget.style.backgroundColor = '#3a565a' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#496B71' }}
-                  >
-                    {loading ? 'Processing...' : 'Complete Order'}
-                  </button>
-                </div>
-              )}
+                </CheckoutSection>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile sticky checkout bar — total + submit always within reach */}
+      <div
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t bg-white/95 backdrop-blur-sm px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+        style={{ borderColor: '#e7e5e4', paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+      >
+        <div className="max-w-6xl mx-auto flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs" style={{ color: '#78716c' }}>Total to pay</p>
+            <p className="text-xl font-bold truncate" style={{ color: '#496B71' }}>
+              £{finalPrice.toFixed(2)}
+            </p>
+          </div>
+          <button
+            onClick={handlePayment}
+            disabled={loading || !canProceed}
+            className="shrink-0 font-bold px-5 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-white text-sm sm:text-base"
+            style={{ backgroundColor: '#496B71' }}
+          >
+            {submitLabel}
+          </button>
         </div>
       </div>
 
