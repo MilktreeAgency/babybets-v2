@@ -91,6 +91,29 @@ function Account() {
     void refreshTickets()
   }, [activeSection, user?.id, refreshTickets])
 
+  // Expand all competition dropdowns by default on the tickets tab
+  useEffect(() => {
+    if (activeSection !== 'tickets' || isLoadingTickets || tickets.length === 0) return
+
+    const competitionIds = [
+      ...new Set(tickets.map((t) => t.competition?.id).filter((id): id is string => !!id)),
+    ]
+
+    setExpandedCompetitions((prev) => {
+      if (prev.size === 0) return new Set(competitionIds)
+
+      const next = new Set(prev)
+      let changed = false
+      for (const id of competitionIds) {
+        if (!next.has(id)) {
+          next.add(id)
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [activeSection, isLoadingTickets, tickets])
+
   // Poll briefly while payment is still being allocated server-side
   useEffect(() => {
     if (activeSection !== 'tickets' || searchParams.get('payment') !== 'processing' || !user?.id) {
@@ -263,14 +286,17 @@ function Account() {
 
   const hasAddress = profile && profile.address_line1 && profile.city && profile.postcode
 
-  const handleRevealAll = async () => {
-    const unrevealedTickets = tickets.filter(
-      (t) => !t.is_revealed && t.competition?.competition_type === 'instant_win'
+  const handleRevealAll = async (competitionId: string) => {
+    const unrevealedInCompetition = tickets.filter(
+      (t) =>
+        !t.is_revealed &&
+        t.competition?.competition_type === 'instant_win' &&
+        t.competition?.id === competitionId
     )
-    if (unrevealedTickets.length === 0) return
+    if (unrevealedInCompetition.length === 0) return
 
     try {
-      const { revealed_count } = await revealAllTickets()
+      const { revealed_count } = await revealAllTickets(competitionId)
       showSuccessToast(
         `Successfully revealed ${revealed_count} ticket${revealed_count !== 1 ? 's' : ''}!`
       )
@@ -564,30 +590,6 @@ function Account() {
                     </div>
                   ) : (
                     <>
-                  {/* Reveal All Section - Only show if there are unrevealed instant win tickets */}
-                  {unrevealedCount > 0 && (
-                    <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-3 sm:p-4 border-2" style={{ borderColor: '#fb923c' }}>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 mb-2">
-                        <div>
-                          <h3 className="text-base sm:text-lg font-bold mb-0.5" style={{ color: '#1a1a1a' }}>
-                            Unrevealed Tickets
-                          </h3>
-                          <p className="text-xs" style={{ color: '#78716c' }}>
-                            You have {unrevealedCount} ticket{unrevealedCount > 1 ? 's' : ''} ready to reveal
-                          </p>
-                        </div>
-                        <button
-                          onClick={handleRevealAll}
-                          disabled={isRevealing}
-                          className="w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm text-white transition-all duration-300 hover:opacity-90 cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                          style={{ backgroundColor: '#496B71' }}
-                        >
-                          {isRevealing ? 'Revealing...' : 'Reveal All'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
                   {/* All Competitions */}
                   {tickets.length > 0 ? (
                     <div className="space-y-3">
@@ -649,22 +651,22 @@ function Account() {
                                   const isUnrevealed = !ticket.is_revealed && ticket.competition?.competition_type === 'instant_win'
 
                                   if (isUnrevealed) {
-                                    // Unrevealed instant win ticket
                                     return (
                                       <button
                                         key={ticket.id}
+                                        type="button"
                                         onClick={() => navigate('/scratch-reveal')}
                                         className="relative p-1.5 sm:p-2 rounded-md font-bold text-[9px] sm:text-[10px] transition-all duration-300 cursor-pointer hover:scale-105"
                                         style={{
                                           backgroundColor: '#fff7ed',
                                           borderWidth: '1px',
                                           borderColor: '#fb923c',
-                                          color: '#9a3412'
+                                          color: '#9a3412',
                                         }}
                                       >
                                         <div className="flex flex-col items-center justify-center gap-0.5">
                                           <Ticket className="size-2.5 sm:size-3" />
-                                          <span className="leading-tight">Scratch</span>
+                                          <span className="leading-tight">Reveal</span>
                                         </div>
                                       </button>
                                     )
@@ -701,6 +703,30 @@ function Account() {
                                   )
                                 })}
                               </div>
+
+                              {group.competition?.competition_type === 'instant_win' &&
+                                group.tickets.some((t) => !t.is_revealed) && (
+                                  <div className="flex flex-col sm:flex-row gap-2 mt-3 pt-3 border-t" style={{ borderColor: '#f3f4f6' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => navigate('/scratch-reveal')}
+                                      disabled={isRevealing}
+                                      className="flex-1 px-3 py-2 rounded-lg font-bold text-xs sm:text-sm text-white transition-all hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                      style={{ backgroundColor: '#496B71' }}
+                                    >
+                                      Reveal One by One
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRevealAll(group.competitionId)}
+                                      disabled={isRevealing}
+                                      className="flex-1 px-3 py-2 rounded-lg font-bold text-xs sm:text-sm text-white transition-all hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                      style={{ backgroundColor: '#496B71' }}
+                                    >
+                                      {isRevealing ? 'Revealing...' : 'Reveal All'}
+                                    </button>
+                                  </div>
+                                )}
                             </div>
                           )}
                         </div>

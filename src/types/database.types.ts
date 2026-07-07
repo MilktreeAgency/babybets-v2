@@ -1780,7 +1780,7 @@ export type Database = {
         Returns: undefined
       }
       reveal_all_instant_win_tickets: {
-        Args: { p_user_id: string }
+        Args: { p_user_id: string; p_competition_id?: string }
         Returns: Json
       }
       reset_monthly_influencer_sales: { Args: never; Returns: undefined }

@@ -168,11 +168,14 @@ export function useTickets() {
   })
 
   const revealAllTicketsMutation = useMutation({
-    mutationFn: async (): Promise<{ revealed_count: number; prizes_allocated: number }> => {
+    mutationFn: async (
+      competitionId?: string
+    ): Promise<{ revealed_count: number; prizes_allocated: number }> => {
       if (!user?.id) throw new Error('User not authenticated')
 
       const { data, error } = await supabase.rpc('reveal_all_instant_win_tickets', {
         p_user_id: user.id,
+        ...(competitionId ? { p_competition_id: competitionId } : {}),
       })
 
       if (error) throw error
